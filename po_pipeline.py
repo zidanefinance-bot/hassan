@@ -9,10 +9,13 @@ Required environment variables:
   ANTHROPIC_API_KEY
   ZOHO_ACCESS_TOKEN
   ZOHO_ORGANIZATION_ID
-  GOOGLE_SERVICE_ACCOUNT_FILE   – path to service-account JSON
-  GOOGLE_DRIVE_FOLDER_ID        – Drive folder to save invoice links
-  GOOGLE_SHEET_ID               – Spreadsheet ID of the order sheet
-  GMAIL_USER                    – Gmail address to monitor (e.g. you@gmail.com)
+  GOOGLE_DRIVE_FOLDER_ID   – Drive folder to save invoice links
+  GOOGLE_SHEET_ID          – Spreadsheet ID of the order sheet
+  GMAIL_USER               – Gmail address to monitor (e.g. you@gmail.com)
+
+One-time setup:
+  1. Run  python gmail_auth.py  to generate token.json
+  2. Then run this script normally
 
 Run once:
   python po_pipeline.py
@@ -31,18 +34,20 @@ import argparse
 
 import anthropic
 import requests
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 # ── Config ────────────────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY        = os.environ["ANTHROPIC_API_KEY"]
-ZOHO_ACCESS_TOKEN        = os.environ["ZOHO_ACCESS_TOKEN"]
-ZOHO_ORGANIZATION_ID     = os.environ["ZOHO_ORGANIZATION_ID"]
-GOOGLE_SERVICE_ACCOUNT_FILE = os.environ["GOOGLE_SERVICE_ACCOUNT_FILE"]
-GOOGLE_DRIVE_FOLDER_ID   = os.environ["GOOGLE_DRIVE_FOLDER_ID"]
-GOOGLE_SHEET_ID          = os.environ["GOOGLE_SHEET_ID"]
-GMAIL_USER               = os.environ["GMAIL_USER"]
+ANTHROPIC_API_KEY      = os.environ["ANTHROPIC_API_KEY"]
+ZOHO_ACCESS_TOKEN      = os.environ["ZOHO_ACCESS_TOKEN"]
+ZOHO_ORGANIZATION_ID   = os.environ["ZOHO_ORGANIZATION_ID"]
+GOOGLE_DRIVE_FOLDER_ID = os.environ["GOOGLE_DRIVE_FOLDER_ID"]
+GOOGLE_SHEET_ID        = os.environ["GOOGLE_SHEET_ID"]
+GMAIL_USER             = os.environ["GMAIL_USER"]
+
+TOKEN_FILE = os.path.join(os.path.dirname(__file__), "token.json")
 
 ZOHO_BASE = "https://books.zoho.com/api/v3"
 
@@ -103,13 +108,25 @@ PO_SCHEMA = {
 
 
 # ── Google service builders ───────────────────────────────────────────────────
+def _load_oauth_credentials() -> Credentials:
+    if not os.path.exists(TOKEN_FILE):
+        raise FileNotFoundError(
+            f"'{TOKEN_FILE}' not found.\n"
+            "Run  python gmail_auth.py  first to authorise your Google account."
+        )
+    creds = Credentials.from_authorized_user_file(TOKEN_FILE, GOOGLE_SCOPES)
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+        with open(TOKEN_FILE, "w") as f:
+            f.write(creds.to_json())
+    return creds
+
+
 def _google_services():
-    creds = service_account.Credentials.from_service_account_file(
-        GOOGLE_SERVICE_ACCOUNT_FILE, scopes=GOOGLE_SCOPES
-    )
-    gmail   = build("gmail",   "v1",  credentials=creds)
-    sheets  = build("sheets",  "v4",  credentials=creds)
-    drive   = build("drive",   "v3",  credentials=creds)
+    creds  = _load_oauth_credentials()
+    gmail  = build("gmail",  "v1", credentials=creds)
+    sheets = build("sheets", "v4", credentials=creds)
+    drive  = build("drive",  "v3", credentials=creds)
     return gmail, sheets, drive
 
 
