@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purchasing Sheet - Zidane Corporation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; background: #f0f2f5; }
+
+  .container { max-width: 900px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }
+
+  .header { background: #1a5276; color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  .header .org { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+
+  .meta { padding: 14px 20px; background: #eaf2ff; border-bottom: 2px solid #d0e4ff; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .meta-field { display: flex; flex-direction: column; gap: 4px; }
+  .meta-field label { font-size: 11px; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  .meta-field input { border: 1.5px solid #b0c8e8; border-radius: 5px; padding: 6px 10px; font-size: 13px; font-weight: 600; color: #1a3a5c; background: white; }
+  .meta-field input:focus { outline: none; border-color: #1a5276; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: #1a5276; color: white; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+  thead th.center { text-align: center; }
+  thead th.right { text-align: right; }
+
+  tbody tr { border-bottom: 1px solid #e8edf2; }
+  tbody tr:nth-child(even) { background: #f7f9fc; }
+  tbody tr:hover { background: #eef4ff; }
+
+  td { padding: 7px 12px; color: #2c3e50; }
+  td.num { text-align: center; font-weight: 600; }
+  td.uom { text-align: center; color: #666; font-size: 12px; }
+  td.amount { text-align: right; font-weight: 700; color: #1a5276; font-size: 13px; }
+
+  .sno { color: #999; font-size: 11px; text-align: center; width: 32px; }
+
+  .rate-input { width: 100%; border: 1.5px solid #c0d8f0; border-radius: 4px; padding: 5px 8px; font-size: 13px; font-weight: 700; color: #c0392b; text-align: right; background: #fff9f0; }
+  .rate-input:focus { outline: none; border-color: #e67e22; background: #fff3e0; }
+  .rate-input::placeholder { color: #ddd; font-weight: 400; }
+
+  .footer { padding: 14px 20px; background: #f7f9fc; border-top: 2px solid #d0e4ff; display: flex; justify-content: flex-end; gap: 20px; align-items: center; }
+  .total-box { background: #1a5276; color: white; padding: 10px 20px; border-radius: 6px; text-align: right; }
+  .total-box .label { font-size: 11px; opacity: 0.8; }
+  .total-box .amount { font-size: 20px; font-weight: 700; }
+
+  .balance-box { padding: 10px 20px; border-radius: 6px; text-align: right; border: 2px solid; }
+  .balance-box .label { font-size: 11px; font-weight: 600; }
+  .balance-box .amount { font-size: 18px; font-weight: 700; }
+  .balance-positive { border-color: #27ae60; color: #27ae60; background: #eafaf1; }
+  .balance-negative { border-color: #c0392b; color: #c0392b; background: #fdedec; }
+
+  .advance-box { padding: 10px 20px; border-radius: 6px; text-align: right; background: #fef9e7; border: 2px solid #f0c040; }
+  .advance-box .label { font-size: 11px; color: #888; font-weight: 600; }
+  .advance-box .amount { font-size: 18px; font-weight: 700; color: #b7770d; }
+
+  .actions { padding: 12px 20px; border-top: 1px solid #e0e8f0; display: flex; gap: 10px; justify-content: flex-end; }
+  .btn { padding: 9px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }
+  .btn-print { background: #2980b9; color: white; }
+  .btn-print:hover { background: #1f6fa3; }
+  .btn-clear { background: #ecf0f1; color: #555; }
+  .btn-clear:hover { background: #dde1e3; }
+  .btn-reset { background: #e74c3c; color: white; }
+  .btn-reset:hover { background: #c0392b; }
+
+  .item-name { font-weight: 500; max-width: 280px; line-height: 1.3; }
+
+  @media print {
+    body { background: white; }
+    .container { box-shadow: none; margin: 0; border-radius: 0; }
+    .actions { display: none; }
+    .rate-input { border: 1px solid #999; background: white; }
+    thead tr { background: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .header { background: #1a5276 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .total-box { background: #1a5276 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>PURCHASING SHEET</h1>
+      <div class="org">Zidane Corporation &nbsp;|&nbsp; For Employee Use</div>
+    </div>
+    <div style="text-align:right; font-size:12px; opacity:0.9;">
+      Employee: <strong>KASHIF</strong>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="meta-field">
+      <label>📅 Date</label>
+      <input type="date" id="sheet-date" />
+    </div>
+    <div class="meta-field">
+      <label>🏢 Customer / Order</label>
+      <input type="text" id="customer-name" placeholder="Customer name..." />
+    </div>
+    <div class="meta-field">
+      <label>💰 Advance Given (PKR)</label>
+      <input type="number" id="advance-amount" placeholder="e.g. 500000" oninput="updateBalance()" />
+    </div>
+  </div>
+
+  <table id="purchase-table">
+    <thead>
+      <tr>
+        <th class="center" style="width:36px">#</th>
+        <th>ITEM DESCRIPTION</th>
+        <th class="center" style="width:60px">UOM</th>
+        <th class="center" style="width:60px">QTY</th>
+        <th class="right" style="width:110px">RATE (PKR) ✏️</th>
+        <th class="right" style="width:110px">AMOUNT (PKR)</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <div class="advance-box">
+      <div class="label">ADVANCE GIVEN</div>
+      <div class="amount" id="display-advance">PKR 0</div>
+    </div>
+    <div class="total-box">
+      <div class="label">TOTAL PURCHASED</div>
+      <div class="amount" id="grand-total">PKR 0</div>
+    </div>
+    <div class="balance-box balance-positive" id="balance-box">
+      <div class="label" id="balance-label">BALANCE REMAINING</div>
+      <div class="amount" id="balance-amount">PKR 0</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-clear" onclick="clearRates()">Clear All Rates</button>
+    <button class="btn btn-print" onclick="window.print()">🖨️ Print Sheet</button>
+  </div>
+</div>
+
+<script>
+const items = [
+  { item: "NYLON WHEEL 6\" WITH BRACKET (REVOLVING)", uom: "PCS", qty: 40 },
+  { item: "AIR FRESHNER ROOM SPRAY 300ML TOPIC BRAND", uom: "PCS", qty: 96 },
+  { item: "BLEACH 30KG LOCAL", uom: "CAN", qty: 8 },
+  { item: "BROOM HARD", uom: "PCS", qty: 200 },
+  { item: "BROOM SOFT", uom: "PCS", qty: 200 },
+  { item: "CHINA BRUSH", uom: "PCS", qty: 130 },
+  { item: "DUSTBIN BAG 30 X 50 BLACK", uom: "KG", qty: 48 },
+  { item: "DUSTER FABRIC", uom: "PCS", qty: 100 },
+  { item: "GLASS CLEANER GLINT 500 ML", uom: "BTL", qty: 24 },
+  { item: "HAND BRUSH", uom: "PCS", qty: 24 },
+  { item: "HANDWASH LIFEBOY 140 ML", uom: "BTL", qty: 48 },
+  { item: "LEMON MAX BAR 285 GRAMS", uom: "PCS", qty: 48 },
+  { item: "LUX SOAP 70 GRAMS", uom: "PCS", qty: 100 },
+  { item: "MOP BIG 18 X 18 WOODEN", uom: "PCS", qty: 100 },
+  { item: "MOP REFILL (600 GRAM)", uom: "PCS", qty: 300 },
+  { item: "MOP STICK", uom: "PCS", qty: 48 },
+  { item: "PHENYL ZIP LOCAL 3 LTR", uom: "BTL", qty: 200 },
+  { item: "ROOMI BOX", uom: "CTN", qty: 1 },
+  { item: "SAFTY MATCH 10 PCS", uom: "PKT", qty: 15 },
+  { item: "SCRAPER PLASTIC SUPRI", uom: "PCS", qty: 48 },
+  { item: "SURF LOOSE LOCAL", uom: "KG", qty: 50 },
+  { item: "TILE WASH SWEEP LOCAL 30KG", uom: "CAN", qty: 9 },
+  { item: "TISSUE BOX ROSE PETAL POP UP 150 SHEET", uom: "PKT", qty: 300 },
+  { item: "TISSUE PAPER ROLL", uom: "PCS", qty: 200 },
+  { item: "VIM TOILET BLEACH POWDER LOSE LOCAL", uom: "PCS", qty: 24 },
+  { item: "CERAMIC FIBRE ROPE 10MM DIA X 30 METER LENGTH TEMP 150-200 CENTIGRADE", uom: "PCS", qty: 4 },
+  { item: "CERAMIC PLATES WHITE 12INCH", uom: "PCS", qty: 12 },
+  { item: "CERAMIC PLATES WHITE 8INCH", uom: "PCS", qty: 12 },
+  { item: "GLASS 6 PCS SET", uom: "SET", qty: 1 },
+  { item: "TABLE SPOON STAINLESS STEEL", uom: "DZN", qty: 2 },
+  { item: "COFFEE (100G)", uom: "PCS", qty: 3 },
+  { item: "EVERY DAY TEA WHITENER 2KG 1 POUCH", uom: "PKT", qty: 260 },
+  { item: "LIPTON LEMON GREEN TEA 100 BAGS", uom: "PKT", qty: 30 },
+  { item: "LIPTON TEA BAG 600 BAGS", uom: "BOX", qty: 10 },
+  { item: "NESCAFE (200GM)", uom: "PCS", qty: 23 },
+  { item: "NESTLE WATER 500 ML", uom: "CRT", qty: 23 },
+  { item: "SUGAR 2 KGS PACK", uom: "PKT", qty: 350 },
+  { item: "TAPAL FAMILY MIXTURE (900GM)", uom: "PKT", qty: 176 },
+];
+
+function fmt(n) {
+  return 'PKR ' + Math.round(n).toLocaleString('en-PK');
+}
+
+function buildTable() {
+  const tbody = document.getElementById('table-body');
+  items.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="sno">${i + 1}</td>
+      <td class="item-name">${row.item}</td>
+      <td class="uom">${row.uom}</td>
+      <td class="num">${row.qty.toLocaleString()}</td>
+      <td style="padding:4px 8px;">
+        <input class="rate-input" type="number" min="0" placeholder="0"
+          id="rate-${i}" data-qty="${row.qty}"
+          oninput="calcRow(${i})" />
+      </td>
+      <td class="amount" id="amt-${i}">—</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function calcRow(i) {
+  const rateEl = document.getElementById('rate-' + i);
+  const amtEl = document.getElementById('amt-' + i);
+  const rate = parseFloat(rateEl.value) || 0;
+  const qty = parseFloat(rateEl.dataset.qty) || 0;
+  const amount = rate * qty;
+  amtEl.textContent = amount > 0 ? fmt(amount) : '—';
+  updateTotal();
+}
+
+function updateTotal() {
+  let total = 0;
+  items.forEach((_, i) => {
+    const rateEl = document.getElementById('rate-' + i);
+    const rate = parseFloat(rateEl.value) || 0;
+    total += rate * items[i].qty;
+  });
+  document.getElementById('grand-total').textContent = fmt(total);
+  updateBalance(total);
+}
+
+function updateBalance(total) {
+  if (total === undefined) {
+    total = 0;
+    items.forEach((_, i) => {
+      const rateEl = document.getElementById('rate-' + i);
+      const rate = parseFloat(rateEl.value) || 0;
+      total += rate * items[i].qty;
+    });
+  }
+  const advance = parseFloat(document.getElementById('advance-amount').value) || 0;
+  document.getElementById('display-advance').textContent = fmt(advance);
+  const balance = advance - total;
+  const balBox = document.getElementById('balance-box');
+  const balAmt = document.getElementById('balance-amount');
+  const balLbl = document.getElementById('balance-label');
+  balAmt.textContent = fmt(Math.abs(balance));
+  if (balance >= 0) {
+    balBox.className = 'balance-box balance-positive';
+    balLbl.textContent = 'BALANCE REMAINING';
+  } else {
+    balBox.className = 'balance-box balance-negative';
+    balLbl.textContent = 'EXTRA NEEDED';
+  }
+}
+
+function clearRates() {
+  if (!confirm('Clear all rates?')) return;
+  items.forEach((_, i) => {
+    document.getElementById('rate-' + i).value = '';
+    document.getElementById('amt-' + i).textContent = '—';
+  });
+  document.getElementById('grand-total').textContent = 'PKR 0';
+  updateBalance(0);
+}
+
+// Set today's date
+document.getElementById('sheet-date').valueAsDate = new Date();
+buildTable();
+</script>
+</body>
+</html>
