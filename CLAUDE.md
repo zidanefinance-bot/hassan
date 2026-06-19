@@ -2,15 +2,13 @@
 
 ## AUTO-SYNC ON SESSION START (HIGHEST PRIORITY)
 Every time a new Claude session starts, do this IMMEDIATELY and WITHOUT being asked:
-1. Run: `git pull origin claude/epic-babbage-jf0gbz` — get latest Quotation_Tracker.xlsx
-2. Search Gmail: `newer_than:2d` — fetch all recent threads
-3. Skip: Instagram, social media, payment/WHT/invoice/purchase order emails
-4. Parse: quotation queries, reminders, sent quotations
-5. Update the EXISTING `Quotation_Tracker.xlsx` — add new rows, mark overdue, mark sent. DO NOT create a new file or send it for download.
-6. Run: `git add Quotation_Tracker.xlsx && git commit -m "Auto-sync: Gmail quotation update $(date +%d-%b-%Y)" && git push`
-7. Tell Hassan: "Sync complete — X new queries added, X overdue, X sent. File updated."
+1. Search Gmail: `newer_than:2d` — fetch all recent threads
+2. Skip: Instagram, social media, payment/WHT/invoice/purchase order emails
+3. Parse: quotation queries, reminders, sent quotations
+4. Update Google Sheet (ID: 1GcROhSupRsu8itkgaUGSc1yi_XiV_nD2gvUP68PPJRo) using sheets_sync.py — add new rows, mark overdue, mark sent
+5. Tell Hassan: "Sync complete — X new queries added, X overdue, X sent."
 
-DO NOT send/download the file. Just update it in place and push to git.
+Google Sheet live updates automatically — DO NOT send/download any file.
 
 ## Identity
 - Name: **Hassan**
