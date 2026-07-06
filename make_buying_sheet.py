@@ -46,7 +46,7 @@ c.alignment = Alignment(horizontal="center", vertical="center")
 ws.row_dimensions[1].height = 35
 
 ws.merge_cells("A2:I2")
-c = ws.cell(row=2, column=1, value="Date: 02-Jul-2026 & 29-Jun-2026 | Deliver To: Main Store, Plot #8 Sector 27, Karachi")
+c = ws.cell(row=2, column=1, value="Dates: 29-Jun to 06-Jul-2026 | 10 POs | Deliver To: Main Store, Plot #8 Sector 27, Karachi")
 c.fill = PatternFill(start_color=MED, end_color=MED, fill_type="solid")
 c.font = Font(color="FFFFFF", size=10)
 c.alignment = Alignment(horizontal="center", vertical="center")
@@ -182,6 +182,96 @@ for item_data in tools:
     grand_total += total
     sr += 1
 
+# ═══════════════════════════════
+# CATEGORY 5: JANITORIAL / CLEANING
+# ═══════════════════════════════
+row = cat_header(ws, row, "🧹  JANITORIAL / CLEANING ITEMS", "E2EFDA")
+
+janitorial = [
+    ("17257","Air Freshner Room Spray 300ml Topic Brand","PCS",96,  260,  5),
+    ("17257","Bleach 30KG Local",                        "CAN",14,  970,  5),
+    ("17257","Broom Hard",                               "PCS",200, 235,  5),
+    ("17257","Broom Soft PP",                            "PCS",200, 200,  0),
+    ("17257","China Brush",                              "PCS",60,  300,  5),
+    ("17257","Dustbin Bag 18x24 Black",                  "KG", 50,  300,  5),
+    ("17257","Dustbin Bag 30x50 Black",                  "KG", 50,  300,  5),
+    ("17257","Duster Fabric",                            "PCS",96,  37,   0),
+    ("17257","Glass Cleaner Glint 500ml",                "BTL",96,  250,  0),
+    ("17257","Hand Brush",                               "PCS",12,  300,  0),
+    ("17257","Hand Wash Lose Local",                     "KG", 200, 270,  5),
+    ("17257","Handwash Lifeboy 140ml",                   "BTL",48,  300,  0),
+    ("17257","Harpic 500ml",                             "BTL",96,  380,  0),
+    ("17257","Lux Soap 70 Grams",                        "PCS",100, 150,  5),
+    ("17257","Mop Big 18x18 Wooden",                     "PCS",100, 394,  0),
+    ("17257","Mop Refill (600 Gram)",                    "PCS",200, 347,  5),
+    ("17257","Mop Stick",                                "PCS",60,  473,  5),
+    ("17257","Mortein Spray",                            "PCS",48,  590,  5),
+    ("17257","Phenyl Zip Local 3 Ltr",                   "BTL",200, 420,  0),
+    ("17257","Roomi Box",                                "CTN",2,   18000,5),
+    ("17257","Safety Match 10 PCS",                      "PKT",15,  100,  5),
+    ("17257","Scotch Bright",                            "PCS",24,  70,   5),
+    ("17257","Scraper Plastic Supri",                    "PCS",60,  105,  5),
+    ("17257","Tile Wash Sweep Local 30KG",               "CAN",7,   1180, 0),
+    ("17257","Tissue Box Rose Petal Pop Up 150 Sheet",   "PKT",150, 270,  5),
+    ("17257","Tissue Paper Roll",                        "PCS",300, 120,  5),
+    ("17257","VIM Toilet Bleach Powder Lose Local",      "PCS",25,  180,  0),
+    ("17257","Viper Large 4ft",                          "PCS",50,  579,  0),
+]
+
+for item_data in janitorial:
+    row, total = add_item(ws, row, sr, *item_data, "E2EFDA")
+    grand_total += total
+    sr += 1
+
+# ═══════════════════════════════
+# CATEGORY 6: GROCERY / ENTERTAINMENT
+# ═══════════════════════════════
+row = cat_header(ws, row, "🛒  GROCERY / ENTERTAINMENT ITEMS", "FFF9C4")
+
+grocery = [
+    ("17308","Coffee (100g)",                   "PCS",3,   1600, 0),
+    ("17308","Every Day Tea Whitener 2KG Pouch", "PKT",260, 4185, 0),
+    ("17308","Lipton Lemon Green Tea 100 Bags",  "PKT",30,  1150, 0),
+    ("17308","Lipton Tea Bag 600 Bags",          "BOX",11,  3300, 0),
+    ("17308","Nescafe (200gm)",                  "PCS",18,  2800, 0),
+    ("17308","Nestle Water 500ml",               "CRT",23,  680,  0),
+    ("17308","Sugar 2 KGS Pack",                 "PKT",350, 305,  0),
+    ("17308","Tapal Family Mixture (900gm)",      "PKT",176, 1850, 0),
+]
+
+for item_data in grocery:
+    row, total = add_item(ws, row, sr, *item_data, "FFF9C4")
+    grand_total += total
+    sr += 1
+
+# ═══════════════════════════════
+# CATEGORY 7: PRODUCTION CONSUMABLES
+# ═══════════════════════════════
+row = cat_header(ws, row, "🏭  PRODUCTION CONSUMABLES", "FCE4D6")
+
+production = [
+    ("1194","Molty Foam Sheet (3'x6'x2\") 980","SHT",6,3579,0),
+]
+
+for item_data in production:
+    row, total = add_item(ws, row, sr, *item_data, "FCE4D6")
+    grand_total += total
+    sr += 1
+
+# ═══════════════════════════════
+# CATEGORY 8: MECHANICAL ITEMS
+# ═══════════════════════════════
+row = cat_header(ws, row, "⚙️  MECHANICAL ITEMS", "DAEEF3")
+
+mechanical = [
+    ("406","Ceramic Fibre Rope 10mm Dia x 30m\n(Temp 150-200°C)","ROL",4,15789,0),
+]
+
+for item_data in mechanical:
+    row, total = add_item(ws, row, sr, *item_data, "DAEEF3")
+    grand_total += total
+    sr += 1
+
 # ── GRAND TOTAL ──
 row += 1
 ws.merge_cells(f"A{row}:H{row}")
@@ -206,12 +296,16 @@ c.alignment = Alignment(horizontal="center", vertical="center")
 row += 1
 
 po_summary = [
-    ("PO# 1183",  "Washing PVT — First Aid Items",        "02-Jul-2026", "PKR 35,890"),
-    ("PO# 17412", "Cut to Pack PVT — Kitchen/Crockery",   "02-Jul-2026", "PKR 8,099"),
-    ("PO# 17426", "Cut to Pack PVT — Plastic Jar",        "02-Jul-2026", "PKR 2,646"),
-    ("PO# 17427", "Cut to Pack PVT — First Aid Items",    "02-Jul-2026", "PKR 38,254"),
-    ("PO# 17186", "Cut to Pack PVT — Plumbing Items",     "29-Jun-2026", "PKR 19,215"),
-    ("PO# 1163",  "Washing PVT — Steel Kafgeer",          "30-Jun-2026", "PKR 11,000"),
+    ("PO# 1183",  "Washing PVT — First Aid Items",             "02-Jul-2026", "PKR 35,890"),
+    ("PO# 17412", "Cut to Pack PVT — Kitchen/Crockery",        "02-Jul-2026", "PKR 8,099"),
+    ("PO# 17426", "Cut to Pack PVT — Plastic Jar",             "02-Jul-2026", "PKR 2,646"),
+    ("PO# 17427", "Cut to Pack PVT — First Aid Items",         "02-Jul-2026", "PKR 38,254"),
+    ("PO# 17186", "Cut to Pack PVT — Plumbing Items",          "29-Jun-2026", "PKR 19,215"),
+    ("PO# 1163",  "Washing PVT — Steel Kafgeer",               "30-Jun-2026", "PKR 11,000"),
+    ("PO# 17257", "Cut to Pack PVT — Janitorial/Cleaning",     "29-Jun-2026", "PKR 760,293"),
+    ("PO# 17308", "Cut to Pack PVT — Grocery/Entertainment",   "30-Jun-2026", "PKR 1,662,090"),
+    ("PO# 1194",  "Washing PVT — Production Consumables",      "06-Jul-2026", "PKR 21,474"),
+    ("PO# 406",   "Utilities PVT — Mechanical Items",          "03-Jul-2026", "PKR 63,156"),
 ]
 
 hcell(ws, row, 1, "PO#", MED, size=10)
