@@ -5,9 +5,10 @@
 
 const ACTIVE_SHEET  = "Active Orders";
 const DELIV_SHEET   = "Delivered";
-const STATUS_COL    = 12;   // Column L  (1-indexed)
-const DELIV_DATE_COL = 13;  // Column M
-const INVOICE_COL   = 14;  // Column N
+const STATUS_COL     = 16;  // Column P  (1-indexed)
+const DELIV_DATE_COL = 17;  // Column Q
+const INVOICE_COL    = 18;  // Column R
+const BILL_COL       = 19;  // Column S
 
 const PENDING_COLOR = "#FFF2CC";   // light yellow
 const DELIV_COLOR   = "#D4EDDA";  // light green
@@ -46,7 +47,7 @@ function moveToDelivered(activeSheet, row) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const delivSheet = ss.getSheetByName(DELIV_SHEET);
 
-  const rowData = activeSheet.getRange(row, 1, 1, 14).getValues()[0];
+  const rowData = activeSheet.getRange(row, 1, 1, 19).getValues()[0];
 
   // Set delivered date
   rowData[DELIV_DATE_COL - 1] = Utilities.formatDate(
@@ -58,7 +59,7 @@ function moveToDelivered(activeSheet, row) {
 
   // Format the new row in Delivered sheet green
   const newRow = delivSheet.getLastRow();
-  delivSheet.getRange(newRow, 1, 1, 14)
+  delivSheet.getRange(newRow, 1, 1, 19)
     .setBackground(DELIV_COLOR)
     .setFontSize(9)
     .setVerticalAlignment("middle");
