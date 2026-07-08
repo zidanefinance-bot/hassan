@@ -13,9 +13,8 @@ creds = Credentials.from_service_account_file("google_creds.json", scopes=SCOPES
 gc = gspread.authorize(creds)
 
 # ── Create new spreadsheet ──
-sh = gc.create("Zidane Procurement Tracker — Rajby")
-sh.share("zidane.finance@gmail.com", perm_type="user", role="writer")
-print(f"Sheet created: https://docs.google.com/spreadsheets/d/{sh.id}")
+sh = gc.open_by_key("1CRR7pbz7cJJVyDcqytPD_EtHpHN6RMJW0OaoDZTNQ68")
+print(f"Sheet opened: {sh.title}")
 
 COLS = ["Sr#", "PO#", "Unit", "Item Description", "UOM",
         "Qty", "Rate (PKR)", "Amount (PKR)", "Tax%", "Total incl. Tax",
