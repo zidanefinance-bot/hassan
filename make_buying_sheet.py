@@ -46,7 +46,7 @@ c.alignment = Alignment(horizontal="center", vertical="center")
 ws.row_dimensions[1].height = 35
 
 ws.merge_cells("A2:I2")
-c = ws.cell(row=2, column=1, value="Dates: 29-Jun to 06-Jul-2026 | 10 POs | Deliver To: Main Store, Plot #8 Sector 27, Karachi")
+c = ws.cell(row=2, column=1, value="Dates: 29-Jun to 06-Jul-2026 | 11 POs | Deliver To: Main Store, Plot #8 Sector 27, Karachi")
 c.fill = PatternFill(start_color=MED, end_color=MED, fill_type="solid")
 c.font = Font(color="FFFFFF", size=10)
 c.alignment = Alignment(horizontal="center", vertical="center")
@@ -264,7 +264,24 @@ for item_data in production:
 row = cat_header(ws, row, "⚙️  MECHANICAL ITEMS", "DAEEF3")
 
 mechanical = [
-    ("406","Ceramic Fibre Rope 10mm Dia x 30m\n(Temp 150-200°C)","ROL",4,15789,0),
+    ("406", "Ceramic Fibre Rope 10mm Dia x 30m\n(Temp 150-200°C)",    "ROL", 4, 15789, 0),
+    ("76",  "Bench Vise / Wood Working Vice Set",                       "PCS", 1, 5000,  0),
+    ("76",  "C-Clamp Set",                                             "PCS", 6, 1040,  0),
+    ("76",  "Center Punch Set",                                        "PCS", 2, 300,   0),
+    ("76",  "File Set (Rasp & File Set / Ruff File - 10mm)",           "PCS", 1, 530,   0),
+    ("76",  "Flat Chisel Set",                                         "PCS", 1, 1875,  0),
+    ("76",  "Hammer 1KG",                                              "PCS", 6, 480,   0),
+    ("76",  "Hammer 5KG",                                              "PCS", 1, 1125,  0),
+    ("76",  "Hand Level 2'",                                           "PCS", 2, 313,   0),
+    ("76",  "Hole Saw Set 20mm to 50mm",                               "PCS", 1, 938,   0),
+    ("76",  "Iron Chisel Rod 1'",                                      "PCS", 6, 570,   0),
+    ("76",  "Iron Chisel Rod 1.5'",                                    "PCS", 6, 570,   0),
+    ("76",  "Measuring Tape / Inch Tape 16FT",                         "PCS", 6, 230,   0),
+    ("76",  "Nail Punch Set",                                          "PCS", 2, 875,   0),
+    ("76",  "Screw Extractor Set 3mm-6mm Total Brand",                 "PCS", 1, 813,   0),
+    ("76",  "Try Square 2 Ft x 6 Inch (Steel)",                       "PCS", 1, 500,   0),
+    ("76",  "Try Square Steel Type",                                   "PCS", 2, 350,   0),
+    ("76",  "Yato Screw Wrench Set",                                   "PCS", 1, 3000,  0),
 ]
 
 for item_data in mechanical:
@@ -306,6 +323,7 @@ po_summary = [
     ("PO# 17308", "Cut to Pack PVT — Grocery/Entertainment",   "30-Jun-2026", "PKR 1,662,090"),
     ("PO# 1194",  "Washing PVT — Production Consumables",      "06-Jul-2026", "PKR 21,474"),
     ("PO# 406",   "Utilities PVT — Mechanical Items",          "03-Jul-2026", "PKR 63,156"),
+    ("PO# 76",    "Denim Unit — Mechanical / Carpenter Items", "30-Jun-2026", "PKR 34,797"),
 ]
 
 hcell(ws, row, 1, "PO#", MED, size=10)
