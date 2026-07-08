@@ -56,23 +56,22 @@ for row in to_move:
     ws_deliv.append_row(row, value_input_option="USER_ENTERED")
     print(f"  ✅ Moved: PO#{row[1]} — {row[3]}")
 
-# ── Rebuild Active Orders with renumbered Sr# ─────────────────────────────────
+# ── Rebuild Active Orders sorted by PO# ──────────────────────────────────────
+to_keep.sort(key=lambda r: int(str(r[1]).strip()) if str(r[1]).strip().isdigit() else 0)
 new_rows = []
 for sr, row in enumerate(to_keep, 1):
-    row[0] = sr   # renumber
+    row[0] = sr
     new_rows.append(row)
 
-# Clear data area and rewrite
 if new_rows:
-    # Clear from row 2 downward
-    ws_active.batch_clear([f"A2:S{len(data) + 2}"])
+    ws_active.batch_clear([f"A2:T{len(data) + 2}"])
     ws_active.update(
         values=new_rows,
-        range_name=f"A2:S{len(new_rows) + 1}",
+        range_name=f"A2:T{len(new_rows) + 1}",
         value_input_option="USER_ENTERED"
     )
 else:
-    ws_active.batch_clear([f"A2:S{len(data) + 2}"])
+    ws_active.batch_clear([f"A2:T{len(data) + 2}"])
 
 print(f"\n✅ Done!")
 print(f"   Moved   : {len(to_move)} items → Delivered tab")
