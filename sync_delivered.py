@@ -31,16 +31,17 @@ def reapply_formulas(ws, n):
     """Re-apply all calculated columns for rows 2..n+1"""
     if n == 0:
         return
-    # Col I  = Buy Amt        = F * H
-    # Col L  = Commission 5.5% = K * 0.055
-    # Col M  = WHT 5%          = K * 0.05
-    # Col N  = Net Receivable  = K - M
-    # Col T  = P&L             = K - I
+    # Commission: Rajby=5.5%, Rija Fashion=6%, others=blank
+    # WHT: Rajby=5%, others=blank (manual)
     formulas = {
         "I": lambda r: f"=IF(AND(F{r}<>\"\",H{r}<>\"\"),F{r}*H{r},\"\")",
-        "L": lambda r: f"=IFERROR(K{r}*0.055,\"\")",
-        "M": lambda r: f"=IFERROR(K{r}*0.05,\"\")",
-        "N": lambda r: f"=IFERROR(K{r}-M{r},\"\")",
+        "K": lambda r: f"=F{r}*J{r}",
+        "L": lambda r: (
+            f"=IF(ISNUMBER(SEARCH(\"Rajby\",C{r})),K{r}*0.055,"
+            f"IF(ISNUMBER(SEARCH(\"Rija\",C{r})),K{r}*0.06,\"\"))"
+        ),
+        "M": lambda r: f"=IF(ISNUMBER(SEARCH(\"Rajby\",C{r})),K{r}*0.05,\"\")",
+        "N": lambda r: f"=IF(M{r}<>\"\",K{r}-M{r},\"\")",
         "T": lambda r: f"=IF(AND(K{r}<>\"\",I{r}<>\"\"),K{r}-I{r},\"\")",
     }
     for col, fn in formulas.items():
@@ -50,7 +51,7 @@ def reapply_formulas(ws, n):
             values=vals,
             value_input_option="USER_ENTERED"
         )
-        time.sleep(1)
+        time.sleep(1.5)
 
 
 # ── Read all active rows ──────────────────────────────────────────────────────
