@@ -47,19 +47,21 @@ function moveToDelivered(activeSheet, row) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const delivSheet = ss.getSheetByName(DELIV_SHEET);
 
-  const rowData = activeSheet.getRange(row, 1, 1, 19).getValues()[0];
+  // Destination row in Delivered sheet
+  const destRow = delivSheet.getLastRow() + 1;
+
+  // copyTo preserves formulas with relative references (e.g. =F5*J5 becomes =F{destRow}*J{destRow})
+  const srcRange  = activeSheet.getRange(row, 1, 1, 20);
+  const destRange = delivSheet.getRange(destRow, 1, 1, 20);
+  srcRange.copyTo(destRange);
 
   // Set delivered date
-  rowData[DELIV_DATE_COL - 1] = Utilities.formatDate(
-    new Date(), Session.getScriptTimeZone(), "dd-MMM-yyyy"
+  delivSheet.getRange(destRow, DELIV_DATE_COL).setValue(
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MMM-yyyy")
   );
 
-  // Append to Delivered sheet
-  delivSheet.appendRow(rowData);
-
-  // Format the new row in Delivered sheet green
-  const newRow = delivSheet.getLastRow();
-  delivSheet.getRange(newRow, 1, 1, 19)
+  // Format the new row green
+  delivSheet.getRange(destRow, 1, 1, 20)
     .setBackground(DELIV_COLOR)
     .setFontSize(9)
     .setVerticalAlignment("middle");
