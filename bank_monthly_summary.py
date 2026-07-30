@@ -86,7 +86,7 @@ def main():
         ws.clear()
     except gspread.WorksheetNotFound:
         ws = ss.add_worksheet(title=SUMMARY_WS, rows=100, cols=len(SUMMARY_HEADERS))
-    ws.update("A1", rows, value_input_option="USER_ENTERED")
+    ws.update(values=rows, range_name="A1", value_input_option="USER_ENTERED")
 
     service.spreadsheets().batchUpdate(spreadsheetId=ss.id, body={"requests": [
         {"repeatCell": {

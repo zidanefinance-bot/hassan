@@ -203,7 +203,7 @@ def main():
     ws = get_or_create_worksheet(ss, WORKSHEET_NAME, len(HEADERS))
 
     if ws.acell("A1").value != "Sr#":
-        ws.update("A1", [HEADERS])
+        ws.update(values=[HEADERS], range_name="A1")
     format_worksheet(service, ss.id, ws)
     print(f"'{WORKSHEET_NAME}' worksheet ready: https://docs.google.com/spreadsheets/d/{ss.id}")
 
