@@ -1,0 +1,7 @@
+# Service account credentials — NEVER push to git
+google_creds.json
+
+# Bank data
+*.csv
+
+__pycache__/
