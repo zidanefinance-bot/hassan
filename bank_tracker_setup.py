@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import csv
+import json
 import re
 import sys
 from datetime import datetime
@@ -22,7 +23,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 CREDS_FILE = Path(__file__).parent / "google_creds.json"
-DEFAULT_SHEET_ID = "1CRR7pbz7cJJVyDcqytPD_EtHpHN6RMJW0OaoDZTNQ68"
+CONFIG_FILE = Path(__file__).parent / "sheet_config.json"
 SHARE_WITH = "zidane.finance@gmail.com"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -57,13 +58,23 @@ def get_clients():
     return gspread.authorize(creds), build("sheets", "v4", credentials=creds)
 
 
-def open_spreadsheet(gc, sheet_id, new_spreadsheet):
-    if new_spreadsheet:
-        ss = gc.create("Zidane Bank Transactions Tracker")
-        ss.share(SHARE_WITH, perm_type="user", role="writer")
-        print(f"Nayi spreadsheet bani: {ss.id} (shared with {SHARE_WITH})")
-        return ss
-    return gc.open_by_key(sheet_id)
+def saved_sheet_id():
+    if CONFIG_FILE.exists():
+        return json.loads(CONFIG_FILE.read_text()).get("bank_tracker_sheet_id")
+    return None
+
+
+def open_spreadsheet(gc, sheet_id):
+    if sheet_id:
+        return gc.open_by_key(sheet_id)
+    existing = saved_sheet_id()
+    if existing:
+        return gc.open_by_key(existing)
+    ss = gc.create("Zidane Bank Transactions Tracker")
+    ss.share(SHARE_WITH, perm_type="user", role="writer")
+    CONFIG_FILE.write_text(json.dumps({"bank_tracker_sheet_id": ss.id}, indent=2))
+    print(f"Nayi spreadsheet bani: {ss.id} (shared with {SHARE_WITH})")
+    return ss
 
 
 def get_or_create_worksheet(ss, name, cols):
@@ -181,14 +192,14 @@ def import_csv(ws, csv_path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sheet-id", default=DEFAULT_SHEET_ID)
+    ap.add_argument("--sheet-id", default=None,
+                    help="specific spreadsheet use karo; default: sheet_config.json ki saved ID, "
+                         "warna nayi spreadsheet ban kar save ho jati hai")
     ap.add_argument("--csv", help="bank transactions CSV import karne ke liye")
-    ap.add_argument("--new-spreadsheet", action="store_true",
-                    help="existing sheet mein worksheet add karne ke bajaye nayi spreadsheet banao")
     args = ap.parse_args()
 
     gc, service = get_clients()
-    ss = open_spreadsheet(gc, args.sheet_id, args.new_spreadsheet)
+    ss = open_spreadsheet(gc, args.sheet_id)
     ws = get_or_create_worksheet(ss, WORKSHEET_NAME, len(HEADERS))
 
     if ws.acell("A1").value != "Sr#":

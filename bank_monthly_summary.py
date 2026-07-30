@@ -10,6 +10,8 @@ Usage:
 """
 
 import argparse
+import json
+import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -19,7 +21,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 CREDS_FILE = Path(__file__).parent / "google_creds.json"
-DEFAULT_SHEET_ID = "1CRR7pbz7cJJVyDcqytPD_EtHpHN6RMJW0OaoDZTNQ68"
+CONFIG_FILE = Path(__file__).parent / "sheet_config.json"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 SOURCE_WS = "Bank Transactions"
@@ -43,13 +45,20 @@ def month_key(month_label):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sheet-id", default=DEFAULT_SHEET_ID)
+    ap.add_argument("--sheet-id", default=None,
+                    help="default: sheet_config.json ki saved bank tracker ID")
     args = ap.parse_args()
+
+    sheet_id = args.sheet_id
+    if not sheet_id and CONFIG_FILE.exists():
+        sheet_id = json.loads(CONFIG_FILE.read_text()).get("bank_tracker_sheet_id")
+    if not sheet_id:
+        sys.exit("ERROR: pehle bank_tracker_setup.py chalayein — sheet_config.json nahi mili.")
 
     creds = service_account.Credentials.from_service_account_file(str(CREDS_FILE), scopes=SCOPES)
     gc = gspread.authorize(creds)
     service = build("sheets", "v4", credentials=creds)
-    ss = gc.open_by_key(args.sheet_id)
+    ss = gc.open_by_key(sheet_id)
 
     records = ss.worksheet(SOURCE_WS).get_all_records()
     months = defaultdict(lambda: {"credit": 0.0, "debit": 0.0, "count": 0})
