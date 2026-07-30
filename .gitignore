@@ -3,6 +3,7 @@ google_creds.json
 
 # Bank data
 *.csv
+*.xlsx
 
 __pycache__/
 *.pdf
