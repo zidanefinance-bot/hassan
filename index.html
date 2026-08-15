@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Janitorial Supplies Co. — Cleaning & Hygiene Supplies</title>
+<meta name="description" content="Complete range of janitorial and cleaning supplies for offices, factories, hospitals and hotels. Chemicals, tools, tissue, machines and safety equipment.">
+<style>
+  :root {
+    --navy: #0f2942;
+    --navy-light: #1c4468;
+    --teal: #0d9488;
+    --teal-light: #14b8a6;
+    --accent: #f59e0b;
+    --bg: #ffffff;
+    --bg-soft: #f6f9fc;
+    --bg-card: #ffffff;
+    --text: #1a2b3c;
+    --text-muted: #5b7186;
+    --border: #dfe8f0;
+    --shadow: 0 1px 3px rgba(15,41,66,.08), 0 8px 24px rgba(15,41,66,.06);
+    --shadow-lg: 0 4px 12px rgba(15,41,66,.10), 0 20px 40px rgba(15,41,66,.10);
+    --radius: 14px;
+    --maxw: 1160px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Urdu mode */
+  body.ur {
+    font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Segoe UI", "Nirmala UI", Tahoma, sans-serif;
+    line-height: 2.1;
+  }
+  body.ur .lang-en { display: none; }
+  body:not(.ur) .lang-ur { display: none; }
+
+  img { max-width: 100%; display: block; }
+
+  .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+
+  /* ---------- Header ---------- */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav {
+    display: flex; align-items: center; gap: 18px;
+    height: 68px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 1.05rem; color: var(--navy);
+    text-decoration: none; letter-spacing: -.01em;
+    white-space: nowrap;
+  }
+  .logo-mark {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--teal), var(--navy));
+    display: grid; place-items: center;
+    color: #fff; font-size: 1.05rem; flex-shrink: 0;
+  }
+  .nav-links {
+    display: flex; gap: 4px; margin-inline-start: auto;
+    align-items: center;
+  }
+  .nav-links a {
+    color: var(--text-muted); text-decoration: none;
+    font-size: .93rem; font-weight: 500;
+    padding: 8px 13px; border-radius: 8px;
+    transition: background .18s, color .18s;
+  }
+  .nav-links a:hover { background: var(--bg-soft); color: var(--navy); }
+
+  .lang-btn {
+    border: 1px solid var(--border); background: #fff;
+    color: var(--navy); font-weight: 600; font-size: .85rem;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    transition: border-color .18s, background .18s;
+    font-family: inherit; flex-shrink: 0;
+  }
+  .lang-btn:hover { border-color: var(--teal); background: var(--bg-soft); }
+
+  .menu-btn {
+    display: none; border: 1px solid var(--border); background: #fff;
+    border-radius: 8px; padding: 7px 11px; cursor: pointer; font-size: 1.1rem;
+    color: var(--navy); margin-inline-start: auto;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(1100px 460px at 78% -12%, rgba(13,148,136,.16), transparent 62%),
+      linear-gradient(170deg, #f7fbfd 0%, #eef5fa 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 76px 0 84px;
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.15fr .85fr;
+    gap: 52px; align-items: center;
+  }
+  .eyebrow {
+    display: inline-block;
+    background: rgba(13,148,136,.11); color: #0b7c72;
+    font-size: .78rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 6px 13px; border-radius: 999px; margin-bottom: 20px;
+  }
+  body.ur .eyebrow { letter-spacing: normal; text-transform: none; }
+  .hero h1 {
+    font-size: clamp(2rem, 4.4vw, 3.1rem);
+    line-height: 1.15; color: var(--navy);
+    letter-spacing: -.02em; margin-bottom: 20px;
+  }
+  body.ur .hero h1 { line-height: 1.7; letter-spacing: normal; }
+  .hero p.lead {
+    font-size: 1.09rem; color: var(--text-muted);
+    max-width: 54ch; margin-bottom: 30px;
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 13px 24px; border-radius: 10px;
+    font-weight: 600; font-size: .97rem; text-decoration: none;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .16s, box-shadow .16s, background .16s;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--teal); color: #fff; box-shadow: 0 4px 14px rgba(13,148,136,.3); }
+  .btn-primary:hover { background: #0b7f75; transform: translateY(-2px); box-shadow: 0 8px 22px rgba(13,148,136,.36); }
+  .btn-ghost { background: #fff; color: var(--navy); border-color: var(--border); }
+  .btn-ghost:hover { border-color: var(--navy); transform: translateY(-2px); }
+
+  .hero-card {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 18px; padding: 26px; box-shadow: var(--shadow-lg);
+  }
+  .hero-card h3 {
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-muted); margin-bottom: 16px; font-weight: 700;
+  }
+  body.ur .hero-card h3 { text-transform: none; letter-spacing: normal; font-size: .95rem; }
+  .stat-row { display: grid; gap: 14px; }
+  .stat {
+    display: flex; align-items: center; gap: 13px;
+    padding: 13px 15px; background: var(--bg-soft);
+    border-radius: 11px; border: 1px solid var(--border);
+  }
+  .stat-ico {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    background: #fff; border: 1px solid var(--border);
+    display: grid; place-items: center; font-size: 1.15rem;
+  }
+  .stat b { display: block; color: var(--navy); font-size: .96rem; }
+  .stat span { font-size: .84rem; color: var(--text-muted); }
+
+  /* ---------- Sections ---------- */
+  section { padding: 78px 0; }
+  .section-soft { background: var(--bg-soft); border-block: 1px solid var(--border); }
+  .section-head { max-width: 620px; margin-bottom: 44px; }
+  .section-head.center { margin-inline: auto; text-align: center; }
+  .section-head h2 {
+    font-size: clamp(1.6rem, 3vw, 2.15rem); color: var(--navy);
+    letter-spacing: -.015em; margin-bottom: 12px; line-height: 1.25;
+  }
+  body.ur .section-head h2 { letter-spacing: normal; line-height: 1.8; }
+  .section-head p { color: var(--text-muted); font-size: 1.03rem; }
+
+  /* ---------- Category cards ---------- */
+  .cat-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+    gap: 20px;
+  }
+  .cat {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 26px;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .cat:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: #c3d7e6; }
+  .cat-ico {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(13,148,136,.14), rgba(15,41,66,.09));
+    display: grid; place-items: center; font-size: 1.5rem; margin-bottom: 16px;
+  }
+  .cat h3 { font-size: 1.13rem; color: var(--navy); margin-bottom: 9px; }
+  .cat ul { list-style: none; }
+  .cat li {
+    color: var(--text-muted); font-size: .92rem;
+    padding-inline-start: 17px; position: relative; margin-bottom: 3px;
+  }
+  .cat li::before {
+    content: "•"; position: absolute; inset-inline-start: 3px;
+    color: var(--teal); font-weight: 700;
+  }
+
+  /* ---------- Why us ---------- */
+  .why-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 22px;
+  }
+  .why { text-align: center; padding: 8px; }
+  .why-ico {
+    width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 15px;
+    background: #fff; border: 1px solid var(--border);
+    display: grid; place-items: center; font-size: 1.6rem;
+    box-shadow: var(--shadow);
+  }
+  .why h3 { font-size: 1.03rem; color: var(--navy); margin-bottom: 7px; }
+  .why p { color: var(--text-muted); font-size: .92rem; }
+
+  /* ---------- About ---------- */
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+  .about-grid p { color: var(--text-muted); margin-bottom: 15px; }
+  .serve-list { display: grid; gap: 11px; }
+  .serve {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 11px; padding: 14px 17px;
+  }
+  .serve span:first-child { font-size: 1.3rem; }
+  .serve b { color: var(--navy); font-size: .97rem; font-weight: 600; }
+
+  /* ---------- Contact ---------- */
+  .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .contact-card {
+    background: var(--navy); color: #fff;
+    border-radius: 18px; padding: 36px;
+  }
+  .contact-card h2 { font-size: 1.65rem; margin-bottom: 12px; line-height: 1.3; }
+  .contact-card p { color: #b8cbdb; margin-bottom: 26px; }
+  .contact-line {
+    display: flex; align-items: center; gap: 13px;
+    padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .contact-line:last-of-type { border-bottom: none; }
+  .contact-line .ico { font-size: 1.2rem; width: 26px; text-align: center; flex-shrink: 0; }
+  .contact-line b { display: block; font-size: .76rem; color: #8fadc4; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  body.ur .contact-line b { text-transform: none; letter-spacing: normal; font-size: .88rem; }
+  .contact-line a, .contact-line span.val { color: #fff; text-decoration: none; font-size: .99rem; }
+  .contact-line a:hover { color: var(--teal-light); }
+
+  .btn-wa {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: #25D366; color: #fff; text-decoration: none;
+    padding: 14px 26px; border-radius: 10px; font-weight: 700;
+    margin-top: 26px; transition: transform .16s, box-shadow .16s;
+    box-shadow: 0 4px 16px rgba(37,211,102,.34);
+  }
+  .btn-wa:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,211,102,.42); }
+
+  form { display: grid; gap: 15px; }
+  .field label {
+    display: block; font-size: .87rem; font-weight: 600;
+    color: var(--navy); margin-bottom: 6px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    font-size: .96rem; font-family: inherit; background: #fff; color: var(--text);
+    transition: border-color .18s, box-shadow .18s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline: none; border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(13,148,136,.14);
+  }
+  .field textarea { resize: vertical; min-height: 104px; }
+  .form-note { font-size: .85rem; color: var(--text-muted); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    background: var(--navy); color: #9fb8cc;
+    padding: 44px 0 26px; margin-top: 0;
+  }
+  .foot-grid {
+    display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 34px;
+    padding-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,.11);
+  }
+  .foot-grid h4 { color: #fff; font-size: .95rem; margin-bottom: 13px; }
+  .foot-grid p { font-size: .91rem; max-width: 40ch; }
+  .foot-grid ul { list-style: none; }
+  .foot-grid li { margin-bottom: 7px; }
+  .foot-grid a { color: #9fb8cc; text-decoration: none; font-size: .91rem; }
+  .foot-grid a:hover { color: #fff; }
+  .foot-logo { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; margin-bottom: 13px; }
+  .copy { text-align: center; padding-top: 22px; font-size: .86rem; }
+
+  /* ---------- Floating WhatsApp ---------- */
+  .wa-float {
+    position: fixed; inset-inline-end: 20px; bottom: 20px; z-index: 60;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #25D366; color: #fff;
+    display: grid; place-items: center; font-size: 1.7rem;
+    text-decoration: none; box-shadow: 0 6px 20px rgba(37,211,102,.45);
+    transition: transform .18s;
+  }
+  .wa-float:hover { transform: scale(1.09); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 900px) {
+    .hero-grid, .about-grid, .contact-grid { grid-template-columns: 1fr; gap: 34px; }
+    .foot-grid { grid-template-columns: 1fr; gap: 26px; }
+    .hero { padding: 54px 0 60px; }
+    section { padding: 56px 0; }
+  }
+  @media (max-width: 720px) {
+    .menu-btn { display: block; }
+    .nav-links {
+      display: none; position: absolute; top: 68px; inset-inline: 0;
+      background: #fff; border-bottom: 1px solid var(--border);
+      flex-direction: column; align-items: stretch; padding: 10px 16px 16px;
+      box-shadow: var(--shadow);
+    }
+    .nav-links.open { display: flex; }
+    .nav-links a { padding: 12px 10px; }
+    .lang-btn { margin-inline-start: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a href="#top" class="logo">
+      <span class="logo-mark">🧹</span>
+      <span>
+        <span class="lang-en">Janitorial Supplies Co.</span>
+        <span class="lang-ur">جینیٹوریل سپلائیز</span>
+      </span>
+    </a>
+
+    <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+
+    <nav class="nav-links" id="navLinks">
+      <a href="#products"><span class="lang-en">Products</span><span class="lang-ur">مصنوعات</span></a>
+      <a href="#why"><span class="lang-en">Why Us</span><span class="lang-ur">ہم کیوں</span></a>
+      <a href="#about"><span class="lang-en">About</span><span class="lang-ur">ہمارے بارے میں</span></a>
+      <a href="#contact"><span class="lang-en">Contact</span><span class="lang-ur">رابطہ</span></a>
+      <button class="lang-btn" id="langBtn">اردو</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<div class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">
+        <span class="lang-en">Wholesale &amp; Bulk Supply</span>
+        <span class="lang-ur">ہول سیل اور بلک سپلائی</span>
+      </span>
+
+      <h1>
+        <span class="lang-en">Complete cleaning &amp; hygiene supplies for your business</span>
+        <span class="lang-ur">آپ کے کاروبار کے لیے صفائی اور حفظانِ صحت کا مکمل سامان</span>
+      </h1>
+
+      <p class="lead">
+        <span class="lang-en">From chemicals and tools to tissue, machines and safety gear — everything your
+        office, factory, hospital or hotel needs, delivered on time at wholesale rates.</span>
+        <span class="lang-ur">کیمیکلز اور آلات سے لے کر ٹشو، مشینری اور حفاظتی سامان تک — آپ کے دفتر،
+        فیکٹری، ہسپتال یا ہوٹل کی ہر ضرورت، وقت پر اور ہول سیل ریٹ پر۔</span>
+      </p>
+
+      <div class="cta-row">
+        <a href="#contact" class="btn btn-primary">
+          <span class="lang-en">Get a Quote</span>
+          <span class="lang-ur">قیمت معلوم کریں</span>
+          <span>→</span>
+        </a>
+        <a href="#products" class="btn btn-ghost">
+          <span class="lang-en">Browse Products</span>
+          <span class="lang-ur">مصنوعات دیکھیں</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <h3>
+        <span class="lang-en">Why businesses choose us</span>
+        <span class="lang-ur">کاروبار ہمیں کیوں چنتے ہیں</span>
+      </h3>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-ico">📦</div>
+          <div>
+            <b><span class="lang-en">Bulk &amp; wholesale rates</span><span class="lang-ur">بلک اور ہول سیل ریٹ</span></b>
+            <span><span class="lang-en">Better pricing on volume orders</span><span class="lang-ur">بڑے آرڈر پر بہتر قیمت</span></span>
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat-ico">🚚</div>
+          <div>
+            <b><span class="lang-en">Fast delivery</span><span class="lang-ur">تیز ڈیلیوری</span></b>
+            <span><span class="lang-en">Reliable, scheduled supply</span><span class="lang-ur">قابلِ اعتماد اور مقررہ وقت پر</span></span>
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat-ico">✅</div>
+          <div>
+            <b><span class="lang-en">Trusted brands</span><span class="lang-ur">معیاری برانڈز</span></b>
+            <span><span class="lang-en">Quality products, genuine stock</span><span class="lang-ur">اصل اور معیاری مصنوعات</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PRODUCTS ================= -->
+<section id="products">
+  <div class="wrap">
+    <div class="section-head center">
+      <h2>
+        <span class="lang-en">Our Product Range</span>
+        <span class="lang-ur">ہماری مصنوعات</span>
+      </h2>
+      <p>
+        <span class="lang-en">Everything you need to keep your premises clean, safe and hygienic — in one place.</span>
+        <span class="lang-ur">آپ کی جگہ کو صاف، محفوظ اور صحت مند رکھنے کے لیے ہر ضروری چیز — ایک ہی جگہ۔</span>
+      </p>
+    </div>
+
+    <div class="cat-grid">
+      <div class="cat">
+        <div class="cat-ico">🧪</div>
+        <h3><span class="lang-en">Cleaning Chemicals</span><span class="lang-ur">صفائی کے کیمیکلز</span></h3>
+        <ul>
+          <li><span class="lang-en">Floor cleaner &amp; disinfectant</span><span class="lang-ur">فلور کلینر اور جراثیم کش</span></li>
+          <li><span class="lang-en">Glass &amp; surface cleaner</span><span class="lang-ur">شیشہ اور سرفیس کلینر</span></li>
+          <li><span class="lang-en">Toilet cleaner &amp; bleach</span><span class="lang-ur">ٹوائلٹ کلینر اور بلیچ</span></li>
+          <li><span class="lang-en">Hand wash &amp; sanitizer</span><span class="lang-ur">ہینڈ واش اور سینیٹائزر</span></li>
+          <li><span class="lang-en">Dishwashing liquid</span><span class="lang-ur">برتن دھونے کا مائع</span></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <div class="cat-ico">🧹</div>
+        <h3><span class="lang-en">Cleaning Tools</span><span class="lang-ur">صفائی کے آلات</span></h3>
+        <ul>
+          <li><span class="lang-en">Mops &amp; mop buckets</span><span class="lang-ur">موپ اور بالٹیاں</span></li>
+          <li><span class="lang-en">Brooms &amp; brushes</span><span class="lang-ur">جھاڑو اور برش</span></li>
+          <li><span class="lang-en">Floor wipers &amp; squeegees</span><span class="lang-ur">فلور وائپر</span></li>
+          <li><span class="lang-en">Dusters &amp; microfibre cloths</span><span class="lang-ur">ڈسٹر اور مائیکرو فائبر کپڑے</span></li>
+          <li><span class="lang-en">Scrub pads &amp; sponges</span><span class="lang-ur">اسکرب پیڈ اور اسپنج</span></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <div class="cat-ico">🧻</div>
+        <h3><span class="lang-en">Paper &amp; Tissue</span><span class="lang-ur">پیپر اور ٹشو</span></h3>
+        <ul>
+          <li><span class="lang-en">Toilet rolls &amp; jumbo rolls</span><span class="lang-ur">ٹوائلٹ رول اور جمبو رول</span></li>
+          <li><span class="lang-en">Hand towels &amp; dispensers</span><span class="lang-ur">ہینڈ ٹاول اور ڈسپنسر</span></li>
+          <li><span class="lang-en">Facial &amp; box tissue</span><span class="lang-ur">فیشل اور باکس ٹشو</span></li>
+          <li><span class="lang-en">Kitchen rolls</span><span class="lang-ur">کچن رول</span></li>
+          <li><span class="lang-en">Napkins &amp; serviettes</span><span class="lang-ur">نیپکن</span></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <div class="cat-ico">⚙️</div>
+        <h3><span class="lang-en">Machines &amp; Equipment</span><span class="lang-ur">مشینری اور آلات</span></h3>
+        <ul>
+          <li><span class="lang-en">Vacuum cleaners</span><span class="lang-ur">ویکیوم کلینر</span></li>
+          <li><span class="lang-en">Wet &amp; dry vacuums</span><span class="lang-ur">ویٹ اینڈ ڈرائی ویکیوم</span></li>
+          <li><span class="lang-en">Floor scrubbers &amp; polishers</span><span class="lang-ur">فلور اسکربر اور پالشر</span></li>
+          <li><span class="lang-en">High-pressure washers</span><span class="lang-ur">پریشر واشر</span></li>
+          <li><span class="lang-en">Cleaning trolleys</span><span class="lang-ur">کلیننگ ٹرالی</span></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <div class="cat-ico">🧤</div>
+        <h3><span class="lang-en">Safety &amp; Protection</span><span class="lang-ur">حفاظتی سامان</span></h3>
+        <ul>
+          <li><span class="lang-en">Gloves (rubber &amp; disposable)</span><span class="lang-ur">دستانے (ربڑ اور ڈسپوزیبل)</span></li>
+          <li><span class="lang-en">Face masks &amp; head caps</span><span class="lang-ur">ماسک اور ہیڈ کیپ</span></li>
+          <li><span class="lang-en">Aprons &amp; overalls</span><span class="lang-ur">ایپرن اور اوورآل</span></li>
+          <li><span class="lang-en">Safety signs &amp; wet floor boards</span><span class="lang-ur">حفاظتی سائن بورڈ</span></li>
+          <li><span class="lang-en">Shoe covers</span><span class="lang-ur">شو کور</span></li>
+        </ul>
+      </div>
+
+      <div class="cat">
+        <div class="cat-ico">🗑️</div>
+        <h3><span class="lang-en">Waste Management</span><span class="lang-ur">کچرا مینجمنٹ</span></h3>
+        <ul>
+          <li><span class="lang-en">Dustbins — all sizes</span><span class="lang-ur">ڈسٹ بن — ہر سائز</span></li>
+          <li><span class="lang-en">Pedal bins &amp; swing bins</span><span class="lang-ur">پیڈل بن اور سوئنگ بن</span></li>
+          <li><span class="lang-en">Garbage bags &amp; liners</span><span class="lang-ur">گاربیج بیگ اور لائنر</span></li>
+          <li><span class="lang-en">Waste segregation bins</span><span class="lang-ur">کچرا الگ کرنے کے بن</span></li>
+          <li><span class="lang-en">Outdoor &amp; industrial bins</span><span class="lang-ur">آؤٹ ڈور اور صنعتی بن</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= WHY US ================= -->
+<section class="section-soft" id="why">
+  <div class="wrap">
+    <div class="section-head center">
+      <h2><span class="lang-en">Why Choose Us</span><span class="lang-ur">ہمیں کیوں منتخب کریں</span></h2>
+      <p>
+        <span class="lang-en">We supply businesses, not just shops — and that changes how we work.</span>
+        <span class="lang-ur">ہم صرف دکانوں کو نہیں، کاروباروں کو سپلائی کرتے ہیں — اور یہی ہمارا فرق ہے۔</span>
+      </p>
+    </div>
+
+    <div class="why-grid">
+      <div class="why">
+        <div class="why-ico">💰</div>
+        <h3><span class="lang-en">Wholesale Pricing</span><span class="lang-ur">ہول سیل قیمت</span></h3>
+        <p><span class="lang-en">Direct rates on bulk orders with no middleman markup.</span><span class="lang-ur">بڑے آرڈر پر براہِ راست ریٹ، بغیر کسی درمیانی منافع کے۔</span></p>
+      </div>
+      <div class="why">
+        <div class="why-ico">🚚</div>
+        <h3><span class="lang-en">On-Time Delivery</span><span class="lang-ur">وقت پر ڈیلیوری</span></h3>
+        <p><span class="lang-en">Scheduled monthly supply so you never run out of stock.</span><span class="lang-ur">ماہانہ مقررہ سپلائی تاکہ سامان کبھی ختم نہ ہو۔</span></p>
+      </div>
+      <div class="why">
+        <div class="why-ico">🏆</div>
+        <h3><span class="lang-en">Quality Assured</span><span class="lang-ur">معیار کی ضمانت</span></h3>
+        <p><span class="lang-en">Genuine products from trusted, established brands only.</span><span class="lang-ur">صرف معتبر برانڈز کی اصل مصنوعات۔</span></p>
+      </div>
+      <div class="why">
+        <div class="why-ico">💬</div>
+        <h3><span class="lang-en">Easy Ordering</span><span class="lang-ur">آسان آرڈر</span></h3>
+        <p><span class="lang-en">Order on WhatsApp — no apps, no accounts, no hassle.</span><span class="lang-ur">واٹس ایپ پر آرڈر کریں — نہ ایپ، نہ اکاؤنٹ، نہ جھنجھٹ۔</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ABOUT ================= -->
+<section id="about">
+  <div class="wrap about-grid">
+    <div>
+      <div class="section-head">
+        <h2><span class="lang-en">About Us</span><span class="lang-ur">ہمارے بارے میں</span></h2>
+      </div>
+      <p>
+        <span class="lang-en">We are a wholesale supplier of janitorial, cleaning and hygiene products.
+        We work with offices, factories, schools, hospitals, hotels and cleaning contractors — supplying
+        everything they need to maintain clean, safe and professional premises.</span>
+        <span class="lang-ur">ہم جینیٹوریل، صفائی اور حفظانِ صحت کی مصنوعات کے ہول سیل سپلائر ہیں۔
+        ہم دفاتر، فیکٹریوں، اسکولوں، ہسپتالوں، ہوٹلوں اور کلیننگ کنٹریکٹرز کے ساتھ کام کرتے ہیں —
+        اور انہیں صاف، محفوظ اور پیشہ ورانہ ماحول برقرار رکھنے کے لیے ہر ضروری سامان فراہم کرتے ہیں۔</span>
+      </p>
+      <p>
+        <span class="lang-en">Our focus is simple: the right products, at the right price, delivered when
+        you need them. Whether you need a one-time bulk order or a regular monthly supply contract,
+        we can arrange it.</span>
+        <span class="lang-ur">ہمارا مقصد سادہ ہے: صحیح مصنوعات، مناسب قیمت پر، عین وقت پر۔
+        چاہے آپ کو ایک بار کا بڑا آرڈر چاہیے یا ماہانہ باقاعدہ سپلائی کا معاہدہ — ہم بندوبست کر سکتے ہیں۔</span>
+      </p>
+    </div>
+
+    <div>
+      <div class="section-head">
+        <h2 style="font-size:1.3rem">
+          <span class="lang-en">Who We Serve</span><span class="lang-ur">ہمارے گاہک</span>
+        </h2>
+      </div>
+      <div class="serve-list">
+        <div class="serve"><span>🏢</span><b><span class="lang-en">Offices &amp; corporate buildings</span><span class="lang-ur">دفاتر اور کارپوریٹ عمارتیں</span></b></div>
+        <div class="serve"><span>🏭</span><b><span class="lang-en">Factories &amp; warehouses</span><span class="lang-ur">فیکٹریاں اور گودام</span></b></div>
+        <div class="serve"><span>🏥</span><b><span class="lang-en">Hospitals &amp; clinics</span><span class="lang-ur">ہسپتال اور کلینک</span></b></div>
+        <div class="serve"><span>🏨</span><b><span class="lang-en">Hotels &amp; restaurants</span><span class="lang-ur">ہوٹل اور ریسٹورنٹ</span></b></div>
+        <div class="serve"><span>🎓</span><b><span class="lang-en">Schools &amp; universities</span><span class="lang-ur">اسکول اور یونیورسٹیاں</span></b></div>
+        <div class="serve"><span>🧼</span><b><span class="lang-en">Cleaning contractors</span><span class="lang-ur">کلیننگ کنٹریکٹرز</span></b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONTACT ================= -->
+<section class="section-soft" id="contact">
+  <div class="wrap contact-grid">
+    <div class="contact-card">
+      <h2><span class="lang-en">Get in touch</span><span class="lang-ur">ہم سے رابطہ کریں</span></h2>
+      <p>
+        <span class="lang-en">Tell us what you need and we'll send you a quote — usually the same day.</span>
+        <span class="lang-ur">ہمیں بتائیں آپ کو کیا چاہیے، ہم قیمت بھیج دیں گے — عموماً اسی دن۔</span>
+      </p>
+
+      <div class="contact-line">
+        <span class="ico">📱</span>
+        <div>
+          <b><span class="lang-en">WhatsApp / Phone</span><span class="lang-ur">واٹس ایپ / فون</span></b>
+          <a href="tel:+920000000000" id="phoneLink">+92 300 0000000</a>
+        </div>
+      </div>
+      <div class="contact-line">
+        <span class="ico">✉️</span>
+        <div>
+          <b><span class="lang-en">Email</span><span class="lang-ur">ای میل</span></b>
+          <a href="mailto:info@example.com">info@example.com</a>
+        </div>
+      </div>
+      <div class="contact-line">
+        <span class="ico">📍</span>
+        <div>
+          <b><span class="lang-en">Address</span><span class="lang-ur">پتہ</span></b>
+          <span class="val"><span class="lang-en">Your shop address, City</span><span class="lang-ur">آپ کی دکان کا پتہ، شہر</span></span>
+        </div>
+      </div>
+      <div class="contact-line">
+        <span class="ico">🕐</span>
+        <div>
+          <b><span class="lang-en">Business Hours</span><span class="lang-ur">اوقاتِ کار</span></b>
+          <span class="val"><span class="lang-en">Mon – Sat, 9:00 AM – 7:00 PM</span><span class="lang-ur">پیر تا ہفتہ، صبح ۹ تا شام ۷</span></span>
+        </div>
+      </div>
+
+      <a href="#" class="btn-wa" id="waBtn">
+        <span>💬</span>
+        <span class="lang-en">Chat on WhatsApp</span>
+        <span class="lang-ur">واٹس ایپ پر بات کریں</span>
+      </a>
+    </div>
+
+    <div>
+      <div class="section-head" style="margin-bottom:24px">
+        <h2 style="font-size:1.4rem">
+          <span class="lang-en">Request a Quote</span><span class="lang-ur">قیمت کی درخواست</span>
+        </h2>
+        <p style="font-size:.95rem">
+          <span class="lang-en">Fill this in and it will open WhatsApp with your message ready to send.</span>
+          <span class="lang-ur">یہ فارم بھریں — واٹس ایپ خود کھل جائے گا، پیغام تیار ہوگا۔</span>
+        </p>
+      </div>
+
+      <form id="quoteForm">
+        <div class="field">
+          <label for="qname"><span class="lang-en">Your Name</span><span class="lang-ur">آپ کا نام</span></label>
+          <input type="text" id="qname" required>
+        </div>
+        <div class="field">
+          <label for="qcompany"><span class="lang-en">Company / Organisation</span><span class="lang-ur">کمپنی / ادارہ</span></label>
+          <input type="text" id="qcompany">
+        </div>
+        <div class="field">
+          <label for="qcat"><span class="lang-en">What do you need?</span><span class="lang-ur">آپ کو کیا چاہیے؟</span></label>
+          <select id="qcat">
+            <option>Cleaning Chemicals</option>
+            <option>Cleaning Tools</option>
+            <option>Paper &amp; Tissue</option>
+            <option>Machines &amp; Equipment</option>
+            <option>Safety &amp; Protection</option>
+            <option>Waste Management</option>
+            <option>Mixed / Multiple items</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qmsg"><span class="lang-en">Details (quantity, items, delivery city)</span><span class="lang-ur">تفصیل (مقدار، اشیاء، ڈیلیوری کا شہر)</span></label>
+          <textarea id="qmsg" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="justify-content:center">
+          <span class="lang-en">Send on WhatsApp</span>
+          <span class="lang-ur">واٹس ایپ پر بھیجیں</span>
+          <span>→</span>
+        </button>
+        <p class="form-note">
+          <span class="lang-en">No data is stored on this site — your message goes straight to WhatsApp.</span>
+          <span class="lang-ur">اس سائٹ پر کوئی معلومات محفوظ نہیں ہوتی — پیغام سیدھا واٹس ایپ پر جاتا ہے۔</span>
+        </p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-logo">
+          <span class="logo-mark">🧹</span>
+          <span><span class="lang-en">Janitorial Supplies Co.</span><span class="lang-ur">جینیٹوریل سپلائیز</span></span>
+        </div>
+        <p>
+          <span class="lang-en">Wholesale supplier of cleaning, hygiene and janitorial products for businesses.</span>
+          <span class="lang-ur">کاروباروں کے لیے صفائی، حفظانِ صحت اور جینیٹوریل مصنوعات کے ہول سیل سپلائر۔</span>
+        </p>
+      </div>
+      <div>
+        <h4><span class="lang-en">Quick Links</span><span class="lang-ur">لنکس</span></h4>
+        <ul>
+          <li><a href="#products"><span class="lang-en">Products</span><span class="lang-ur">مصنوعات</span></a></li>
+          <li><a href="#why"><span class="lang-en">Why Us</span><span class="lang-ur">ہم کیوں</span></a></li>
+          <li><a href="#about"><span class="lang-en">About</span><span class="lang-ur">ہمارے بارے میں</span></a></li>
+          <li><a href="#contact"><span class="lang-en">Contact</span><span class="lang-ur">رابطہ</span></a></li>
+        </ul>
+      </div>
+      <div>
+        <h4><span class="lang-en">Contact</span><span class="lang-ur">رابطہ</span></h4>
+        <ul>
+          <li><a href="tel:+920000000000">+92 300 0000000</a></li>
+          <li><a href="mailto:info@example.com">info@example.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="copy">
+      <span class="lang-en">&copy; <span id="yr"></span> Janitorial Supplies Co. All rights reserved.</span>
+      <span class="lang-ur">&copy; <span id="yr2"></span> جینیٹوریل سپلائیز۔ جملہ حقوق محفوظ ہیں۔</span>
+    </div>
+  </div>
+</footer>
+
+<a href="#" class="wa-float" id="waFloat" aria-label="WhatsApp">💬</a>
+
+<script>
+  /* ====== EDIT THESE THREE LINES WITH YOUR REAL DETAILS ====== */
+  const WHATSAPP_NUMBER = "923000000000";   // country code + number, no + or spaces
+  const BUSINESS_NAME   = "Janitorial Supplies Co.";
+  /* =========================================================== */
+
+  // Year
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  document.getElementById('yr2').textContent = new Date().getFullYear();
+
+  // WhatsApp links
+  const waBase = "https://wa.me/" + WHATSAPP_NUMBER;
+  const greeting = encodeURIComponent("Assalam o Alaikum, I would like to enquire about your cleaning supplies.");
+  document.getElementById('waBtn').href = waBase + "?text=" + greeting;
+  document.getElementById('waFloat').href = waBase + "?text=" + greeting;
+
+  // Language toggle
+  const langBtn = document.getElementById('langBtn');
+  langBtn.addEventListener('click', () => {
+    const isUrdu = document.body.classList.toggle('ur');
+    document.documentElement.lang = isUrdu ? 'ur' : 'en';
+    document.documentElement.dir  = isUrdu ? 'rtl' : 'ltr';
+    langBtn.textContent = isUrdu ? 'English' : 'اردو';
+  });
+
+  // Mobile menu
+  const menuBtn = document.getElementById('menuBtn');
+  const navLinks = document.getElementById('navLinks');
+  menuBtn.addEventListener('click', () => navLinks.classList.toggle('open'));
+  navLinks.querySelectorAll('a').forEach(a =>
+    a.addEventListener('click', () => navLinks.classList.remove('open'))
+  );
+
+  // Quote form → WhatsApp
+  document.getElementById('quoteForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name    = document.getElementById('qname').value.trim();
+    const company = document.getElementById('qcompany').value.trim();
+    const cat     = document.getElementById('qcat').value;
+    const msg     = document.getElementById('qmsg').value.trim();
+
+    const text =
+      "*Quote Request — " + BUSINESS_NAME + "*\n\n" +
+      "Name: " + name + "\n" +
+      (company ? "Company: " + company + "\n" : "") +
+      "Category: " + cat + "\n\n" +
+      "Details:\n" + msg;
+
+    window.open(waBase + "?text=" + encodeURIComponent(text), "_blank");
+  });
+</script>
+
+</body>
+</html>
