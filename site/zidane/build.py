@@ -102,20 +102,27 @@ def page_head(crumb, title, lede):
 CATEGORIES = [
     ("rice", "Rice", "real-rice.jpg", "Clear Zidane pack of rice", "Sella and basmati in Zidane packs",
      "Consistent grain and cooking quality, packed in Zidane pouches or supplied in bulk sacks.", ["Sella basmati", "Super kernel basmati", "Steam rice", "Broken rice"]),
-    ("flour", "Flour and atta", "real-flour.jpg", "10 kg bag of chakki atta", "Chakki atta, maida and besan",
+    ("flour", "Flour and atta", "p/atta.jpg", "M.P Flour Mill chakki atta sack", "Chakki atta, maida and besan",
      "Fresh-milled atta in 10 kg bags, with maida, besan and suji.", ["Chakki atta", "Fine atta", "Maida", "Besan", "Suji"]),
-    ("sugar", "Sugar and salt", "real-sugar.jpg", "Clear Zidane pack of white sugar", "Zidane packs and bulk sacks",
+    ("sugar", "Sugar and salt", "p/salt.jpg", "Pack of National iodized salt", "Zidane sugar, National salt",
      "Refined sugar in Zidane packs and iodised salt, in pack or sack sizes.", ["White sugar", "Iodised salt", "Pink salt"]),
-    ("pulses", "Pulses and lentils", "real-pulses.jpg", "Clear Zidane pack of chana daal", "Chana, moong, masoor, kala chana",
+    ("pulses", "Pulses and lentils", "p/moong.jpg", "Zidane pack of moong daal", "Chana, moong, masoor, kala chana",
      "Cleaned and sorted daal in Zidane packs for kitchens and ration bags.", ["Chana daal", "Moong daal", "Masoor", "Mash", "Kala chana", "White chana"]),
-    ("spices", "Spices", "real-spices.jpg", "Pack of red chilli powder", "Whole and ground",
+    ("spices", "Spices", "p/chilli.jpg", "Pack of red chilli powder", "Whole and ground",
      "Ground and whole spices, loose by the kilo or packed.", ["Red chilli", "Turmeric", "Coriander", "Cumin", "Garam masala", "Whole spices"]),
-    ("oil", "Cooking oil and ghee", "real-oil.jpg", "Carton of Kausar canola oil and a bottle of sherbet", "Canola, cooking oil and ghee",
+    ("oil", "Cooking oil and ghee", "p/oil.jpg", "Kausar fortified canola oil, 3 litre carton", "Kausar canola, oil and ghee",
      "Canola and cooking oil in cartons, bottles and tins, plus banaspati ghee.", ["Canola oil", "Cooking oil", "Banaspati ghee", "Sunflower oil"]),
-    ("tea", "Tea and drinks", "real-tea.jpg", "Box of loose tea next to a bottle of sherbet", "Tea, sherbet and more",
+    ("tea", "Tea and drinks", "p/tea.jpg", "Box of Shahzada special tea", "Shahzada tea, Rooh Afza",
      "Tea for staff rooms and canteens, and sherbet for Ramadan packs.", ["Loose black tea", "Tea bags", "Sherbet", "Instant coffee"]),
-    ("dry", "Dry goods", "real-vermicelli.jpg", "Pack of vermicelli", "Vermicelli, dates and more",
+    ("dry", "Dry goods", "p/vermicelli.jpg", "Zidane vermicelli pack", "Zidane vermicelli and more",
      "The rest of the pantry, sourced with the same order.", ["Vermicelli", "Dates", "Milk powder", "Custard"]),
+]
+SHOWCASE = [
+    ("bag", "Zidane ration bag", "Red woven, reusable"), ("atta", "Chakki atta", "M.P Flour Mill"),
+    ("moong", "Moong daal", "Zidane pack"), ("kala-chana", "Kala chana", "Zidane pack"),
+    ("chilli", "Red chilli powder", "Sealed pack"), ("salt", "Iodised salt", "National"),
+    ("oil", "Canola oil, 3 L", "Kausar"), ("tea", "Special tea", "Shahzada"),
+    ("vermicelli", "Vermicelli", "Zidane"), ("rooh-afza", "Sherbet", "Rooh Afza"),
 ]
 RATION_ITEMS = ["Chakki atta, 10 kg", "Rice", "Sugar", "Chana daal", "Moong daal", "Kala chana", "Besan",
                 "Canola oil", "Red chilli powder", "Iodised salt", "Tea", "Vermicelli", "Sherbet"]
@@ -173,11 +180,20 @@ def industries_block():
     return bezel(f'<ul class="inds">{items}</ul>')
 
 
+def pic(img, alt):
+    w, h = (800, 800) if img.startswith("p/") else (720, 540)
+    return f'<img src="img/{img}" width="{w}" height="{h}" alt="{alt}">'
+
+
+def studio(img):
+    return " studio" if img.startswith("p/") else ""
+
+
 def bento():
     tiles = []
     for (k, name, img, alt, short, _, _), size in zip(CATEGORIES, BENTO):
-        tiles.append(f'<a class="tile bezel rv {size}" href="products.html#{k}"><div class="core">'
-                     f'<div class="photo"><img src="img/{img}" width="342" height="255" alt="{alt}"></div>'
+        tiles.append(f'<a class="tile bezel rv {size}{studio(img)}" href="products.html#{k}"><div class="core">'
+                     f'<div class="photo">{pic(img, alt)}</div>'
                      f'<div class="cap"><div><h3>{name}</h3><p>{short}</p></div><span class="go">{icon("arrow-up-right")}</span></div>'
                      f'</div></a>')
     return f'<div class="bento">{"".join(tiles)}</div>'
@@ -207,7 +223,7 @@ HOME = f"""<section class="hero">
     </div>
     <div class="cascade">
       {bezel('<div class="photo" style="height:100%"><img src="img/zidane-bag.jpg" width="1100" height="1596" alt="Red Zidane Wholesale Solutions ration bag with atta, rice, daal, sugar, oil and tea" fetchpriority="high"></div>', "c1")}
-      {bezel('<div class="photo" style="height:100%"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member in the warehouse"></div>', "c2")}
+      {bezel('<div class="photo" style="height:100%"><img src="img/p/bag.jpg" width="800" height="800" alt="Red woven Zidane Wholesale Solutions bag"></div>', "c2 studio")}
       {bezel('<div class="photo" style="height:100%"><img src="img/real-rice.jpg" width="720" height="540" alt="Clear Zidane pack of rice"></div>', "c3")}
       <div class="chip"><span class="dot">{icon("package")}</span>Packed in Zidane bags</div>
     </div>
@@ -293,8 +309,8 @@ HOME = f"""<section class="hero">
 def prod_card(k, name, img, alt, short, long, items):
     chips = "".join(f"<li>{i}</li>" for i in items)
     add = btn("Add to quote", "contact.html", "btn-soft sm", "arrow-up-right", ' data-item="' + name + '"')
-    return (f'<article class="prod bezel rv" id="{k}"><div class="core">'
-            f'<div class="photo"><img src="img/{img}" width="342" height="255" alt="{alt}"></div>'
+    return (f'<article class="prod bezel rv{studio(img)}" id="{k}"><div class="core">'
+            f'<div class="photo">{pic(img, alt)}</div>'
             f'<div class="txt"><h2 class="h-sm" style="font-size:24px">{name}</h2><p class="body">{long}</p>'
             f'<ul class="chips">{chips}</ul>{add}</div></div></article>')
 
@@ -327,6 +343,16 @@ RATION = page_head("Business Solutions", "Ration bags and <em class=\"red\">Rama
       </div>
       {calculator()}
     </div>''', core_cls="red")}
+  </div>
+</section>
+
+<section class="section" style="padding-bottom:0">
+  <div class="container">
+    <h2 class="h-lg rv">Inside a <em class="red">Zidane ration bag.</em></h2>
+    <p class="lede rv">Trusted brands and Zidane-packed staples, sealed in one red bag. Contents vary by pack.</p>
+    <ul class="showcase">
+      {"".join(f'<li class="bezel rv studio"><div class="core"><div class="photo"><img src="img/p/{k}.jpg" width="800" height="800" alt="{n}, {b}" loading="lazy"></div><div class="cap"><h3>{n}</h3><p>{b}</p></div></div></li>' for k, n, b in SHOWCASE)}
+    </ul>
   </div>
 </section>
 
