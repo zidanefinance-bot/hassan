@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the Zidane General Supplies site into public/.
+"""Builds the Zidane Wholesale Solutions site into public/.
 
 Edit page content below, then run:  python3 build.py
 Shared nav, footer, SEO tags and icons are applied to every page.
@@ -9,17 +9,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "public"
-SITE_URL = "https://zidane.com.pk"  # change when the real domain is live
+SITE_URL = "https://www.zidane.com.pk"  # change when the real domain is live
 PHONE = "+92 300 1234567"
 EMAIL = "sales@zidane.com.pk"
 SPRITE = (ROOT / "src_sprite.svg").read_text()
 
-FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Geist+Mono:wght@500;600&family=Noto+Nastaliq+Urdu:wght@500&display=swap"
+FONTS = "https://fonts.googleapis.com/css2?family=Montserrat:wght@500..800&family=Lato:wght@400;700&family=Geist+Mono:wght@500;600&family=Noto+Nastaliq+Urdu:wght@500&display=swap"
 
-LOGO_MARK = ('<svg class="logo-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#d0112b"/>'
-             '<path d="M9 25 L22 8 L26 8 L13 25 Z" fill="#ffffff"/><path d="M17 25 L25 14.5 L25 25 Z" fill="#ffffff" opacity=".55"/></svg>')
-FAVICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#d0112b"/>'
-           '<path d="M9 25 L22 8 L26 8 L13 25 Z" fill="#fff"/><path d="M17 25 L25 14.5 L25 25 Z" fill="#fff" opacity=".55"/></svg>')
+LOGO = '<svg class="logo-svg" viewBox="0 0 10 4" aria-hidden="true"><use href="#zidane-logo"/></svg>'
+FAVICON = (ROOT / "brand" / "zidane-icon.svg").read_text()
+TAGLINE = "Your dedicated food service partner"
 URDU = '<p class="urdu" lang="ur">بہتر کل کے لیے اچھی غذا</p>'
 
 
@@ -37,11 +36,10 @@ def bezel(inner, cls="", core_cls=""):
 
 NAV = [
     ("./", "Home", "home"),
-    ("products.html", "Products", "products"),
-    ("ration.html", "Ration Program", "ration"),
-    ("./#industries", "Industries", None),
-    ("about.html", "About", "about"),
-    ("contact.html", "Contact", "contact"),
+    ("./#industries", "Industries We Serve", None),
+    ("ration.html", "Business Solutions", "ration"),
+    ("products.html", "Products & Services", "products"),
+    ("about.html", "About Us", "about"),
 ]
 
 
@@ -52,15 +50,15 @@ def nav(active):
     return f"""<a class="sr" href="#main">Skip to content</a>
 <div class="nav-wrap">
   <header class="island">
-    <a class="logo" href="./" aria-label="Zidane General Supplies, home">{LOGO_MARK}<span class="logo-word"><b>Zidane</b><small>GENERAL SUPPLIES</small></span></a>
+    <a class="logo" href="./" aria-label="Zidane Wholesale Solutions, home">{LOGO}</a>
     <nav class="links" aria-label="Main">{small}</nav>
-    {btn("Request a quote", "contact.html", "btn-red sm")}
+    <div class="nav-ctas">{btn("Become A Customer", "contact.html#customer", "btn-soft sm", "user")}{btn("Request A Quote", "contact.html", "btn-red sm")}</div>
     <button class="burger" id="burger" type="button" aria-expanded="false" aria-controls="overlay" aria-label="Open menu"><span></span><span></span></button>
   </header>
 </div>
 <div class="overlay" id="overlay" aria-hidden="true">
-  <nav aria-label="Menu">{big}</nav>
-  {btn("Request a quote", "contact.html")}
+  <nav aria-label="Menu">{big}<a class="big" href="contact.html">Contact</a></nav>
+  <div class="row">{btn("Request A Quote", "contact.html")}{btn("Become A Customer", "contact.html#customer", "btn-soft", "user")}</div>
 </div>"""
 
 
@@ -68,14 +66,14 @@ FOOTER = f"""<footer>
   <div class="container">
     <div class="f-top">
       <div>
-        <a class="logo" href="./" aria-label="Zidane General Supplies, home">{LOGO_MARK}<span class="logo-word"><b>Zidane</b><small>GENERAL SUPPLIES</small></span></a>
-        {URDU}
+        <a class="logo" href="./" aria-label="Zidane Wholesale Solutions, home">{LOGO}</a>
+        <p class="f-tag">{TAGLINE}</p>
       </div>
       <div><h4>Company</h4><ul><li><a href="about.html">About us</a></li><li><a href="./#industries">Industries</a></li><li><a href="./#delivery">Delivery</a></li><li><a href="contact.html">Contact</a></li></ul></div>
       <div><h4>Products</h4><ul><li><a href="products.html#rice">Rice and atta</a></li><li><a href="products.html#oil">Oil and ghee</a></li><li><a href="products.html#pulses">Pulses and spices</a></li><li><a href="ration.html">Ration packs</a></li></ul></div>
       <div><h4>Contact</h4><ul><li class="num" data-cfg="phoneDisplay">{PHONE}</li><li data-cfg="email">{EMAIL}</li><li data-cfg="city">Karachi, Pakistan</li></ul></div>
     </div>
-    <div class="f-bottom"><span>&copy; <span id="year">2026</span> Zidane General Supplies</span><span>Food for a better tomorrow</span></div>
+    <div class="f-bottom"><span>&copy; <span id="year">2026</span> Zidane Wholesale Solutions</span><span>{TAGLINE}</span></div>
   </div>
 </footer>"""
 
@@ -83,7 +81,7 @@ CTA = f"""<section class="section tight cta">
   <div class="container rv">
     {bezel(f'''<div class="cta-in">
       <div><h2 class="h-lg">Ready to price your next order?</h2><p>Send your list and get itemised rates back from our sales team.</p></div>
-      {btn("Request a quote", "contact.html", "btn-white")}
+      {btn("Request A Quote", "contact.html", "btn-white")}
     </div>''', core_cls="red")}
   </div>
 </section>"""
@@ -102,23 +100,25 @@ def page_head(crumb, title, lede):
 # ---------------------------------------------------------------- content
 
 CATEGORIES = [
-    ("rice", "Rice", "cat-rice.jpg", "Bowl of long-grain rice", "Sella, basmati and broken grades",
-     "Consistent grain length and cooking quality, bag after bag.", ["Sella basmati", "Super kernel basmati", "Steam rice", "Broken rice"]),
-    ("flour", "Flour and atta", "cat-flour.jpg", "Wheat flour with wheat stalks", "Chakki atta, maida, besan",
-     "Fresh-milled flour for roti, naan and bakery use.", ["Chakki atta", "Fine atta", "Maida", "Besan", "Suji"]),
-    ("sugar", "Sugar and salt", "cat-sugar.jpg", "Bowl of white sugar", "Sacks and retail packs",
-     "Refined sugar and iodised salt in sack or pack sizes.", ["White sugar", "Iodised salt", "Pink salt"]),
-    ("pulses", "Pulses and lentils", "cat-pulses.jpg", "Bowls of assorted lentils and chickpeas", "Chana, masoor, moong, mash",
-     "Cleaned and sorted daal for daily kitchen and ration use.", ["Daal chana", "Masoor", "Moong", "Mash", "White chana", "Kala chana"]),
-    ("spices", "Spices", "cat-spices.jpg", "Bowls of ground red chilli, turmeric and other spices", "Whole and ground",
+    ("rice", "Rice", "real-rice.jpg", "Clear Zidane pack of rice", "Sella and basmati in Zidane packs",
+     "Consistent grain and cooking quality, packed in Zidane pouches or supplied in bulk sacks.", ["Sella basmati", "Super kernel basmati", "Steam rice", "Broken rice"]),
+    ("flour", "Flour and atta", "real-flour.jpg", "10 kg bag of chakki atta", "Chakki atta, maida and besan",
+     "Fresh-milled atta in 10 kg bags, with maida, besan and suji.", ["Chakki atta", "Fine atta", "Maida", "Besan", "Suji"]),
+    ("sugar", "Sugar and salt", "real-sugar.jpg", "Clear Zidane pack of white sugar", "Zidane packs and bulk sacks",
+     "Refined sugar in Zidane packs and iodised salt, in pack or sack sizes.", ["White sugar", "Iodised salt", "Pink salt"]),
+    ("pulses", "Pulses and lentils", "real-pulses.jpg", "Clear Zidane pack of chana daal", "Chana, moong, masoor, kala chana",
+     "Cleaned and sorted daal in Zidane packs for kitchens and ration bags.", ["Chana daal", "Moong daal", "Masoor", "Mash", "Kala chana", "White chana"]),
+    ("spices", "Spices", "real-spices.jpg", "Pack of red chilli powder", "Whole and ground",
      "Ground and whole spices, loose by the kilo or packed.", ["Red chilli", "Turmeric", "Coriander", "Cumin", "Garam masala", "Whole spices"]),
-    ("oil", "Cooking oil and ghee", "cat-oil.jpg", "Bottles of cooking oil", "Bottles, cans and bulk tins",
-     "Cooking oil and banaspati from bottles to bulk tins.", ["Cooking oil", "Banaspati ghee", "Canola oil", "Sunflower oil"]),
-    ("tea", "Tea and coffee", "cat-tea.jpg", "Cup of milk tea on loose tea leaves", "Loose leaf, packets, sachets",
-     "Tea for staff rooms, canteens and hotel service.", ["Loose black tea", "Tea bags", "Green tea", "Instant coffee"]),
-    ("dairy", "Dairy and dry goods", "cat-dairy.jpg", "Milk, butter and dairy products", "Milk powder, dates and more",
-     "The rest of the pantry, sourced with the same order.", ["Milk powder", "UHT milk", "Dates", "Vermicelli"]),
+    ("oil", "Cooking oil and ghee", "real-oil.jpg", "Carton of Kausar canola oil and a bottle of sherbet", "Canola, cooking oil and ghee",
+     "Canola and cooking oil in cartons, bottles and tins, plus banaspati ghee.", ["Canola oil", "Cooking oil", "Banaspati ghee", "Sunflower oil"]),
+    ("tea", "Tea and drinks", "real-tea.jpg", "Box of loose tea next to a bottle of sherbet", "Tea, sherbet and more",
+     "Tea for staff rooms and canteens, and sherbet for Ramadan packs.", ["Loose black tea", "Tea bags", "Sherbet", "Instant coffee"]),
+    ("dry", "Dry goods", "real-vermicelli.jpg", "Pack of vermicelli", "Vermicelli, dates and more",
+     "The rest of the pantry, sourced with the same order.", ["Vermicelli", "Dates", "Milk powder", "Custard"]),
 ]
+RATION_ITEMS = ["Chakki atta, 10 kg", "Rice", "Sugar", "Chana daal", "Moong daal", "Kala chana", "Besan",
+                "Canola oil", "Red chilli powder", "Iodised salt", "Tea", "Vermicelli", "Sherbet"]
 # Bento sizes, in CATEGORIES order: 2x2 hero tile, four singles, one wide, two singles = 12 cells on 4 columns
 BENTO = ["big", "", "", "", "", "wide", "", ""]
 
@@ -161,7 +161,7 @@ def calculator():
     </div>
     <div class="total">
       <div><div class="k">Estimated total</div><div class="v num" id="total" aria-live="polite">PKR 787,250</div></div>
-      <button class="btn btn-red" type="submit">Request a quote<span class="bi">{icon("arrow-up-right")}</span></button>
+      <button class="btn btn-red" type="submit">Request A Quote<span class="bi">{icon("arrow-up-right")}</span></button>
     </div>
     <p class="fine">List prices per pack. Large orders and custom contents are quoted separately.</p>
   </div>
@@ -183,6 +183,13 @@ def bento():
     return f'<div class="bento">{"".join(tiles)}</div>'
 
 
+VALUES = [
+    ("seal-check", "Premium commodities", "Stock is checked on arrival and again before dispatch."),
+    ("calculator", "Transparent wholesale pricing", "Itemised quotes that track the market, with no hidden margins."),
+    ("clock-countdown", "On time, in full", "The quantity you ordered, on the date we agreed."),
+    ("package", "Packed in Zidane bags", "Sealed, labelled packs in the sizes you store and share."),
+]
+
 FLOW = [
     ("list-checks", "Send your list", "Items, quantities and how often you need them."),
     ("calculator", "Get a written quote", "Itemised rates you can take to your finance team."),
@@ -193,16 +200,16 @@ FLOW = [
 HOME = f"""<section class="hero">
   <div class="container">
     <div>
-      <span class="tag">B2B food supply across Pakistan</span>
-      <h1 class="h-xl">Food supply, <em class="red">on schedule.</em></h1>
-      <p class="lede">Rice, atta, oil, pulses and ration bags for hotels, factories, schools, hospitals and NGOs.</p>
-      <div class="ctas">{btn("Request a quote", "contact.html")}{btn("See ration packs", "ration.html", "btn-soft", "arrow-right")}</div>
+      <span class="tag">Wholesale food supply across Pakistan</span>
+      <h1 class="h-xl">Your dedicated <em class="red">food service partner.</em></h1>
+      <p class="lede">Join the Zidane Wholesale network for premium commodities, transparent wholesale pricing and a supply chain built for your success.</p>
+      <div class="ctas">{btn("Become Our Customer", "contact.html#customer")}{btn("Request A Quote", "contact.html", "btn-soft", "arrow-right")}</div>
     </div>
     <div class="cascade">
-      {bezel('<div class="photo" style="height:100%"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member checking stacked rice and flour sacks in the warehouse" fetchpriority="high"></div>', "c1")}
-      {bezel('<div class="photo" style="height:100%"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries"></div>', "c2")}
-      {bezel('<div class="photo" style="height:100%"><img src="img/cat-spices.jpg" width="342" height="255" alt="Bowls of spices"></div>', "c3")}
-      <div class="chip"><span class="dot">{icon("package")}</span>Custom packaging</div>
+      {bezel('<div class="photo" style="height:100%"><img src="img/zidane-bag.jpg" width="1100" height="1596" alt="Red Zidane Wholesale Solutions ration bag with atta, rice, daal, sugar, oil and tea" fetchpriority="high"></div>', "c1")}
+      {bezel('<div class="photo" style="height:100%"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member in the warehouse"></div>', "c2")}
+      {bezel('<div class="photo" style="height:100%"><img src="img/real-rice.jpg" width="720" height="540" alt="Clear Zidane pack of rice"></div>', "c3")}
+      <div class="chip"><span class="dot">{icon("package")}</span>Packed in Zidane bags</div>
     </div>
   </div>
 </section>
@@ -213,6 +220,15 @@ HOME = f"""<section class="hero">
       <div class="stat"><b class="num">500+</b><span>business clients served</span></div>
       <div class="stat"><b>Nationwide</b><span>delivery from Karachi</span></div>
       <div class="stat"><b>In full</b><span>on the agreed date</span></div>''')}
+  </div>
+</section>
+
+<section class="section" style="padding-bottom:0">
+  <div class="container">
+    <h2 class="h-lg rv">Core value <em class="red">propositions.</em></h2>
+    <ul class="values">
+      {"".join(f'<li class="bezel rv"><div class="core">{icon(i)}<h3 class="h-sm">{t}</h3><p class="body">{d}</p></div></li>' for i, t, d in VALUES)}
+    </ul>
   </div>
 </section>
 
@@ -228,12 +244,12 @@ HOME = f"""<section class="hero">
   <div class="container rv">
     {bezel(f'''<div class="ration-grid">
       <div>
-        <span class="tag on-red">Ration Program</span>
+        <span class="tag on-red">Business Solutions</span>
         <h2 class="h-lg">Ration bags for welfare, relief and Ramadan.</h2>
         {URDU}
-        <p class="lede">Packed, sealed and delivered in the quantity you need.</p>
-        <ul class="pills"><li>Corporate welfare</li><li>NGOs and charity</li><li>Ramadan hampers</li><li>Monthly household packs</li></ul>
-        <div class="bezel inset"><div class="core photo"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries, oil, pulses and dates"></div></div>
+        <p class="lede">A typical Zidane ration bag holds these staples. Contents and quantities vary by pack.</p>
+        <ul class="pills">{"".join(f"<li>{i}</li>" for i in RATION_ITEMS)}</ul>
+        <div class="bezel inset"><div class="core photo"><img src="img/zidane-pack.jpg" width="1500" height="1021" alt="Zidane ration bag contents: atta, rice, sugar, daal, besan, oil, tea, salt, chilli and vermicelli"></div></div>
       </div>
       {calculator()}
     </div>''', core_cls="red")}
@@ -245,7 +261,7 @@ HOME = f"""<section class="hero">
     <div class="sticky rv">
       <h2 class="h-lg">Built for kitchens that feed hundreds.</h2>
       <p class="lede">From a single hotel kitchen to every canteen across a factory group.</p>
-      <div style="margin-top:34px">{btn("Request a quote", "contact.html", "btn-soft")}</div>
+      <div style="margin-top:34px">{btn("Request A Quote", "contact.html", "btn-soft")}</div>
     </div>
     <div class="rv">{industries_block()}</div>
   </div>
@@ -299,14 +315,15 @@ PROGRAMS = [
     ("calculator", "Monthly household packs", "Recurring packs for the households you support, on a fixed date each month.", ""),
 ]
 
-RATION = page_head("Ration Program", "Ration bags and <em class=\"red\">Ramadan programs.</em>", "Sealed ration packs for corporate welfare, NGOs and community distribution, at list prices you can budget around.") + f"""
+RATION = page_head("Business Solutions", "Ration bags and <em class=\"red\">Ramadan programs.</em>", "Sealed ration packs for corporate welfare, NGOs and community distribution, at list prices you can budget around.") + f"""
 <section class="ration" style="padding-bottom:0">
   <div class="container rv">
     {bezel(f'''<div class="ration-grid">
       <div>
-        <h2 class="h-md" style="color:#fff">Price a whole drive in seconds.</h2>
+        <h2 class="h-md" style="color:#fff">What goes in a Zidane ration bag.</h2>
         {URDU}
-        <div class="bezel inset"><div class="core photo"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries, oil, pulses and dates"></div></div>
+        <ul class="pills">{"".join(f"<li>{i}</li>" for i in RATION_ITEMS)}</ul>
+        <div class="bezel inset"><div class="core photo"><img src="img/zidane-pack.jpg" width="1500" height="1021" alt="Zidane ration bag contents: atta, rice, sugar, daal, besan, oil, tea, salt, chilli and vermicelli"></div></div>
       </div>
       {calculator()}
     </div>''', core_cls="red")}
@@ -327,7 +344,7 @@ RATION = page_head("Ration Program", "Ration bags and <em class=\"red\">Ramadan 
     <div class="rv">
       <h2 class="h-md">Need different contents?</h2>
       <p class="lede">We build packs to your list and budget, and can print your organisation's name on the bag.</p>
-      <div style="margin-top:30px">{btn("Request a quote", "contact.html")}</div>
+      <div style="margin-top:30px">{btn("Request A Quote", "contact.html")}</div>
     </div>
     <ul class="checks rv">
       <li>{icon("seal-check")}Sealed, food-grade packing</li>
@@ -339,14 +356,8 @@ RATION = page_head("Ration Program", "Ration bags and <em class=\"red\">Ramadan 
 </section>"""
 
 
-VALUES = [
-    ("seal-check", "Checked quality", "Stock is inspected on arrival and before dispatch."),
-    ("calculator", "Fair market rates", "Itemised quotes that track the market."),
-    ("clock-countdown", "On time, in full", "The quantity you ordered, on the date we agreed."),
-    ("package", "Packed your way", "Pack sizes and branding to suit how you store and share."),
-]
 
-ABOUT = page_head("About", "Good food builds <em class=\"red\">stronger businesses.</em>", "Zidane General Supplies is a Karachi-based food supplier serving businesses and institutions across Pakistan.") + f"""
+ABOUT = page_head("About", "Good food builds <em class=\"red\">stronger businesses.</em>", "Zidane Wholesale Solutions is a Karachi-based food supplier serving businesses and institutions across Pakistan.") + f"""
 <section class="section tight" style="padding-top:0">
   <div class="container split" style="align-items:center">
     <div class="prose rv">
@@ -354,7 +365,7 @@ ABOUT = page_head("About", "Good food builds <em class=\"red\">stronger business
       <p>Kitchens run on staples: rice, atta, oil, daal, sugar and tea. We keep them in stock at scale, so hotels, factories, schools, hospitals and NGOs can order everything from one place and plan around a delivery date they can trust.</p>
       <p>From daily kitchen orders to thousands of ration bags for a Ramadan drive, we quote clearly, pack carefully and deliver what we promised.</p>
     </div>
-    <div class="rv">{bezel('<div class="photo"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member in the warehouse with stacked food sacks"></div>')}</div>
+    <div class="rv">{bezel('<div class="photo"><img src="img/zidane-bag.jpg" width="1100" height="1596" alt="Red Zidane Wholesale Solutions bag with packed staples"></div>')}</div>
   </div>
 </section>
 
@@ -382,7 +393,7 @@ CONTACT = f"""<section class="section tight">
   <div class="container split">
     <div>
       <p class="crumbs"><a href="./">Home</a><span aria-hidden="true">/</span><span>Contact</span></p>
-      <h1 class="h-lg">Tell us what you need. <em class="red">We'll price it.</em></h1>
+      <h1 class="h-lg" id="c-title">Tell us what you need. <em class="red">We'll price it.</em></h1>
       <p class="lede">Fill in the form and your request opens in WhatsApp, ready to send to our sales team.</p>
       <ul class="contact-list">
         <li><span class="ic">{icon("whatsapp-logo")}</span><div><small>WhatsApp and phone</small><span class="num" data-cfg="phoneDisplay">{PHONE}</span></div></li>
@@ -392,6 +403,10 @@ CONTACT = f"""<section class="section tight">
     </div>
 
     <form class="quote-card bezel" id="quote-form" novalidate><div class="core">
+      <fieldset class="seg full field"><legend class="sr">What would you like to do?</legend>
+        <label><input type="radio" name="q-type" id="q-type-quote" value="quote" checked><span>Request A Quote</span></label>
+        <label><input type="radio" name="q-type" id="q-type-customer" value="customer"><span>Become A Customer</span></label>
+      </fieldset>
       <div class="field"><label for="q-name">Your name</label><input class="input" id="q-name" autocomplete="name" placeholder="Ayesha Siddiqui"><p class="err" id="q-name-err"></p></div>
       <div class="field"><label for="q-company">Organisation</label><input class="input" id="q-company" autocomplete="organization" placeholder="Hotel, factory, school or NGO"></div>
       <div class="field"><label for="q-phone">Phone or WhatsApp</label><input class="input num" id="q-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="03xx xxxxxxx"><p class="err" id="q-phone-err"></p></div>
@@ -403,7 +418,7 @@ CONTACT = f"""<section class="section tight">
           <option>Catering service</option><option>Retail or wholesale</option><option>Other</option>
         </select>
       </div>
-      <div class="field full"><label for="q-needs">What do you need?</label><textarea class="input" id="q-needs" placeholder="e.g. 20 x 25 kg sella rice, 10 x 16 L oil tins, monthly delivery to Korangi"></textarea><p class="err" id="q-needs-err"></p></div>
+      <div class="field full"><label for="q-needs" id="q-needs-label">What do you need?</label><textarea class="input" id="q-needs" placeholder="e.g. 20 x 25 kg sella rice, 10 x 16 L oil tins, monthly delivery to Korangi"></textarea><p class="err" id="q-needs-err"></p></div>
       <div class="field"><label for="q-city">Delivery city</label><input class="input" id="q-city" autocomplete="address-level2" placeholder="Karachi"></div>
       <div class="field"><label for="q-freq">How often?</label>
         <select class="input" id="q-freq"><option>One-time order</option><option>Weekly</option><option>Monthly</option><option>Ramadan or seasonal</option></select>
@@ -439,27 +454,27 @@ NOT_FOUND = f"""<section class="notfound">
 
 PAGES = [
     # file, active nav key, <title>, meta description, body
-    ("index.html", "home", "Zidane General Supplies | B2B Food Supply and Ration Bags in Pakistan",
-     "Bulk rice, atta, oil, pulses and ration bags for hotels, factories, schools, hospitals and NGOs across Pakistan. Request a quote from Zidane General Supplies.", HOME),
-    ("products.html", "products", "Products | Zidane General Supplies",
-     "Rice, flour and atta, sugar, pulses, cooking oil and ghee, spices, tea and dairy supplied in bulk by Zidane General Supplies.", PRODUCTS),
-    ("ration.html", "ration", "Ration Bags and Ramadan Packages | Zidane General Supplies",
+    ("index.html", "home", "Zidane Wholesale Solutions | B2B Food Supply and Ration Bags in Pakistan",
+     "Bulk rice, atta, oil, pulses and ration bags for hotels, factories, schools, hospitals and NGOs across Pakistan. Request a quote from Zidane Wholesale Solutions.", HOME),
+    ("products.html", "products", "Products | Zidane Wholesale Solutions",
+     "Rice, flour and atta, sugar, pulses, cooking oil and ghee, spices, tea and dairy supplied in bulk by Zidane Wholesale Solutions.", PRODUCTS),
+    ("ration.html", "ration", "Ration Bags and Ramadan Packages | Zidane Wholesale Solutions",
      "Ration packs from PKR 2,149 for corporate welfare, NGOs and Ramadan distribution. Estimate your total and request a quote.", RATION),
-    ("about.html", "about", "About Us | Zidane General Supplies",
-     "Zidane General Supplies is a Karachi-based B2B food supplier serving businesses and institutions across Pakistan.", ABOUT),
-    ("contact.html", "contact", "Request a Quote | Zidane General Supplies",
-     "Send your food supply list and get an itemised quote from Zidane General Supplies by WhatsApp or email.", CONTACT),
-    ("404.html", None, "Page not found | Zidane General Supplies", "This page could not be found.", NOT_FOUND),
+    ("about.html", "about", "About Us | Zidane Wholesale Solutions",
+     "Zidane Wholesale Solutions is a Karachi-based B2B food supplier serving businesses and institutions across Pakistan.", ABOUT),
+    ("contact.html", "contact", "Request a Quote | Zidane Wholesale Solutions",
+     "Send your food supply list and get an itemised quote from Zidane Wholesale Solutions by WhatsApp or email.", CONTACT),
+    ("404.html", None, "Page not found | Zidane Wholesale Solutions", "This page could not be found.", NOT_FOUND),
 ]
 
 JSON_LD = json.dumps({
     "@context": "https://schema.org",
     "@type": "WholesaleStore",
-    "name": "Zidane General Supplies",
+    "name": "Zidane Wholesale Solutions",
     "url": SITE_URL + "/",
     "telephone": PHONE,
     "email": EMAIL,
-    "slogan": "Food for a better tomorrow",
+    "slogan": TAGLINE,
     "address": {"@type": "PostalAddress", "addressLocality": "Karachi", "addressCountry": "PK"},
     "areaServed": "PK",
 }, ensure_ascii=False)
@@ -472,7 +487,7 @@ def head_tags(file, title, desc):
 <meta name="description" content="{desc}">
 <link rel="canonical" href="{url}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Zidane General Supplies">
+<meta property="og:site_name" content="Zidane Wholesale Solutions">
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{desc}">
 <meta property="og:url" content="{url}">
@@ -516,7 +531,7 @@ def build():
     (OUT / "sitemap.xml").write_text(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')
     # Preview copy of the home page for the claude.ai artifact (no doctype wrapper; the viewer adds its own)
     file, active, title, desc, content = PAGES[0]
-    (ROOT / "preview-home.html").write_text(head_tags(file, "Zidane General Supplies", desc) + "\n" + body(active, content) + "\n")
+    (ROOT / "preview-home.html").write_text(head_tags(file, "Zidane Wholesale Solutions", desc) + "\n" + body(active, content) + "\n")
     print("built", len(PAGES), "pages")
 
 

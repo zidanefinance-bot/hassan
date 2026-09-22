@@ -81,11 +81,23 @@
   var form = $("quote-form");
   if (form) {
     var needs = $("q-needs"), done = $("done");
-    var fields = Array.prototype.slice.call(form.querySelectorAll(".field, .form-foot"));
+    var fields = Array.prototype.slice.call(form.querySelectorAll(".field, .form-foot, .seg"));
     var saved = store.get("zidane.needs");
     if (saved && !needs.value) needs.value = saved;
     var freq = store.get("zidane.freq");
     if (freq) $("q-freq").value = freq;
+
+    // Two intents share one form: a quote, or opening a customer account (#customer)
+    var mode = function () { return $("q-type-customer").checked ? "customer" : "quote"; };
+    var applyMode = function () {
+      var c = mode() === "customer";
+      $("c-title").innerHTML = c ? 'Become a customer. <em class="red">Order at wholesale rates.</em>' : 'Tell us what you need. <em class="red">We\'ll price it.</em>';
+      $("q-needs-label").textContent = c ? "What will you order regularly?" : "What do you need?";
+    };
+    var fromHash = function () { if (location.hash === "#customer") { $("q-type-customer").checked = true; applyMode(); } };
+    form.querySelectorAll('input[name="q-type"]').forEach(function (r) { r.addEventListener("change", applyMode); });
+    window.addEventListener("hashchange", fromHash);
+    fromHash();
 
     var setErr = function (id, msg) {
       var input = $(id), err = $(id + "-err");
@@ -103,7 +115,7 @@
       check("q-needs", v("q-needs") ? "" : "List the items and rough quantities you need.");
       if (!ok) { $(first).focus(); return; }
       var lines = [
-        "Assalam o Alaikum Zidane team, I'd like a quote.",
+        mode() === "customer" ? "Assalam o Alaikum Zidane team, I'd like to become a customer." : "Assalam o Alaikum Zidane team, I'd like a quote.",
         "",
         "Name: " + v("q-name"),
         v("q-company") ? "Organisation: " + v("q-company") : null,
@@ -112,13 +124,13 @@
         "Delivery city: " + (v("q-city") || "Karachi"),
         "Frequency: " + v("q-freq"),
         "",
-        "Items needed:",
+        mode() === "customer" ? "Regular order:" : "Items needed:",
         v("q-needs")
       ].filter(function (l) { return l !== null; });
       var text = lines.join("\n");
       $("msg").textContent = text;
       $("wa-link").href = "https://wa.me/" + CONFIG.whatsapp + "?text=" + encodeURIComponent(text);
-      $("mail-link").href = "mailto:" + CONFIG.email + "?subject=" + encodeURIComponent("Quote request from " + (v("q-company") || v("q-name"))) + "&body=" + encodeURIComponent(text);
+      $("mail-link").href = "mailto:" + CONFIG.email + "?subject=" + encodeURIComponent((mode() === "customer" ? "New customer: " : "Quote request from ") + (v("q-company") || v("q-name"))) + "&body=" + encodeURIComponent(text);
       store.del("zidane.needs"); store.del("zidane.freq");
       fields.forEach(function (f) { f.hidden = true; });
       done.hidden = false;

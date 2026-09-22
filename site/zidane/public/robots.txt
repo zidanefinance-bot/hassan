@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://zidane.com.pk/sitemap.xml
+Sitemap: https://www.zidane.com.pk/sitemap.xml
