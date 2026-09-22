@@ -2,7 +2,7 @@
 """Builds the Zidane General Supplies site into public/.
 
 Edit page content below, then run:  python3 build.py
-Shared header, footer, SEO tags and icons are applied to every page.
+Shared nav, footer, SEO tags and icons are applied to every page.
 """
 import json
 from pathlib import Path
@@ -14,14 +14,26 @@ PHONE = "+92 300 1234567"
 EMAIL = "sales@zidane.com.pk"
 SPRITE = (ROOT / "src_sprite.svg").read_text()
 
-FONTS = "https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=IBM+Plex+Mono:wght@500;600&family=Noto+Nastaliq+Urdu:wght@500&display=swap"
+FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Geist+Mono:wght@500;600&family=Noto+Nastaliq+Urdu:wght@500&display=swap"
 
-LOGO_MARK = ('<svg class="logo-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="7" fill="{fill}"/>'
+LOGO_MARK = ('<svg class="logo-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#d0112b"/>'
              '<path d="M9 25 L22 8 L26 8 L13 25 Z" fill="#ffffff"/><path d="M17 25 L25 14.5 L25 25 Z" fill="#ffffff" opacity=".55"/></svg>')
-FAVICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34"><rect width="34" height="34" rx="7" fill="#c8102e"/>'
+FAVICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#d0112b"/>'
            '<path d="M9 25 L22 8 L26 8 L13 25 Z" fill="#fff"/><path d="M17 25 L25 14.5 L25 25 Z" fill="#fff" opacity=".55"/></svg>')
-ARROW = '<svg class="icon"><use href="#i-arrow-right"/></svg>'
-URDU_TAGLINE = '<p class="urdu" lang="ur">بہتر کل کے لیے اچھی غذا</p>'
+URDU = '<p class="urdu" lang="ur">بہتر کل کے لیے اچھی غذا</p>'
+
+
+def icon(name):
+    return f'<svg class="icon" aria-hidden="true"><use href="#i-{name}"/></svg>'
+
+
+def btn(label, href, style="btn-red", ic="arrow-up-right", extra=""):
+    return f'<a class="btn {style}" href="{href}"{extra}>{label}<span class="bi">{icon(ic)}</span></a>'
+
+
+def bezel(inner, cls="", core_cls=""):
+    return f'<div class="bezel {cls}"><div class="core {core_cls}">{inner}</div></div>'
+
 
 NAV = [
     ("./", "Home", "home"),
@@ -33,36 +45,31 @@ NAV = [
 ]
 
 
-def header(active):
-    current = ' aria-current="page"'
-    links = "\n      ".join(
-        f'<a href="{href}"{current if key == active else ""}>{label}</a>' for href, label, key in NAV
-    )
-    return f"""<a class="skip" href="#main">Skip to content</a>
-<header class="top">
-  <div class="container">
-    <a class="logo" href="./" aria-label="Zidane General Supplies, home">
-      {LOGO_MARK.format(fill="var(--red)")}
-      <span class="logo-word"><b>Zidane</b><small>GENERAL SUPPLIES</small></span>
-    </a>
-    <nav class="nav" id="nav" aria-label="Main">
-      {links}
-    </nav>
-    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
-    <a class="btn btn-primary" href="contact.html">Request a quote {ARROW}</a>
-  </div>
-</header>"""
+def nav(active):
+    cur = ' aria-current="page"'
+    small = "".join(f'<a href="{h}"{cur if k == active else ""}>{l}</a>' for h, l, k in NAV)
+    big = "".join(f'<a class="big" href="{h}"{cur if k == active else ""}>{l}</a>' for h, l, k in NAV)
+    return f"""<a class="sr" href="#main">Skip to content</a>
+<div class="nav-wrap">
+  <header class="island">
+    <a class="logo" href="./" aria-label="Zidane General Supplies, home">{LOGO_MARK}<span class="logo-word"><b>Zidane</b><small>GENERAL SUPPLIES</small></span></a>
+    <nav class="links" aria-label="Main">{small}</nav>
+    {btn("Request a quote", "contact.html", "btn-red sm")}
+    <button class="burger" id="burger" type="button" aria-expanded="false" aria-controls="overlay" aria-label="Open menu"><span></span><span></span></button>
+  </header>
+</div>
+<div class="overlay" id="overlay" aria-hidden="true">
+  <nav aria-label="Menu">{big}</nav>
+  {btn("Request a quote", "contact.html")}
+</div>"""
 
 
 FOOTER = f"""<footer>
   <div class="container">
     <div class="f-top">
       <div>
-        <a class="logo" href="./" aria-label="Zidane General Supplies, home">
-          {LOGO_MARK.format(fill="#c8102e")}
-          <span class="logo-word"><b>Zidane</b><small>GENERAL SUPPLIES</small></span>
-        </a>
-        {URDU_TAGLINE}
+        <a class="logo" href="./" aria-label="Zidane General Supplies, home">{LOGO_MARK}<span class="logo-word"><b>Zidane</b><small>GENERAL SUPPLIES</small></span></a>
+        {URDU}
       </div>
       <div><h4>Company</h4><ul><li><a href="about.html">About us</a></li><li><a href="./#industries">Industries</a></li><li><a href="./#delivery">Delivery</a></li><li><a href="contact.html">Contact</a></li></ul></div>
       <div><h4>Products</h4><ul><li><a href="products.html#rice">Rice and atta</a></li><li><a href="products.html#oil">Oil and ghee</a></li><li><a href="products.html#pulses">Pulses and spices</a></li><li><a href="ration.html">Ration packs</a></li></ul></div>
@@ -72,13 +79,12 @@ FOOTER = f"""<footer>
   </div>
 </footer>"""
 
-CTA_BAND = f"""<section class="cta-band">
-  <div class="container">
-    <div>
-      <h2>Ready to price your next order?</h2>
-      <p>Send your list and get itemised rates back from our sales team.</p>
-    </div>
-    <div class="row"><a class="btn btn-light" href="contact.html">Request a quote {ARROW}</a></div>
+CTA = f"""<section class="section tight cta">
+  <div class="container rv">
+    {bezel(f'''<div class="cta-in">
+      <div><h2 class="h-lg">Ready to price your next order?</h2><p>Send your list and get itemised rates back from our sales team.</p></div>
+      {btn("Request a quote", "contact.html", "btn-white")}
+    </div>''', core_cls="red")}
   </div>
 </section>"""
 
@@ -87,7 +93,7 @@ def page_head(crumb, title, lede):
     return f"""<section class="page-head">
   <div class="container">
     <p class="crumbs"><a href="./">Home</a><span aria-hidden="true">/</span><span>{crumb}</span></p>
-    <h1>{title}</h1>
+    <h1 class="h-lg">{title}</h1>
     <p class="lede">{lede}</p>
   </div>
 </section>"""
@@ -98,21 +104,23 @@ def page_head(crumb, title, lede):
 CATEGORIES = [
     ("rice", "Rice", "cat-rice.jpg", "Bowl of long-grain rice", "Sella, basmati and broken grades",
      "Consistent grain length and cooking quality, bag after bag.", ["Sella basmati", "Super kernel basmati", "Steam rice", "Broken rice"]),
-    ("flour", "Flour and atta", "cat-flour.jpg", "Wheat flour with wheat stalks", "Chakki atta, maida and besan",
+    ("flour", "Flour and atta", "cat-flour.jpg", "Wheat flour with wheat stalks", "Chakki atta, maida, besan",
      "Fresh-milled flour for roti, naan and bakery use.", ["Chakki atta", "Fine atta", "Maida", "Besan", "Suji"]),
-    ("sugar", "Sugar and salt", "cat-sugar.jpg", "Bowl of white sugar", "Bulk sacks and retail packs",
+    ("sugar", "Sugar and salt", "cat-sugar.jpg", "Bowl of white sugar", "Sacks and retail packs",
      "Refined sugar and iodised salt in sack or pack sizes.", ["White sugar", "Iodised salt", "Pink salt"]),
-    ("pulses", "Pulses and lentils", "cat-pulses.jpg", "Bowls of assorted lentils and chickpeas", "Chana, masoor, moong and mash",
+    ("pulses", "Pulses and lentils", "cat-pulses.jpg", "Bowls of assorted lentils and chickpeas", "Chana, masoor, moong, mash",
      "Cleaned and sorted daal for daily kitchen and ration use.", ["Daal chana", "Masoor", "Moong", "Mash", "White chana", "Kala chana"]),
+    ("spices", "Spices", "cat-spices.jpg", "Bowls of ground red chilli, turmeric and other spices", "Whole and ground",
+     "Ground and whole spices, loose by the kilo or packed.", ["Red chilli", "Turmeric", "Coriander", "Cumin", "Garam masala", "Whole spices"]),
     ("oil", "Cooking oil and ghee", "cat-oil.jpg", "Bottles of cooking oil", "Bottles, cans and bulk tins",
      "Cooking oil and banaspati from bottles to bulk tins.", ["Cooking oil", "Banaspati ghee", "Canola oil", "Sunflower oil"]),
-    ("spices", "Spices", "cat-spices.jpg", "Bowls of ground red chilli, turmeric and other spices", "Whole and ground, loose or packed",
-     "Ground and whole spices, loose by the kilo or packed.", ["Red chilli", "Turmeric", "Coriander", "Cumin", "Garam masala", "Whole spices"]),
-    ("tea", "Tea and coffee", "cat-tea.jpg", "Cup of milk tea on loose tea leaves", "Loose leaf, packets and sachets",
+    ("tea", "Tea and coffee", "cat-tea.jpg", "Cup of milk tea on loose tea leaves", "Loose leaf, packets, sachets",
      "Tea for staff rooms, canteens and hotel service.", ["Loose black tea", "Tea bags", "Green tea", "Instant coffee"]),
     ("dairy", "Dairy and dry goods", "cat-dairy.jpg", "Milk, butter and dairy products", "Milk powder, dates and more",
      "The rest of the pantry, sourced with the same order.", ["Milk powder", "UHT milk", "Dates", "Vermicelli"]),
 ]
+# Bento sizes, in CATEGORIES order: 2x2 hero tile, four singles, one wide, two singles = 12 cells on 4 columns
+BENTO = ["big", "", "", "", "", "wide", "", ""]
 
 INDUSTRIES = [
     ("factory", "Factories and industrial units", "Staff canteens and monthly worker rations"),
@@ -134,21 +142,15 @@ PACKS = [
 
 
 def calculator():
-    packs = "\n".join(
+    packs = "".join(
         f'<label class="pack"><input type="radio" name="pack" id="pack-{k}" value="{n}" data-price="{p}"{" checked" if k == "standard" else ""}>'
         f'<span class="name">{n}</span><span class="price num">PKR {p:,}</span><span class="desc">{d}</span></label>'
         for k, n, p, d in PACKS
     )
-    return f"""<form class="calc" id="calc" action="contact.html" aria-labelledby="calc-title" novalidate>
-  <div>
-    <h3 id="calc-title">Estimate your distribution</h3>
-    <p class="sub">Pick a pack and the number of families to see the cost before you ask for a quote.</p>
-  </div>
-  <fieldset class="packs">
-    <legend>Ration pack</legend>
-    {packs}
-  </fieldset>
-  <div class="qty">
+    return f"""<form class="calc bezel calc-shell" id="calc" action="contact.html" aria-labelledby="calc-title" novalidate>
+  <div class="core pad">
+    <div><h3 id="calc-title">Estimate your distribution</h3><p class="sub">Pick a pack and the number of families to see the cost first.</p></div>
+    <fieldset class="packs"><legend class="sr">Ration pack</legend>{packs}</fieldset>
     <div class="field">
       <label for="families">Number of families</label>
       <div class="stepper">
@@ -157,165 +159,181 @@ def calculator():
         <button type="button" id="plus" aria-label="More families">+</button>
       </div>
     </div>
+    <div class="total">
+      <div><div class="k">Estimated total</div><div class="v num" id="total" aria-live="polite">PKR 787,250</div></div>
+      <button class="btn btn-red" type="submit">Request a quote<span class="bi">{icon("arrow-up-right")}</span></button>
+    </div>
+    <p class="fine">List prices per pack. Large orders and custom contents are quoted separately.</p>
   </div>
-  <div class="total">
-    <div><div class="k">Estimated total</div><div class="v num" id="total" aria-live="polite">PKR 787,250</div></div>
-    <button class="btn btn-primary" type="submit">Request a quote {ARROW}</button>
-  </div>
-  <p class="fine">List prices per pack. Large orders and custom contents are quoted separately.</p>
 </form>"""
 
 
-def industries_list():
-    return "\n".join(
-        f'<li class="ind"><span class="ic"><svg class="icon"><use href="#i-{i}"/></svg></span><h3>{t}</h3><p>{d}</p></li>'
-        for i, t, d in INDUSTRIES
-    )
+def industries_block():
+    items = "".join(f'<li class="ind">{icon(i)}<h3>{t}</h3><p>{d}</p></li>' for i, t, d in INDUSTRIES)
+    return bezel(f'<ul class="inds">{items}</ul>')
 
+
+def bento():
+    tiles = []
+    for (k, name, img, alt, short, _, _), size in zip(CATEGORIES, BENTO):
+        tiles.append(f'<a class="tile bezel rv {size}" href="products.html#{k}"><div class="core">'
+                     f'<div class="photo"><img src="img/{img}" width="342" height="255" alt="{alt}"></div>'
+                     f'<div class="cap"><div><h3>{name}</h3><p>{short}</p></div><span class="go">{icon("arrow-up-right")}</span></div>'
+                     f'</div></a>')
+    return f'<div class="bento">{"".join(tiles)}</div>'
+
+
+FLOW = [
+    ("list-checks", "Send your list", "Items, quantities and how often you need them."),
+    ("calculator", "Get a written quote", "Itemised rates you can take to your finance team."),
+    ("clock-countdown", "Pick a delivery slot", "One-off, weekly or monthly, to one site or many."),
+    ("check-circle", "Receive and check", "Count it at your door against the delivery note."),
+]
 
 HOME = f"""<section class="hero">
   <div class="container">
     <div>
-      <p class="eyebrow">B2B food supply across Pakistan</p>
-      <h1>Bulk food supply you can <em>plan around.</em></h1>
-      <p class="lede">Rice, atta, oil, pulses and ration bags for hotels, factories, schools, hospitals and NGOs, delivered on your schedule.</p>
-      <div class="hero-ctas">
-        <a class="btn btn-primary" href="contact.html">Request a quote {ARROW}</a>
-        <a class="btn btn-outline" href="ration.html">See ration packs</a>
-      </div>
+      <span class="tag">B2B food supply across Pakistan</span>
+      <h1 class="h-xl">Food supply, <em class="red">on schedule.</em></h1>
+      <p class="lede">Rice, atta, oil, pulses and ration bags for hotels, factories, schools, hospitals and NGOs.</p>
+      <div class="ctas">{btn("Request a quote", "contact.html")}{btn("See ration packs", "ration.html", "btn-soft", "arrow-right")}</div>
     </div>
-    <div class="hero-media">
-      <div class="frame"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member checking stacked rice and flour sacks in the warehouse" fetchpriority="high"></div>
-      <div class="hero-card">
-        <svg class="icon"><use href="#i-package"/></svg>
-        <div><b>Custom packaging</b><span>Your pack sizes, your branding</span></div>
-      </div>
+    <div class="cascade">
+      {bezel('<div class="photo" style="height:100%"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member checking stacked rice and flour sacks in the warehouse" fetchpriority="high"></div>', "c1")}
+      {bezel('<div class="photo" style="height:100%"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries"></div>', "c2")}
+      {bezel('<div class="photo" style="height:100%"><img src="img/cat-spices.jpg" width="342" height="255" alt="Bowls of spices"></div>', "c3")}
+      <div class="chip"><span class="dot">{icon("package")}</span>Custom packaging</div>
     </div>
   </div>
 </section>
 
-<section class="proof" aria-label="Zidane at a glance">
+<section class="stats" aria-label="Zidane at a glance">
   <div class="container">
-    <div>
-      <div class="stat"><b class="num">1,200+</b><span>products in stock</span></div>
+    {bezel('''<div class="stat"><b class="num">1,200+</b><span>products in stock</span></div>
       <div class="stat"><b class="num">500+</b><span>business clients served</span></div>
       <div class="stat"><b>Nationwide</b><span>delivery from Karachi</span></div>
-      <div class="stat"><b>In full</b><span>and on the agreed date</span></div>
-    </div>
+      <div class="stat"><b>In full</b><span>on the agreed date</span></div>''')}
   </div>
 </section>
 
-<section id="products">
+<section class="section" id="products">
   <div class="container">
-    <h2>Everything your kitchen orders, from one supplier.</h2>
-    <p class="lede">Consistent grades, market-linked rates and pack sizes that match how you cook and store.</p>
-    <div class="cats">
-      {"".join(f'<a class="cat" href="products.html#{k}"><div class="ph"><img src="img/{img}" width="342" height="255" alt="{alt}"></div><h3>{name}</h3><p>{short}</p></a>' for k, name, img, alt, short, _, _ in CATEGORIES)}
-    </div>
+    <h2 class="h-lg rv">Everything your kitchen orders, <em class="red">from one supplier.</em></h2>
+    <p class="lede rv">Consistent grades, market-linked rates and pack sizes that match how you cook and store.</p>
+    {bento()}
   </div>
 </section>
 
 <section class="ration" id="ration">
-  <div class="container">
-    <div>
-      <h2>Ration bags for welfare, relief and Ramadan.</h2>
-      {URDU_TAGLINE}
-      <p class="lede">Packed, sealed and delivered in the quantity you need, for employee welfare, NGO drives and community distribution.</p>
-      <ul class="programs"><li>Corporate welfare</li><li>NGOs and charity</li><li>Ramadan hampers</li><li>Monthly household packs</li></ul>
-      <div class="ration-photo"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries, oil, pulses and dates"></div>
-    </div>
-    {calculator()}
-  </div>
-</section>
-
-<section id="industries">
-  <div class="container">
-    <h2>Built for kitchens that feed hundreds.</h2>
-    <ul class="inds">
-      {industries_list()}
-    </ul>
-  </div>
-</section>
-
-<section class="delivery" id="delivery">
-  <div class="container">
-    <div class="truck"><img src="img/truck.jpg" width="856" height="268" alt="Zidane delivery truck at the warehouse loading bay"></div>
-    <div class="delivery-grid">
+  <div class="container rv">
+    {bezel(f'''<div class="ration-grid">
       <div>
-        <h2>From our warehouse to your storeroom.</h2>
+        <span class="tag on-red">Ration Program</span>
+        <h2 class="h-lg">Ration bags for welfare, relief and Ramadan.</h2>
+        {URDU}
+        <p class="lede">Packed, sealed and delivered in the quantity you need.</p>
+        <ul class="pills"><li>Corporate welfare</li><li>NGOs and charity</li><li>Ramadan hampers</li><li>Monthly household packs</li></ul>
+        <div class="bezel inset"><div class="core photo"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries, oil, pulses and dates"></div></div>
+      </div>
+      {calculator()}
+    </div>''', core_cls="red")}
+  </div>
+</section>
+
+<section class="section" id="industries">
+  <div class="container split">
+    <div class="sticky rv">
+      <h2 class="h-lg">Built for kitchens that feed hundreds.</h2>
+      <p class="lede">From a single hotel kitchen to every canteen across a factory group.</p>
+      <div style="margin-top:34px">{btn("Request a quote", "contact.html", "btn-soft")}</div>
+    </div>
+    <div class="rv">{industries_block()}</div>
+  </div>
+</section>
+
+<section class="section tight" id="delivery">
+  <div class="container">
+    <div class="truck rv">{bezel('<div class="photo" style="height:100%"><img src="img/truck.jpg" width="856" height="268" alt="Zidane delivery truck at the warehouse loading bay"></div>')}</div>
+    <div class="del-grid">
+      <div class="rv">
+        <h2 class="h-md">From our warehouse to your storeroom.</h2>
         <ul class="checks">
-          <li><svg class="icon"><use href="#i-truck"/></svg>Dedicated delivery fleet</li>
-          <li><svg class="icon"><use href="#i-seal-check"/></svg>Safe, hygienic handling</li>
-          <li><svg class="icon"><use href="#i-clock-countdown"/></svg>Flexible delivery slots</li>
-          <li><svg class="icon"><use href="#i-map-pin"/></svg>Nationwide coverage</li>
+          <li>{icon("truck")}Dedicated delivery fleet</li>
+          <li>{icon("seal-check")}Safe, hygienic handling</li>
+          <li>{icon("clock-countdown")}Flexible delivery slots</li>
+          <li>{icon("map-pin")}Nationwide coverage</li>
         </ul>
       </div>
-      <ol class="steps">
-        <li class="step"><svg class="icon"><use href="#i-list-checks"/></svg><h3>Send your list</h3><p>Items, quantities and how often you need them.</p></li>
-        <li class="step"><svg class="icon"><use href="#i-calculator"/></svg><h3>Get a written quote</h3><p>Itemised rates you can take to your finance team.</p></li>
-        <li class="step"><svg class="icon"><use href="#i-clock-countdown"/></svg><h3>Pick a delivery slot</h3><p>One-off, weekly or monthly, to one site or many.</p></li>
-        <li class="step"><svg class="icon"><use href="#i-check-circle"/></svg><h3>Receive and check</h3><p>Count it at your door against the delivery note.</p></li>
+      <ol class="flow rv">
+        {"".join(f'<li><span class="ic">{icon(i)}</span><div><h3>{t}</h3><p class="body">{d}</p></div></li>' for i, t, d in FLOW)}
       </ol>
     </div>
   </div>
 </section>
 
-{CTA_BAND}"""
+{CTA}"""
 
 
-PRODUCTS = page_head("Products", "Food supply categories", "Staples for kitchens, canteens and ration programs, supplied in bulk sacks, tins or retail packs. Ask for anything not listed.") + f"""
-<section>
+def prod_card(k, name, img, alt, short, long, items):
+    chips = "".join(f"<li>{i}</li>" for i in items)
+    add = btn("Add to quote", "contact.html", "btn-soft sm", "arrow-up-right", ' data-item="' + name + '"')
+    return (f'<article class="prod bezel rv" id="{k}"><div class="core">'
+            f'<div class="photo"><img src="img/{img}" width="342" height="255" alt="{alt}"></div>'
+            f'<div class="txt"><h2 class="h-sm" style="font-size:24px">{name}</h2><p class="body">{long}</p>'
+            f'<ul class="chips">{chips}</ul>{add}</div></div></article>')
+
+
+PRODUCTS = page_head("Products", "Food supply <em class=\"red\">categories.</em>", "Staples for kitchens, canteens and ration programs, in bulk sacks, tins or retail packs. Ask for anything not listed.") + f"""
+<section class="section tight" style="padding-top:0">
   <div class="container catalog">
-    {"".join(f'''<article class="prod" id="{k}">
-      <div class="ph"><img src="img/{img}" width="342" height="255" alt="{alt}"></div>
-      <div>
-        <h2>{name}</h2>
-        <p class="lede">{long}</p>
-        <ul class="chips">{"".join(f"<li>{i}</li>" for i in items)}</ul>
-        <a class="btn btn-outline" href="contact.html" data-item="{name}">Add to my quote {ARROW}</a>
-      </div>
-    </article>''' for k, name, img, alt, short, long, items in CATEGORIES)}
+    {"".join(prod_card(*c) for c in CATEGORIES)}
   </div>
 </section>
-{CTA_BAND}"""
+{CTA}"""
 
 
 PROGRAMS = [
-    ("buildings", "Corporate welfare", "Monthly or festive ration packs for employees, delivered to one office or every site."),
-    ("hand-heart", "NGOs and charity", "Relief and community drives packed to your list, labelled and ready to hand out."),
-    ("package", "Ramadan hampers", "Iftar and sehri staples in curated hampers, ordered early and delivered before the first roza."),
-    ("calculator", "Monthly household packs", "Recurring packs for households you support, on a fixed delivery date each month."),
+    ("buildings", "Corporate welfare", "Monthly or festive ration packs for employees, delivered to one office or every site.", ""),
+    ("hand-heart", "NGOs and charity", "Relief and community drives packed to your list, labelled and ready to hand out.", "tint"),
+    ("package", "Ramadan hampers", "Iftar and sehri staples in curated hampers, delivered before the first roza.", "ink"),
+    ("calculator", "Monthly household packs", "Recurring packs for the households you support, on a fixed date each month.", ""),
 ]
 
-RATION = page_head("Ration Program", "Ration bags and Ramadan programs", "Nutritious, sealed ration packs for corporate welfare, NGOs and community distribution, at list prices you can budget around.") + f"""
-<section>
-  <div class="container split">
-    <div class="ph"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries, oil, pulses and dates"></div>
-    {calculator()}
+RATION = page_head("Ration Program", "Ration bags and <em class=\"red\">Ramadan programs.</em>", "Sealed ration packs for corporate welfare, NGOs and community distribution, at list prices you can budget around.") + f"""
+<section class="ration" style="padding-bottom:0">
+  <div class="container rv">
+    {bezel(f'''<div class="ration-grid">
+      <div>
+        <h2 class="h-md" style="color:#fff">Price a whole drive in seconds.</h2>
+        {URDU}
+        <div class="bezel inset"><div class="core photo"><img src="img/ration.jpg" width="660" height="464" alt="Zidane ration sacks with packed groceries, oil, pulses and dates"></div></div>
+      </div>
+      {calculator()}
+    </div>''', core_cls="red")}
   </div>
 </section>
 
-<section class="delivery">
+<section class="section">
   <div class="container">
-    <h2>Programs we pack for</h2>
-    <div class="prog-grid">
-      {"".join(f'<div class="prog"><span class="ic"><svg class="icon"><use href="#i-{i}"/></svg></span><h3>{t}</h3><p>{d}</p></div>' for i, t, d in PROGRAMS)}
+    <h2 class="h-lg rv">Programs we pack for.</h2>
+    <div class="prog-bento">
+      {"".join(f'<div class="prog bezel rv {c}"><div class="core">{icon(i)}<h3 class="h-sm">{t}</h3><p class="body">{d}</p></div></div>' for i, t, d, c in PROGRAMS)}
     </div>
   </div>
 </section>
 
-<section>
+<section class="section tight" style="padding-top:0">
   <div class="container split">
-    <div class="prose">
-      <h2>Need different contents?</h2>
-      <p>We build packs to your list and budget, and can print your organisation's name on the bag. Share the items per family and the number of families, and we'll send an itemised quote.</p>
-      <a class="btn btn-primary" href="contact.html" style="margin-top:24px">Request a quote {ARROW}</a>
+    <div class="rv">
+      <h2 class="h-md">Need different contents?</h2>
+      <p class="lede">We build packs to your list and budget, and can print your organisation's name on the bag.</p>
+      <div style="margin-top:30px">{btn("Request a quote", "contact.html")}</div>
     </div>
-    <ul class="checks">
-      <li><svg class="icon"><use href="#i-seal-check"/></svg>Sealed, food-grade packing</li>
-      <li><svg class="icon"><use href="#i-package"/></svg>Custom contents and branding</li>
-      <li><svg class="icon"><use href="#i-truck"/></svg>Delivery to distribution points</li>
-      <li><svg class="icon"><use href="#i-list-checks"/></svg>Packing list with every order</li>
+    <ul class="checks rv">
+      <li>{icon("seal-check")}Sealed, food-grade packing</li>
+      <li>{icon("package")}Custom contents and branding</li>
+      <li>{icon("truck")}Delivery to distribution points</li>
+      <li>{icon("list-checks")}Packing list with every order</li>
     </ul>
   </div>
 </section>"""
@@ -323,58 +341,57 @@ RATION = page_head("Ration Program", "Ration bags and Ramadan programs", "Nutrit
 
 VALUES = [
     ("seal-check", "Checked quality", "Stock is inspected on arrival and before dispatch."),
-    ("calculator", "Fair market rates", "Itemised quotes that track the market, not guesswork."),
+    ("calculator", "Fair market rates", "Itemised quotes that track the market."),
     ("clock-countdown", "On time, in full", "The quantity you ordered, on the date we agreed."),
     ("package", "Packed your way", "Pack sizes and branding to suit how you store and share."),
 ]
 
-ABOUT = page_head("About", "Good food builds stronger businesses.", "Zidane General Supplies is a Karachi-based food supplier serving businesses and institutions across Pakistan.") + f"""
-<section>
-  <div class="container split">
-    <div class="prose">
-      <h2>One supplier for the whole pantry</h2>
+ABOUT = page_head("About", "Good food builds <em class=\"red\">stronger businesses.</em>", "Zidane General Supplies is a Karachi-based food supplier serving businesses and institutions across Pakistan.") + f"""
+<section class="section tight" style="padding-top:0">
+  <div class="container split" style="align-items:center">
+    <div class="prose rv">
+      <h2 class="h-md">One supplier for the whole pantry.</h2>
       <p>Kitchens run on staples: rice, atta, oil, daal, sugar and tea. We keep them in stock at scale, so hotels, factories, schools, hospitals and NGOs can order everything from one place and plan around a delivery date they can trust.</p>
       <p>From daily kitchen orders to thousands of ration bags for a Ramadan drive, we quote clearly, pack carefully and deliver what we promised.</p>
     </div>
-    <div class="ph"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member in the warehouse with stacked food sacks"></div>
+    <div class="rv">{bezel('<div class="photo"><img src="img/warehouse.jpg" width="640" height="598" alt="Zidane team member in the warehouse with stacked food sacks"></div>')}</div>
   </div>
 </section>
 
-<section class="delivery">
+<section class="section">
   <div class="container">
-    <h2>How we work</h2>
+    <h2 class="h-lg rv">How we work.</h2>
     <ul class="values">
-      {"".join(f'<li><svg class="icon"><use href="#i-{i}"/></svg><h3>{t}</h3><p>{d}</p></li>' for i, t, d in VALUES)}
+      {"".join(f'<li class="bezel rv"><div class="core">{icon(i)}<h3 class="h-sm">{t}</h3><p class="body">{d}</p></div></li>' for i, t, d in VALUES)}
     </ul>
   </div>
 </section>
 
-<section>
-  <div class="container">
-    <div class="truck"><img src="img/truck.jpg" width="856" height="268" alt="Zidane delivery truck at the warehouse loading bay"></div>
-    <h2 style="margin-top:40px">Who we supply</h2>
-    <ul class="inds">
-      {industries_list()}
-    </ul>
+<section class="section tight" style="padding-top:0">
+  <div class="container split">
+    <div class="sticky rv"><h2 class="h-lg">Who we supply.</h2>
+      <div class="truck" style="margin-top:34px">{bezel('<div class="photo" style="height:100%"><img src="img/truck.jpg" width="856" height="268" alt="Zidane delivery truck at the warehouse loading bay"></div>')}</div>
+    </div>
+    <div class="rv">{industries_block()}</div>
   </div>
 </section>
-{CTA_BAND}"""
+{CTA}"""
 
 
-CONTACT = f"""<section class="quote" id="quote">
-  <div class="container">
+CONTACT = f"""<section class="section tight">
+  <div class="container split">
     <div>
       <p class="crumbs"><a href="./">Home</a><span aria-hidden="true">/</span><span>Contact</span></p>
-      <h1 style="font-size:clamp(34px,4.4vw,52px);font-weight:800;line-height:1.05">Tell us what you need. We'll price it.</h1>
+      <h1 class="h-lg">Tell us what you need. <em class="red">We'll price it.</em></h1>
       <p class="lede">Fill in the form and your request opens in WhatsApp, ready to send to our sales team.</p>
       <ul class="contact-list">
-        <li><svg class="icon"><use href="#i-whatsapp-logo"/></svg><div><b>WhatsApp and phone</b><span class="num" data-cfg="phoneDisplay">{PHONE}</span></div></li>
-        <li><svg class="icon"><use href="#i-envelope-simple"/></svg><div><b>Email</b><span data-cfg="email">{EMAIL}</span></div></li>
-        <li><svg class="icon"><use href="#i-map-pin"/></svg><div><b>Warehouse</b><span data-cfg="city">Karachi, Pakistan</span></div></li>
+        <li><span class="ic">{icon("whatsapp-logo")}</span><div><small>WhatsApp and phone</small><span class="num" data-cfg="phoneDisplay">{PHONE}</span></div></li>
+        <li><span class="ic">{icon("envelope-simple")}</span><div><small>Email</small><span data-cfg="email">{EMAIL}</span></div></li>
+        <li><span class="ic">{icon("map-pin")}</span><div><small>Warehouse</small><span data-cfg="city">Karachi, Pakistan</span></div></li>
       </ul>
     </div>
 
-    <form class="card" id="quote-form" novalidate>
+    <form class="quote-card bezel" id="quote-form" novalidate><div class="core">
       <div class="field"><label for="q-name">Your name</label><input class="input" id="q-name" autocomplete="name" placeholder="Ayesha Siddiqui"><p class="err" id="q-name-err"></p></div>
       <div class="field"><label for="q-company">Organisation</label><input class="input" id="q-company" autocomplete="organization" placeholder="Hotel, factory, school or NGO"></div>
       <div class="field"><label for="q-phone">Phone or WhatsApp</label><input class="input num" id="q-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="03xx xxxxxxx"><p class="err" id="q-phone-err"></p></div>
@@ -393,29 +410,29 @@ CONTACT = f"""<section class="quote" id="quote">
       </div>
       <div class="form-foot full">
         <p class="fine">We only use your details to reply to this request.</p>
-        <button class="btn btn-primary" type="submit">Prepare my request {ARROW}</button>
+        <button class="btn btn-red" type="submit">Prepare my request<span class="bi">{icon("arrow-up-right")}</span></button>
       </div>
       <div class="done" id="done" hidden>
-        <h3><svg class="icon"><use href="#i-check-circle"/></svg>Your request is ready</h3>
+        <h3>{icon("check-circle")}Your request is ready</h3>
         <p class="fine">Send it on WhatsApp or by email. Nothing is sent until you do.</p>
         <pre id="msg"></pre>
         <div class="row">
-          <a class="btn btn-primary" id="wa-link" href="#" target="_blank" rel="noopener">Open WhatsApp <svg class="icon"><use href="#i-whatsapp-logo"/></svg></a>
-          <a class="btn btn-outline" id="mail-link" href="#"><svg class="icon"><use href="#i-envelope-simple"/></svg>Email it</a>
-          <button class="btn btn-outline" type="button" id="copy-btn"><svg class="icon"><use href="#i-copy"/></svg>Copy message</button>
-          <button class="btn btn-outline" type="button" id="edit-btn">Edit request</button>
+          <a class="btn btn-red" id="wa-link" href="#" target="_blank" rel="noopener">Open WhatsApp<span class="bi">{icon("whatsapp-logo")}</span></a>
+          <a class="btn btn-soft" id="mail-link" href="#">Email it<span class="bi">{icon("envelope-simple")}</span></a>
+          <button class="btn btn-soft btn-plain" type="button" id="copy-btn">Copy message</button>
+          <button class="btn btn-soft btn-plain" type="button" id="edit-btn">Edit request</button>
         </div>
       </div>
-    </form>
+    </div></form>
   </div>
 </section>"""
 
 
 NOT_FOUND = f"""<section class="notfound">
   <div class="container">
-    <h1 style="font-size:clamp(34px,4.4vw,52px);font-weight:800">This page isn't here.</h1>
+    <h1 class="h-lg">This page <em class="red">isn't here.</em></h1>
     <p class="lede">The link may be old or mistyped. Try the home page or send us your list directly.</p>
-    <div class="hero-ctas"><a class="btn btn-primary" href="./">Go to home {ARROW}</a><a class="btn btn-outline" href="contact.html">Contact</a></div>
+    <div class="ctas" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:34px">{btn("Go to home", "./")}{btn("Contact", "contact.html", "btn-soft", "arrow-right")}</div>
   </div>
 </section>"""
 
@@ -460,7 +477,7 @@ def head_tags(file, title, desc):
 <meta property="og:description" content="{desc}">
 <meta property="og:url" content="{url}">
 <meta property="og:image" content="{SITE_URL}/img/warehouse.jpg">
-<meta name="theme-color" content="#c8102e">
+<meta name="theme-color" content="#d0112b">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -470,7 +487,7 @@ def head_tags(file, title, desc):
 
 def body(active, content):
     return f"""{SPRITE}
-{header(active)}
+{nav(active)}
 <main id="main">
 {content}
 </main>

@@ -19,17 +19,30 @@
   document.querySelectorAll("[data-wa]").forEach(function (a) { a.href = "https://wa.me/" + CONFIG.whatsapp; });
   if ($("year")) $("year").textContent = new Date().getFullYear();
 
-  // Mobile menu
-  var nav = $("nav"), menuBtn = $("menu-btn");
-  if (nav && menuBtn) {
-    var close = function () { nav.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); menuBtn.textContent = "Menu"; };
-    menuBtn.addEventListener("click", function () {
-      var open = nav.classList.toggle("open");
-      menuBtn.setAttribute("aria-expanded", String(open));
-      menuBtn.textContent = open ? "Close" : "Menu";
+  // Island nav: burger morphs to X and opens the full-screen menu
+  var burger = $("burger"), overlay = $("overlay");
+  if (burger && overlay) {
+    var setMenu = function (open) {
+      overlay.classList.toggle("open", open);
+      overlay.setAttribute("aria-hidden", String(!open));
+      burger.setAttribute("aria-expanded", String(open));
+      burger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      document.documentElement.style.overflow = open ? "hidden" : "";
+    };
+    burger.addEventListener("click", function () { setMenu(!overlay.classList.contains("open")); });
+    overlay.addEventListener("click", function (e) { if (e.target.closest("a")) setMenu(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setMenu(false); });
+  }
+
+  // Scroll entry: arm only what starts below the first screen, reveal as it enters
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduce && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.remove("pre"); io.unobserve(en.target); } });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    document.querySelectorAll(".rv").forEach(function (el) {
+      if (el.getBoundingClientRect().top > window.innerHeight) { el.classList.add("pre"); io.observe(el); }
     });
-    nav.addEventListener("click", function (e) { if (e.target.closest("a")) close(); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
   }
 
   // Anything marked data-item adds that item to the quote request
