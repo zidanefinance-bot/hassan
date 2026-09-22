@@ -1,0 +1,54 @@
+{
+  "language": "ur",
+  "duration": 41,
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 6.0,
+      "text": "Ration packing - quality assured",
+      "tokens": []
+    },
+    {
+      "id": 1,
+      "seek": 6000,
+      "start": 6.0,
+      "end": 13.0,
+      "text": "Professional packing process",
+      "tokens": []
+    },
+    {
+      "id": 2,
+      "seek": 13000,
+      "start": 13.0,
+      "end": 20.0,
+      "text": "Fresh ingredients carefully selected",
+      "tokens": []
+    },
+    {
+      "id": 3,
+      "seek": 20000,
+      "start": 20.0,
+      "end": 28.0,
+      "text": "Sealed with care for your family",
+      "tokens": []
+    },
+    {
+      "id": 4,
+      "seek": 28000,
+      "start": 28.0,
+      "end": 35.0,
+      "text": "Ready to deliver quality and trust",
+      "tokens": []
+    },
+    {
+      "id": 5,
+      "seek": 35000,
+      "start": 35.0,
+      "end": 41.0,
+      "text": "Order your ration pack today",
+      "tokens": []
+    }
+  ]
+}
