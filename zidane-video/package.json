@@ -1,0 +1,21 @@
+{
+  "name": "zidane-video",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "render": "remotion render src/index.ts ZidaneReel out/zidane-reel.mp4 --codec h264 --crf 16 --overwrite",
+    "studio": "remotion studio src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@remotion/cli": "^4.0.531",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.531",
+    "typescript": "^7.0.2"
+  }
+}
