@@ -8,7 +8,7 @@ import math, random, struct, wave
 SR = 44100
 BPM = 96
 BEAT = 60 / BPM
-DUR = 20.0
+DUR = 22.0
 N = int(SR * DUR)
 buf = [0.0] * N
 random.seed(3)
