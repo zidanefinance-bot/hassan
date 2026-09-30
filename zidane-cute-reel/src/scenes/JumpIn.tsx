@@ -7,7 +7,11 @@ import { BounceWords, Exit, Sticker } from "../components/Cute";
 export const JUMP_START = 14;
 export const JUMP_STEP = 10;
 export const FLIGHT = 16;
-export const LANDS = brand.squad.map((_, i) => JUMP_START + i * JUMP_STEP + FLIGHT);
+export const landsFor = (n: number) => Array.from({ length: n }, (_, i) => JUMP_START + i * JUMP_STEP + FLIGHT);
+export const LANDS = landsFor(brand.squad.length);
+
+type Item = { img: string; w: number };
+const DEFAULT_HEADING = { words: [brand.jumpHeading.pre, ...brand.jumpHeading.accent.split(" "), brand.jumpHeading.post], accent: 2 };
 
 const MOUTH = { x: 540, y: 1150 }; // just below the bag's top edge, so items vanish behind it
 const FROM = [
@@ -16,7 +20,10 @@ const FROM = [
 ];
 
 // Every item hops into the big Zidane bag; the bag squashes on each landing.
-export const JumpIn: React.FC<{ length: number }> = ({ length }) => {
+export const JumpIn: React.FC<{ length: number; items?: readonly Item[]; heading?: { words: readonly string[]; accent?: number } }> = ({
+  length, items = brand.squad, heading = DEFAULT_HEADING,
+}) => {
+  const LANDS = landsFor(items.length);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const enter = spring({ frame, fps, config: theme.spring.bouncy });
@@ -31,16 +38,16 @@ export const JumpIn: React.FC<{ length: number }> = ({ length }) => {
     <Exit length={length}>
       <AbsoluteFill style={{ alignItems: "center" }}>
         <div style={{ marginTop: 200 }}>
-          <BounceWords words={[brand.jumpHeading.pre, ...brand.jumpHeading.accent.split(" "), brand.jumpHeading.post]} delay={0} fontSize={theme.size.title} accent={2} />
+          <BounceWords words={heading.words} delay={0} fontSize={theme.size.title} accent={heading.accent} />
         </div>
       </AbsoluteFill>
       {/* flying items */}
-      {brand.squad.map((item, i) => {
+      {items.map((item, i) => {
         const t0 = JUMP_START + i * JUMP_STEP;
         const p = interpolate(frame, [t0, t0 + FLIGHT], [0, 1], { easing: theme.ease.inOut, ...theme.clamp });
         if (frame < t0 - 8 || p >= 1) return null;
         const appear = spring({ frame: frame - (t0 - 8), fps, config: theme.spring.snappy });
-        const f = FROM[i];
+        const f = FROM[i % FROM.length];
         const x = interpolate(p, [0, 1], [f.x, MOUTH.x]);
         const y = interpolate(p, [0, 1], [f.y, MOUTH.y]) - Math.sin(p * Math.PI) * 260;
         const s = interpolate(p, [0, 1], [0.75, 0.3]) * appear;

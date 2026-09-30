@@ -10,14 +10,18 @@ const COLS = [290, 790];
 const ROWS = [650, 1110, 1570];
 
 // Six ration items pop in as a "squad", each with a speech-bubble line.
-export const Squad: React.FC<{ length: number }> = ({ length }) => (
+type Item = { img: string; say: string; w: number };
+
+export const Squad: React.FC<{ length: number; heading?: string; accent?: number; items?: readonly Item[] }> = ({
+  length, heading = brand.squadHeading, accent = 1, items = brand.squad,
+}) => (
   <Exit length={length}>
     <AbsoluteFill style={{ alignItems: "center" }}>
       <div style={{ marginTop: 190 }}>
-        <BounceWords words={brand.squadHeading.split(" ")} delay={2} fontSize={theme.size.title} accent={1} />
+        <BounceWords words={heading.split(" ")} delay={2} fontSize={theme.size.title} accent={accent} />
       </div>
     </AbsoluteFill>
-    {brand.squad.map((item, i) => (
+    {items.map((item, i) => (
       <Member key={item.img} i={i} x={COLS[i % 2]} y={ROWS[Math.floor(i / 2)]} {...item} />
     ))}
   </Exit>

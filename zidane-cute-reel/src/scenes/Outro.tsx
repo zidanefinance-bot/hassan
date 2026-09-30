@@ -7,12 +7,12 @@ import { Sparkle, headline, usePop } from "../components/Cute";
 export const LOGO_LAND = 12; // frames
 
 // Red circle wipe → white Zidane logo → audience chips → CTA, WhatsApp, URL. Long still hold.
-export const Outro: React.FC = () => {
+export const Outro: React.FC<{ cta?: string; chips?: readonly string[] }> = ({ cta = brand.cta, chips = brand.audience }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const wipe = spring({ frame, fps, config: theme.spring.smooth });
   const logo = usePop(LOGO_LAND);
-  const cta = usePop(36);
+  const ctaPop = usePop(36);
   const wa = usePop(44);
   const url = usePop(50);
   const float = Math.sin(frame / 20) * 6;
@@ -30,7 +30,7 @@ export const Outro: React.FC = () => {
             <Img src={staticFile("brand/zidane-logo-white.svg")} style={{ width: 800 }} />
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 18, marginTop: 70, width: 900 }}>
-            {brand.audience.map((a, i) => {
+            {chips.map((a, i) => {
               const p = spring({ frame: frame - 22 - i * 4, fps, config: theme.spring.bouncy });
               return (
                 <div key={a}
@@ -43,8 +43,8 @@ export const Outro: React.FC = () => {
               );
             })}
           </div>
-          <div style={{ marginTop: 90, transform: cta.transform, opacity: cta.opacity }}>
-            <div style={{ ...headline, fontSize: 84, color: theme.colors.yellow }}>{brand.cta}</div>
+          <div style={{ marginTop: 90, transform: ctaPop.transform, opacity: ctaPop.opacity }}>
+            <div style={{ ...headline, fontSize: 84, color: theme.colors.yellow }}>{cta}</div>
           </div>
           <div style={{ marginTop: 50, transform: wa.transform, opacity: wa.opacity }}>
             <div style={{

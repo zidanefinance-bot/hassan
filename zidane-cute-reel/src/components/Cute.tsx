@@ -33,8 +33,10 @@ export const CuteBg: React.FC = () => {
   );
 };
 
+export type Mood = "smile" | "wow" | "wink" | "sad";
+
 // Googly eyes + blush + smile. Blinks every ~2.3s, pupils drift. `mood` "wow" opens the mouth.
-export const Face: React.FC<{ size: number; phase?: number; mood?: "smile" | "wow" | "wink" }> = ({
+export const Face: React.FC<{ size: number; phase?: number; mood?: Mood }> = ({
   size, phase = 0, mood = "smile",
 }) => {
   const frame = useCurrentFrame() + phase;
@@ -61,7 +63,12 @@ export const Face: React.FC<{ size: number; phase?: number; mood?: "smile" | "wo
       <ellipse cx={130} cy={70} rx={15} ry={8} fill={theme.colors.pink} opacity={0.85} />
       {eye(55, false)}
       {eye(105, mood === "wink")}
-      {mood === "wow" ? (
+      {mood === "sad" && (
+        <path d="M140 18 Q150 34 140 40 Q130 34 140 18Z" fill="#7CC7FF" stroke={theme.colors.ink} strokeWidth={3} />
+      )}
+      {mood === "sad" ? (
+        <path d="M66 82 Q80 68 94 82" stroke={theme.colors.ink} strokeWidth={5.5} fill="none" strokeLinecap="round" />
+      ) : mood === "wow" ? (
         <ellipse cx={80} cy={78} rx={10} ry={12} fill={theme.colors.redDeep} stroke={theme.colors.ink} strokeWidth={4} />
       ) : (
         <path d="M66 70 Q80 86 94 70" stroke={theme.colors.ink} strokeWidth={5.5} fill="none" strokeLinecap="round" />
@@ -77,7 +84,7 @@ export const Sticker: React.FC<{
   faceY?: number; // 0..1 from top
   faceScale?: number;
   phase?: number;
-  mood?: "smile" | "wow" | "wink";
+  mood?: Mood;
   noFace?: boolean;
 }> = ({ src, width, faceY = 0.5, faceScale = 0.62, phase = 0, mood, noFace }) => {
   const o = 6;
