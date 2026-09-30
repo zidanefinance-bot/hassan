@@ -105,7 +105,7 @@ export const CExit: React.FC<{ length: number; children: React.ReactNode }> = ({
 // Counter that eases to `to`
 export const Count: React.FC<{ to: number; delay?: number; dur?: number }> = ({ to, delay = 0, dur = 30 }) => {
   const p = useIn(delay, dur);
-  return <>{Math.round(to * p)}</>;
+  return <>{Math.round(to * p).toLocaleString("en-US")}</>;
 };
 
 export type IconName =
