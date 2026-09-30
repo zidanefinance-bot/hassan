@@ -6,12 +6,12 @@ export type Cue = { at: number; src: "pop" | "tick" | "whoosh" | "bass"; volume:
 export const LEAD = 2; // SFX lands 2 frames before the visual
 
 // Music bed (synthesized, royalty-free) + SFX cues.
-export const Soundtrack: React.FC<{ cues: Cue[]; bed?: number }> = ({ cues, bed = 0.55 }) => {
+export const Soundtrack: React.FC<{ cues: Cue[]; bed?: number; music?: string }> = ({ cues, bed = 0.55, music = "sfx/cute-bed.wav" }) => {
   const { durationInFrames, fps } = useVideoConfig();
   return (
     <>
       <Audio
-        src={staticFile("sfx/cute-bed.wav")}
+        src={staticFile(music)}
         endAt={durationInFrames}
         volume={(f) => interpolate(f, [0, fps * 0.3, durationInFrames - fps, durationInFrames], [0, bed, bed, 0], theme.clamp)}
       />
