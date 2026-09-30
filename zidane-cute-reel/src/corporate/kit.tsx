@@ -141,8 +141,7 @@ export const CorpOutro: React.FC<{ line1: string; line2: string }> = ({ line1, l
   const { fps } = useVideoConfig();
   const logo = useIn(4, 26);
   const rows = [
-    { k: "WhatsApp", v: "0339 2639315" },
-    { k: "UAN", v: "021 111 ZIDANE" },
+    { k: "Email", v: "sales@zidane.com.pk" },
     { k: "Web", v: "zidane.com.pk" },
   ];
   return (
@@ -168,7 +167,7 @@ export const CorpOutro: React.FC<{ line1: string; line2: string }> = ({ line1, l
             </div>
           );
         })}
-        <Rule delay={fps + 15} />
+        <Rule delay={fps + 10} />
       </div>
     </AbsoluteFill>
   );
