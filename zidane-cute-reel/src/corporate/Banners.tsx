@@ -47,9 +47,9 @@ export const BannerPersonal: React.FC = () => (
         Groceries for business.<br /><span style={{ color: corp.red }}>One supplier.</span>
       </div>
       <div style={{ marginTop: 20, fontFamily: corp.body, fontWeight: 600, fontSize: 18, color: corp.text }}>
-        Bulk supply & ration programs · Factories · Offices · NGOs · HoReCa
+        Factories · Offices · Hospitals · Schools · HoReCa
       </div>
-      <div style={{ marginTop: 6, fontFamily: corp.body, fontWeight: 700, fontSize: 18, color: corp.red }}>sales@zidane.com.pk</div>
+      <div style={{ marginTop: 6, fontFamily: corp.body, fontWeight: 700, fontSize: 18, color: corp.red }}>www.zidane.com.pk</div>
     </div>
     <div style={{ position: "absolute", right: 70, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end" }}>
       <Img src={staticFile("brand/zidane-logo-white.svg")} style={{ width: 310 }} />
@@ -69,7 +69,7 @@ export const BannerCompany: React.FC = () => (
         Groceries for business.<br /><span style={{ color: corp.red }}>One supplier.</span>
       </div>
       <div style={{ marginTop: 10, fontFamily: corp.body, fontWeight: 600, fontSize: 12.5, color: corp.text }}>
-        Bulk supply & ration programs · <span style={{ color: corp.red }}>sales@zidane.com.pk</span>
+        Factories · Offices · Hospitals · HoReCa · <span style={{ color: corp.red }}>www.zidane.com.pk</span>
       </div>
     </div>
     <div style={{ position: "absolute", right: 60, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end" }}>
