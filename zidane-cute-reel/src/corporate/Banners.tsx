@@ -47,12 +47,14 @@ export const BannerPersonal: React.FC = () => (
         Groceries for business.<br /><span style={{ color: corp.red }}>One supplier.</span>
       </div>
       <div style={{ marginTop: 20, fontFamily: corp.body, fontWeight: 600, fontSize: 18, color: corp.text }}>
-        107 products · Factories · Offices · NGOs · HoReCa
+        Bulk supply & ration programs · Factories · Offices · NGOs · HoReCa
       </div>
       <div style={{ marginTop: 6, fontFamily: corp.body, fontWeight: 700, fontSize: 18, color: corp.red }}>sales@zidane.com.pk</div>
     </div>
-    <div style={{ position: "absolute", right: 44, bottom: 30 }}><Products height={250} gap={10} width={470} ids={["1017740", "1148810", "1215041", "1145167"]} /></div>
-    <Img src={staticFile("brand/zidane-logo-white.svg")} style={{ position: "absolute", right: 48, top: 30, width: 150, opacity: 0.95 }} />
+    <div style={{ position: "absolute", right: 70, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end" }}>
+      <Img src={staticFile("brand/zidane-logo-white.svg")} style={{ width: 310 }} />
+      <div style={{ marginTop: 22, width: 120, height: 4, background: corp.red }} />
+    </div>
   </AbsoluteFill>
 );
 
@@ -67,10 +69,13 @@ export const BannerCompany: React.FC = () => (
         Groceries for business.<br /><span style={{ color: corp.red }}>One supplier.</span>
       </div>
       <div style={{ marginTop: 10, fontFamily: corp.body, fontWeight: 600, fontSize: 12.5, color: corp.text }}>
-        107 products · Bulk supply & ration programs · <span style={{ color: corp.red }}>sales@zidane.com.pk</span>
+        Bulk supply & ration programs · <span style={{ color: corp.red }}>sales@zidane.com.pk</span>
       </div>
     </div>
-    <div style={{ position: "absolute", right: 24, bottom: 12 }}><Products height={165} gap={8} width={380} ids={["1017740", "1148810", "1119315", "1215041", "1145167"]} /></div>
+    <div style={{ position: "absolute", right: 60, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end" }}>
+      <Img src={staticFile("brand/zidane-logo-white.svg")} style={{ width: 250 }} />
+      <div style={{ marginTop: 12, width: 80, height: 3, background: corp.red }} />
+    </div>
   </AbsoluteFill>
 );
 
