@@ -7,6 +7,7 @@ import { TeamRation, TEAM_TOTAL } from "./videos/TeamRation";
 import { UgcSourcing, UGC_TOTAL } from "./videos/UgcSourcing";
 import { PostCompositions } from "./corporate/Posts";
 import { TalkingHeadUgc, TALKING_TOTAL } from "./videos/TalkingHeadUgc";
+import { AvatarExplainer, AVATAR_TOTAL } from "./videos/AvatarExplainer";
 import { BannerCompositions } from "./corporate/Banners";
 import { CatalogCompositions } from "./corporate/CatalogPdf";
 import { CorpBrands, BRANDS_TOTAL, CorpBiryani, BIRYANI_TOTAL, CorpChai, CHAI_TOTAL, CorpQuestions, QUESTIONS_TOTAL, CorpListQuote, LISTQUOTE_TOTAL } from "./corporate/ProductReels";
@@ -17,6 +18,7 @@ const size = { fps: FPS, width: 1080, height: 1920 } as const;
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <Composition id="AvatarExplainer" component={AvatarExplainer} durationInFrames={AVATAR_TOTAL} {...size} />
     <Composition id="TalkingHeadUgc" component={TalkingHeadUgc} durationInFrames={TALKING_TOTAL} {...size} />
     <PostCompositions />
     <BannerCompositions />

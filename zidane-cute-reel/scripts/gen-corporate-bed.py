@@ -3,12 +3,13 @@
 Pure standard library. 96 BPM: soft detuned pad (Am–F–C–G), pulsing 8th-note bass,
 light hi-hat ticks and a gentle pluck arpeggio. Run: python3 scripts/gen-corporate-bed.py
 """
-import math, random, struct, wave
+import math, random, struct, sys, wave
 
 SR = 44100
 BPM = 96
 BEAT = 60 / BPM
-DUR = 22.0
+DUR = float(sys.argv[1]) if len(sys.argv) > 1 else 22.0
+OUT = sys.argv[2] if len(sys.argv) > 2 else "public/sfx/corp-bed.wav"
 N = int(SR * DUR)
 buf = [0.0] * N
 random.seed(3)
@@ -52,7 +53,7 @@ for b in range(int(DUR / bar) + 1):
         add(t0 + k * BEAT / 2 + BEAT / 4, 0.04, hat, 0.03)
 
 peak = max(abs(x) for x in buf) or 1
-with wave.open("public/sfx/corp-bed.wav", "wb") as w:
+with wave.open(OUT, "wb") as w:
     w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes(b"".join(struct.pack("<h", int(x / peak * 0.85 * 32767)) for x in buf))
-print("wrote public/sfx/corp-bed.wav")
+print("wrote", OUT, DUR, "s")

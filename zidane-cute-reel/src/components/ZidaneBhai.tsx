@@ -26,9 +26,10 @@ export const ZidaneBhai: React.FC<{
   pose: Pose;
   poseT: number; // 0..1 blend into the pose
   smile?: boolean;
-}> = ({ speaking, brow, pose, poseT, smile = true }) => {
+  mouth?: number; // 0..1 from the voice track; overrides the synthetic talk envelope
+}> = ({ speaking, brow, pose, poseT, smile = true, mouth }) => {
   const frame = useCurrentFrame();
-  const open = speaking ? talk(frame) : 0;
+  const open = mouth !== undefined ? mouth : speaking ? talk(frame) : 0;
   const cycle = frame % 84;
   const blink = cycle > 78 ? interpolate(cycle, [78, 80, 83], [1, 0.08, 1], theme.clamp) : 1;
   const nod = speaking ? Math.sin(frame / 4.2) * 1.6 : 0;

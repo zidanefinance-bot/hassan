@@ -136,11 +136,11 @@ export const LineIcon: React.FC<{ name: IconName; size?: number; delay?: number;
 };
 
 // Corporate end card
-export const CorpOutro: React.FC<{ line1: string; line2: string }> = ({ line1, line2 }) => {
+export const CorpOutro: React.FC<{ line1: string; line2: string; rows?: { k: string; v: string }[] }> = ({ line1, line2, rows: customRows }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const logo = useIn(4, 26);
-  const rows = [
+  const rows = customRows ?? [
     { k: "Email", v: "sales@zidane.com.pk" },
     { k: "Web", v: "zidane.com.pk" },
   ];
