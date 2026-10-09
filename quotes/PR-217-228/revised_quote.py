@@ -9,7 +9,7 @@ from apply_listings import ITEMS_ONLINE as ITEMS
 
 MARKUP = 0.15
 RED = colors.HexColor("#B71C1C")
-KNOWN = ["Bosch Professional", "Vertex (Taiwan)", "Toho (Taiwan)", "Masada (Japan)", "Licota", "Yato", "Insize", "Dormer",
+KNOWN = ["Bosch Professional", "DeWalt", "Draper", "Vertex (Taiwan)", "Toho (Taiwan)", "Masada (Japan)", "Licota", "Yato", "Insize", "Dormer",
          "YG-1", "Norton", "Karam", "WD-40", "Industrial", "Bosch"]
 MAP = {"Generic (Taiwan)": "Taiwan", "Taiwan HSS": "Taiwan", "Harris type": "Industrial", "Local": "Local", "Generic": "Taiwan"}
 
