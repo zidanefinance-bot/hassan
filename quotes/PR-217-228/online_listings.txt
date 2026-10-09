@@ -1,9 +1,9 @@
 # sr | brand | buy price | source(s)
-9|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 15190)
+9|Licota|29600|toolsmart.pk Licota offset ring singles 8x10 1,230 / 14x15 2,060 / 24x26 3,420 / 30x32 4,240 -> 12pc 6-32 sum ~29,600
 10|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 12630)
 13|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Tolsen 11780)
-11|NOT FOUND
-12|NOT FOUND
+11|Licota|7430|toolsmart.pk Licota double open end 36x41 Rs 7,430
+12|Licota|12310|toolsmart.pk Licota double open end 41x46 Rs 12,310
 14|Licota|67130|toolsmart Licota 120pc 56,890-67,130
 15|Licota|5460|toolsmart Licota 6pc pin punch 5,460
 17|Licota|4400|toolsmart Licota 9pc long hex 4,400
@@ -14,10 +14,10 @@
 44|Yato|1750|zeeshanhardware Yato YT-6190 12in 1,750
 64|Yato|1350|zeeshanhardware Yato YT-6228 10in 1,350
 65|Yato|1350|zeeshanhardware Yato YT-6228 10in 1,350
-23|Licota|2913|toolsmart Licota 4pc snap ring plier set 175mm 11,650 (=int/ext straight/bent, per pc 2,913)
-24|Licota|2913|same set
-25|Licota|2913|same set
-26|Licota|2913|same set
+23|Licota|3438|toolsmart.pk Licota 4pc snap ring set 175mm Rs 13,750 (=3,438/pc)
+24|Licota|3438|toolsmart.pk Licota 4pc snap ring set 175mm Rs 13,750 (=3,438/pc)
+25|Licota|3438|toolsmart.pk Licota 4pc snap ring set 175mm Rs 13,750 (=3,438/pc)
+26|Licota|3438|toolsmart.pk Licota 4pc snap ring set 175mm Rs 13,750 (=3,438/pc)
 63|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 3890)
 31|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 1700)
 32|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 2850)
@@ -170,7 +170,7 @@
 142|NOT FOUND
 143|NOT FOUND
 144|NOT FOUND
-8|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 87000)
+8|Licota|272440|toolsmart.pk LICOTA MADE IN TAIWAN 7 Drawer Cabinet Trolley without tools Rs 272,440 in stock (screenshot Hassan)
 148|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Tolsen 360)
 160|NOT FOUND
 161|NOT FOUND
