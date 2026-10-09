@@ -15,6 +15,7 @@ MAP = {"Generic (Taiwan)": "Taiwan", "Taiwan HSS": "Taiwan", "Harris type": "Ind
 
 def brand(b):
     if b in DIRECT: return DIRECT[b]
+    if b.startswith(DORMER): return DORMER
     first = b.split(" / ")[0].strip()
     for k, v in MAP.items():
         if first.startswith(k): return v
@@ -25,6 +26,7 @@ def brand(b):
 DIRECT = {"Harden": "Harden", "Total": "Total", "Ingco": "Ingco", "Tolsen": "Tolsen", "Ronix": "Ronix", "Tanaka": "Tanaka",
           "Blue Eagle": "Blue Eagle", "Leather Forge": "Leather Forge", "7CF": "7CF", "Mubah": "Mubah", "Zodian": "Zodian",
           "Fortrex": "Fortrex", "WM": "WM", "Industrial (VMAX)": "VMAX"}
+DORMER = "Dormer"
 
 def r10(x):
     return float(Decimal(str(round(x, 6))).quantize(Decimal("1E1"), rounding=ROUND_HALF_UP))

@@ -4,7 +4,7 @@ ROWS = """
 1|STONE CUTTING DISC 4"|Industrial|30|325|Bosch / Industrial|120|280|toolshub/ingcomart Permanent 4in 120; nasirnsons Rhodius 280|V|
 2|STEEL NAIL 1-1/2" Taiwan|Licota|2|455|Generic (Taiwan)|300|450|Hardware mkt|E|Licota nails nahi banata
 3|MECHANICAL JACK 5 TON (Japan or Germany)|Licota|2|58500|Masada (Japan) / Yato|45000|75000|Importer quote needed|E|Licota jack nahi banata; Japan brand confirm karo
-4|DRILL BIT 08 MM (Yato or any Good brand taiwan)|Licota|50|715|Yato|350|500|ktools/imartpk Yato|E|
+4|DRILL BIT 08 MM (Yato or any Good brand taiwan)|Licota|50|715|Dormer A002|1500|2500|toolsmart.pk Dormer A002 1-10mm from 900 (8mm exact n/a)|E|Dormer - 8mm exact rate confirm
 5|MECHANICAL JACK 03 TONS (Japan or germany)|Licota|2|41600|Masada (Japan) / Yato|32000|55000|Importer quote needed|E|
 6|SAFETY HELMET (WHITE)|Industrial|6|1105|Industrial|730|1000|powerhouseexpress Total 730; toolsmart Ingco 1,440; local 500-750|V|
 7|SAFETY GOOGLES|Industrial|24|507|Industrial|250|400|Market|E|
@@ -69,21 +69,21 @@ ROWS = """
 69|CIRCUMFERENCE TAPE (60-950) (D20-300)|Licota|2|23400|Insize|15000|25000|Market|E|
 70|CIRCUMFERENCE TAPE (940-2200) (D300-700)|Licota|1|32500|Insize|25000|40000|Market|E|
 71|MEASURING TAPE 5M|Licota|1|1105|Yato|800|1200|Market|E|
-73|HSS COBALT DRILL SET 1-13MM 25 PCS|Licota|1|45500|Yato (HSS-Co)|25000|35000|ktools/imartpk Yato|E|
-74|HSS DRILL BITS 1/16-1/2" 29 PCS SET|Licota|2|23400|Yato|12000|18000|ktools/imartpk Yato|E|
-75|HSS DRILL BIT 14MM TAPER SHANK|Licota|2|1950|Dormer / YG-1|2500|3200|Market; India Dormer ref|E|Licota taper shank nahi banata
-76|HSS DRILL BIT 15MM TAPER SHANK|Licota|2|2080|Dormer / YG-1|2700|3400|Market|E|
-77|HSS DRILL BIT 15.5MM TAPER SHANK|Licota|2|2210|Dormer / YG-1|2800|3600|Market|E|
-78|HSS DRILL BIT 16MM TAPER SHANK|Licota|2|2340|Dormer / YG-1|3000|3800|Market|E|
-79|HSS DRILL BIT 16.5MM TAPER SHANK|Licota|2|2470|Dormer / YG-1|3100|4000|Market|E|
-80|HSS DRILL BIT 17MM TAPER SHANK|Licota|2|2600|Dormer / YG-1|3300|4200|Market|E|
-81|HSS DRILL BIT 17.5MM TAPER SHANK|Licota|2|2730|Dormer / YG-1|3500|4400|Market|E|
-82|HSS DRILL BIT 19MM TAPER SHANK|Licota|2|3250|Dormer / YG-1|4000|5000|Market|E|
-83|HSS DRILL BIT 21MM TAPER SHANK|Licota|1|4160|Dormer / YG-1|5000|6500|Market|E|
-84|HSS DRILL BIT 25MM TAPER SHANK|Licota|1|5850|Dormer / YG-1|6500|8500|Market|E|
-85|HSS DRILL BIT 30MM TAPER SHANK|Licota|1|8450|Dormer / YG-1|9500|12500|Market|E|
-86|HSS DRILL BIT 32MM TAPER SHANK|Licota|1|9750|Dormer / YG-1|11000|14500|Market|E|
-87|HSS DRILL BIT 35MM TAPER SHANK|Licota|1|11700|Dormer / YG-1|13500|17500|Market|E|
+73|HSS COBALT DRILL SET 1-13MM 25 PCS|Licota|1|45500|Dormer A095 (HSS-Co)|35000|55000|Dormer 25pc 1-13mm set - PK listing n/a (UK/US list scaled)|E|Dormer set - dealer se rate lo
+74|HSS DRILL BITS 1/16-1/2" 29 PCS SET|Licota|2|23400|Dormer A095 (A002 x29)|45000|70000|mrosupply Dormer A09518 29pc set (USD) scaled - PK listing n/a|E|Dormer set - dealer se rate lo
+75|HSS DRILL BIT 14MM TAPER SHANK|Licota|2|1950|Dormer A130|9790|12730|Dormer A130 14mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+76|HSS DRILL BIT 15MM TAPER SHANK|Licota|2|2080|Dormer A130|11060|14380|Dormer A130 15mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+77|HSS DRILL BIT 15.5MM TAPER SHANK|Licota|2|2210|Dormer A130|11700|15210|Dormer A130 15.5mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+78|HSS DRILL BIT 16MM TAPER SHANK|Licota|2|2340|Dormer A130|12330|16030|Dormer A130 16mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+79|HSS DRILL BIT 16.5MM TAPER SHANK|Licota|2|2470|Dormer A130|12970|16860|Dormer A130 16.5mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+80|HSS DRILL BIT 17MM TAPER SHANK|Licota|2|2600|Dormer A130|13600|17680|Dormer A130 17mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+81|HSS DRILL BIT 17.5MM TAPER SHANK|Licota|2|2730|Dormer A130|14240|18510|Dormer A130 17.5mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+82|HSS DRILL BIT 19MM TAPER SHANK|Licota|2|3250|Dormer A130|16140|20990|Dormer A130 19mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+83|HSS DRILL BIT 21MM TAPER SHANK|Licota|1|4160|Dormer A130|19230|25000|Dormer A130 21mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+84|HSS DRILL BIT 25MM TAPER SHANK|Licota|1|5850|Dormer A130|26490|34430|Dormer A130 25mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+85|HSS DRILL BIT 30MM TAPER SHANK|Licota|1|8450|Dormer A130|38450|49980|Dormer A130 30mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+86|HSS DRILL BIT 32MM TAPER SHANK|Licota|1|9750|Dormer A130|44060|57270|Dormer A130 32mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
+87|HSS DRILL BIT 35MM TAPER SHANK|Licota|1|11700|Dormer A130|52470|68210|Dormer A130 35mm: khmtools.com.ph PHP list x4.95 (+30% PK import); toolsmart.pk A130 range from 5,880|E|Dormer - dealer se exact rate lo
 88|MORSE TAPER EXTENSION SOCKET SLEEVE ADAPT|Licota|2|4550|Vertex (Taiwan)|3500|5000|Market|E|
 89|MORSE TAPER EXTENSION SOCKET SLEEVE ADAPT|Licota|2|5850|Vertex (Taiwan)|4500|6500|Market|E|
 90|MORSE TAPER EXTENSION SOCKET SLEEVE ADAPT|Licota|2|7150|Vertex (Taiwan)|5500|8000|Market|E|
@@ -187,15 +187,15 @@ ROWS = """
 200|MICROMETER 75 TO 100MM|Licota|1|20800|Insize 3203-100A|6875|7800|imsons Insize 3203-100A 6,875|V|Analog Insize; digital chahiye to ~15k+
 201|MICROMETER 100 TO 125MM|Licota|1|22750|Insize 3203-125A|8750|9800|imsons Insize 3203-125A 8,750|V|Analog Insize; digital chahiye to ~15k+
 202|NEEDLE FILE (5PCS SET)|Licota|2|2340|Yato|1500|2000|Market|E|
-204|END MILL CUTTER SIZE 5MM|Licota|6|845|YG-1 / Taiwan HSS-Co|800|1200|Market|E|Licota end mill nahi banata
-205|END MILL CUTTER SIZE 6MM|Licota|6|910|YG-1 / Taiwan HSS-Co|900|1300|Market|E|
-206|END MILL CUTTER SIZE 8MM|Licota|6|1170|YG-1 / Taiwan HSS-Co|1200|1700|Market|E|
-207|END MILL CUTTER SIZE 10MM|Licota|4|1430|YG-1 / Taiwan HSS-Co|1600|2200|Market|E|
-208|END MILL CUTTER SIZE 12MM|Licota|3|1690|YG-1 / Taiwan HSS-Co|2000|2800|Market|E|
-209|END MILL CUTTER SIZE 16MM|Licota|3|2340|YG-1 / Taiwan HSS-Co|3000|4000|Market|E|
-210|END MILL CUTTER SIZE 18MM|Licota|2|2860|YG-1 / Taiwan HSS-Co|3700|4800|Market|E|
-211|END MILL CUTTER SIZE 22MM|Licota|1|4160|YG-1 / Taiwan HSS-Co|5200|7000|Market|E|
-212|END MILL CUTTER SIZE 25MM|Licota|1|5460|YG-1 / Taiwan HSS-Co|6500|8500|Market|E|
+204|END MILL CUTTER SIZE 5MM|Licota|6|845|Dormer C-series HSS-Co|5480|7130|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+205|END MILL CUTTER SIZE 6MM|Licota|6|910|Dormer C-series HSS-Co|5960|7750|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+206|END MILL CUTTER SIZE 8MM|Licota|6|1170|Dormer C-series HSS-Co|6930|9010|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+207|END MILL CUTTER SIZE 10MM|Licota|4|1430|Dormer C-series HSS-Co|8960|11640|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+208|END MILL CUTTER SIZE 12MM|Licota|3|1690|Dormer C-series HSS-Co|11050|14360|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+209|END MILL CUTTER SIZE 16MM|Licota|3|2340|Dormer C-series HSS-Co|15380|19990|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+210|END MILL CUTTER SIZE 18MM|Licota|2|2860|Dormer C-series HSS-Co|17610|22890|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+211|END MILL CUTTER SIZE 22MM|Licota|1|4160|Dormer C-series HSS-Co|22180|28830|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
+212|END MILL CUTTER SIZE 25MM|Licota|1|5460|Dormer C-series HSS-Co|25690|33400|khmtools.com.ph Dormer C247 4mm 1,010 / 8mm 1,400 PHP scaled x4.95 (+30%)|E|Dormer premium - dealer se exact rate lo
 213|DIE NUT SIZE 5MM|Licota|2|455|Yato|500|700|Market|E|
 214|DIE NUT SIZE 6MM|Licota|2|494|Yato|550|750|Market|E|
 215|DIE NUT SIZE 8MM|Licota|2|585|Yato|650|850|Market|E|
@@ -208,11 +208,11 @@ ROWS = """
 222|3 JAW CHUCK 4"|Licota|1|15600|Vertex (Taiwan) / Bison|18000|32000|Market|E|Licota chuck nahi banata
 223|BENCH VISE 08"|Licota|2|30940|Yato YT-65049|45000|60000|Yato UK GBP250; Total 8" PK 17,999|P|Sasta option: Total 8" ~18k
 224|BENCH VISE 12"|Licota|2|54600|Yato (heavy)|85000|110000|Yato range est|E|Sasta option: local heavy vise
-225|HSS TOOL 08X08X200MM|Licota|24|1170|Taiwan HSS / Dormer|1000|1400|Market|E|
-226|HSS TOOL 10MMX10MMX200MM|Licota|24|1430|Taiwan HSS / Dormer|1400|1900|Market|E|
-227|HSS TOOL 12MMX12MMX200MM|Licota|24|1820|Taiwan HSS / Dormer|1900|2600|Market|E|
-228|HSS TOOL 16MMX16MMX200MM|Licota|24|2860|Taiwan HSS / Dormer|3200|4200|Market|E|
-229|HSS PARTING OFF TOOL 1/8" X 3/4" X 8"|Licota|24|2340|Taiwan HSS / Dormer|1800|2600|Market|E|
+225|HSS TOOL 08X08X200MM|Licota|24|1170|Dormer|1800|2600|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
+226|HSS TOOL 10MMX10MMX200MM|Licota|24|1430|Dormer|2600|3600|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
+227|HSS TOOL 12MMX12MMX200MM|Licota|24|1820|Dormer|3500|4800|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
+228|HSS TOOL 16MMX16MMX200MM|Licota|24|2860|Dormer|6000|8000|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
+229|HSS PARTING OFF TOOL 1/8" X 3/4" X 8"|Licota|24|2340|Dormer|3200|4500|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
 230|HYDRAULIC JACK 3 TON|Licota|1|9750|Yato YT-17001|6000|8500|pakwheels 5T bottle jack 4,000-5,999; purchaser 8,390|P|
 231|HYDRAULIC JACK 5 TON|Licota|1|12350|Yato YT-17002|8000|11000|pakwheels 5,499-5,999 (generic); Yato premium|P|
 233|CORDLESS SMALL ANGLE GRINDER 125MM EQUIVAL|Bosch Professional|2|52000|Bosch Professional GWS 180-LI / GWS 18V-10|38340|85000|powerhouseexpress 38,340 solo; ktools 40,000 solo|V|Kit diya to loss
@@ -222,7 +222,7 @@ ROWS = """
 237|CABLE LUGS 1000 AMPERE|Licota|24|845|Industrial|450|700|Market|E|
 238|FULL BODY HARNESS BELT|Licota|6|8450|Toho (Taiwan)|6500|7800|mjstraders Toho MH106 3D 7,800; imsons Yamada 6,500; citex 5,800|V|Karam PK mein nahi; Toho Taiwan brand
 239|ANGLE GRINDER 9" BOSCH PRO STONE BONDED CU|Bosch Professional|50|65000|Bosch Professional GWS 2200-230 H|36570|44000|imartpk 36,570; kamadi 43,200; ktools 44,000|V|PR check karo: grinder hai ya 9" cutting disc?
-240|DRILL BIT 4MM|Licota|50|325|Yato|150|250|Market|E|
+240|DRILL BIT 4MM|Licota|50|325|Dormer A002|900|1300|toolsmart.pk Dormer A002 1-10mm from 900|E|Dormer - 4mm exact rate confirm
 """
 ITEMS = []
 for line in ROWS.strip().splitlines():

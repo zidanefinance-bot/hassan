@@ -10,12 +10,13 @@ TOOLS = ("Yato", "Dormer", "YG-1", "Vertex", "Insize", "Masada", "Taiwan", "Bosc
 def group(it):
     b = it["brand"]
     if b.startswith("Licota"): return "Licota Dealer"
+    if b.startswith("Dormer"): return "Dormer Dealer"
     if b.startswith(TOOLS): return "Tool Importer"
     return "Welding-Safety-Consumables"
 
 wb = Workbook(); wb.remove(wb.active)
 items = [i for i in ITEMS_ONLINE if i["conf"] in ("N", "S")]
-for g in ("Licota Dealer", "Tool Importer", "Welding-Safety-Consumables"):
+for g in ("Licota Dealer", "Dormer Dealer", "Tool Importer", "Welding-Safety-Consumables"):
     ws = wb.create_sheet(g)
     ws["A1"] = f"Zidane Corporation - Request for Quotation ({g})"; ws["A1"].font = Font(name=F, bold=True, size=13)
     ws["A2"] = "Ref: PR-217 & PR-228 | Please fill Unit Rate (PKR), brand offered and delivery time. Yellow cells = aap ne bharne hain."
