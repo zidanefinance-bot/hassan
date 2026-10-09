@@ -22,7 +22,7 @@ def brand(b):
     raise ValueError(b)
 
 def r10(x):
-    return float(Decimal(str(x)).quantize(Decimal("1E1"), rounding=ROUND_HALF_UP))
+    return float(Decimal(str(round(x, 6))).quantize(Decimal("1E1"), rounding=ROUND_HALF_UP))
 
 def rate(it):
     hi, q = it["high"], it["rate"]
