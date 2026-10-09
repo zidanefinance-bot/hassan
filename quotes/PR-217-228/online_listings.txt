@@ -26,7 +26,7 @@
 27|NOT FOUND (230mm circlip)
 28|NOT FOUND (230mm circlip)
 39|Licota|4000|toolsmart.pk Licota curved jaw locking plier 10in Rs 4,000 / 7in Rs 3,730 (8in n/a)
-20|NOT FOUND
+20|Licota|1125|goldentools.ae Licota short hex key 12mm HW100120SM AED 250 / 20pc = 12.5 ea -> PKR 1,125 (x90/AED)
 21|NOT FOUND
 22|NOT FOUND
 37|Harden|3380|toolsmart.pk Harden 3lb sledge fibreglass 590323 Rs 3,380
@@ -36,11 +36,11 @@
 36|Total|2000|toolsmart.pk Total sledge 2lb THT79026 Rs 2,000; purchaser 1,820 (1lb nahi mila)
 52|Yato|8500|zeeshanhardware.pk Yato YT-2522 bearing puller 8in Rs 8,500
 53|Yato|19030|imartpk.com Yato 3 arms jaw puller 12in Rs 19,030
-47|NOT FOUND
-48|NOT FOUND
-49|NOT FOUND
-50|NOT FOUND
-51|NOT FOUND
+47|Yato|6255|speedextools.com Yato 2-arm puller 8in AED 69.50 (hook brake type confirm) -> PKR 6,255 (AED x90 basis)
+48|Taiwan|19686|amazon.ae Reywoo 2-jaw gear puller 10in (250mm) AED 218.73 -> PKR 19,686 (AED x90 basis)
+49|Taiwan|19686|amazon.ae Reywoo 2-jaw puller 10in AED 218.73 (160x300 5T exact nahi) -> PKR 19,686 (AED x90 basis)
+50|Taiwan|31019|amazon.ae RATSTONE 2-jaw puller 10in (250mm) AED 344.66 (7.5T exact nahi) -> PKR 31,019 (AED x90 basis)
+51|Licota|11340|goldentools.ae Licota pilot bearing puller ATB-1131 AED 126 (internal type) -> PKR 11,340 (x90/AED)
 55|NOT FOUND (5kg bucket grease pump)
 56|NOT FOUND (air grease gun)
 60|Total|5250|toolsmart.pk Total fibreglass tape 100m TMTF131006 Rs 5,250 (steel 100m nahi mila)
@@ -48,80 +48,80 @@
 71|Total|1000|toolsmart.pk Total steel tape 5m TMT126251 Rs 1,000; totaltool.pk 700-770
 108|Total|3350|Total spirit level 100cm TMT210026: powerhouseexpress 2,808-3,350; totaltool 2,600 (Yato 600mm amjadhardware 2,800)
 109|NOT FOUND (12in magnetic level)
-110|Ingco|860|toolshop.pk Ingco stainless try square HSMT08352 Rs 860 (size confirm)
+110|Insize|15399|zoro.com Insize 4707-150 machinist square 150mm USD 46.59 -> PKR 15,399 (x90/AED)
 111|Harden|3125|ezmakaan.com Harden aluminium try square 300mm 580713 Rs 3,125
 106|Total|2420|toolsmart.pk Total G clamp 6in THT13161 Rs 2,420
 107|NOT FOUND 12in (Total G clamp range totaltool 1,430-3,699 size unclear)
 73|Ingco|22185|pakistanpowertools.com Ingco AKD1251 25pc 1-13mm Rs 22,185; almirajtrading 15,968 (M2 HSS)
 74|NOT FOUND (29pc inch set)
-4|NOT FOUND single 8mm (ktools Bosch HSS range 520-5,500)
-240|NOT FOUND single 4mm
+4|Dormer|1449|finetoolsuae.com Dormer drill bit 8.0mm A100-8 AED 16.1 -> PKR 1,449 (x90/AED)
+240|Dormer|1080|finetoolsuae.com Dormer SS drill bit A108 4.00mm AED 12 -> PKR 1,080 (x90/AED)
 98|NOT FOUND
 99|NOT FOUND
-100|NOT FOUND
-101|NOT FOUND
-102|NOT FOUND
+100|Dormer|21735|finetoolsuae.com Dormer tap set 3/8in AED 241.5 (BSP likhaa nahi) -> PKR 21,735 (x90/AED)
+101|Dormer|20180|mscdirect.co.uk Dormer 1/4x19 BSP hand tap set of 2 E547 GBP 48.22 incl VAT -> PKR 20,180 (AED x90 basis)
+102|Dormer|16353|finetoolsuae.com Dormer tap set 1/8in BSP AED 181.7 -> PKR 16,353 (x90/AED)
 179|NOT FOUND
 180|NOT FOUND
 181|NOT FOUND
 182|NOT FOUND
-183|NOT FOUND
+183|Dormer|10350|finetoolsuae.com Dormer tap set 6mm AED 90-115 -> PKR 10,350 (x90/AED)
 184|NOT FOUND
-185|NOT FOUND
-186|NOT FOUND
-187|NOT FOUND
-188|NOT FOUND
-189|NOT FOUND
-190|NOT FOUND
-191|NOT FOUND
-196|NOT FOUND
+185|Dormer|13558|finetoolsuae.com Dormer tap set 10mm AED 150.65 -> PKR 13,558 (x90/AED)
+186|Yato|7245|amazon.ae Yato YT-2939 hand tap 3pc M12 AED 80.50 (finetoolsuae Dormer M12 198.95) -> PKR 7,245 (x90/AED)
+187|Yato|9900|moglix.ae Yato YT-2941 hand tap 3pc M16 AED 110 incl VAT -> PKR 9,900 (AED x90 basis)
+188|Dormer|46782|finetoolsuae.com Dormer tap set 18MM AED 519.8 (listing ambiguous) -> PKR 46,782 (x90/AED)
+189|Yato|10458|manomano.co.uk Yato hand tap set 3pc M20 GBP 24.99 -> PKR 10,458 (AED x90 basis)
+190|Yato|891|speedextools.com Yato T-handle tap wrench M3-M8 YT-2986 AED 9.90 -> PKR 891 (x90/AED)
+191|Yato|1440|speedextools.com Yato T-handle tap wrench M5-M10 YT-2987 AED 16.00 -> PKR 1,440 (x90/AED)
+196|Yato|3006|speedextools.com Yato ratchet tap wrench M5-M12 YT-2991 AED 33.40 -> PKR 3,006 (x90/AED)
 213|NOT FOUND
 214|NOT FOUND
 215|NOT FOUND
 216|NOT FOUND
 217|NOT FOUND
-218|NOT FOUND
+218|Yato|5143|800benaa.com Yato round thread die M16 YT-2971 AED 57.14 ex VAT -> PKR 5,143 (AED x90 basis)
 219|NOT FOUND
 220|NOT FOUND
 221|NOT FOUND
-204|NOT FOUND
-205|NOT FOUND
-206|NOT FOUND
-207|NOT FOUND
+204|Dormer|8694|finetoolsuae.com Dormer end mill 5mm AED 96.6 -> PKR 8,694 (x90/AED)
+205|Dormer|6520|finetoolsuae.com Dormer end mill 6mm AED 72.45 -> PKR 6,520 (x90/AED)
+206|Dormer|7650|finetoolsuae.com Dormer end mill 8mm AED 85 (brand page 102.35) -> PKR 7,650 (x90/AED)
+207|Dormer|8550|finetoolsuae.com Dormer end mill 10mm AED 95 -> PKR 8,550 (x90/AED)
 208|Generic HSS|2900|hallroadlahore.pk 12x12x53x110 4-flute HSS end mill Rs 2,900
-209|NOT FOUND
-210|NOT FOUND
-211|NOT FOUND
-212|NOT FOUND
-225|NOT FOUND
-226|NOT FOUND
-227|NOT FOUND
+209|Dormer|16664|finetoolsuae.com Dormer end mill 16mm AED 185.15 -> PKR 16,664 (x90/AED)
+210|Dormer|16664|finetoolsuae.com Dormer end mill 16mm AED 185.15 (18mm listed nahi) -> PKR 16,664 (x90/AED)
+211|Dormer|16870|finetoolsuae.com Dormer end mill 25mm AED 187.45 (22mm listed nahi) -> PKR 16,870 (x90/AED)
+212|Dormer|16870|finetoolsuae.com Dormer end mill 25mm AED 187.45 (tooluae 155) -> PKR 16,870 (x90/AED)
+225|Taiwan|1570|amazon.com HSS lathe tool bit 8x8x200mm 4pc USD 18.99 (=4.75 ea) -> PKR 1,570 (AED x90 basis)
+226|Taiwan|5371|ebay HSS 10x10x200 USD 16.25 ea -> PKR 5,371 (x90/AED)
+227|Taiwan|11651|ebay HSS square tool bit 1/2in x 10in M2 USD 35.25 -> PKR 11,651 (x90/AED)
 228|NOT FOUND
-229|NOT FOUND
-75|NOT FOUND
-76|NOT FOUND
-77|NOT FOUND
-78|NOT FOUND
-79|NOT FOUND
-80|NOT FOUND
-81|NOT FOUND
-82|NOT FOUND
-83|NOT FOUND
-84|NOT FOUND
-85|NOT FOUND
-86|NOT FOUND
-87|NOT FOUND
-88|NOT FOUND
-89|NOT FOUND
-90|NOT FOUND
-91|NOT FOUND
-92|NOT FOUND
-66|NOT FOUND
-67|NOT FOUND
+229|Taiwan|7569|ebay HSS parting blade 1/8x3/4x6in USD 22.90 (8in listed nahi) -> PKR 7,569 (AED x90 basis)
+75|Dormer A130|7020|finetoolsuae.com Dormer taper shank 14mm AED 78 -> PKR 7,020 (x90/AED)
+76|Dormer A130|9630|amazon.ae Dormer A130 15mm AED 107 -> PKR 9,630 (x90/AED)
+77|Dormer A130|9630|amazon.ae Dormer A130 15mm AED 107 (15.5mm listed nahi) -> PKR 9,630 (x90/AED)
+78|Dormer A130|7920|finetoolsuae.com Dormer taper shank 16mm AED 88 (amazon.ae 95) -> PKR 7,920 (x90/AED)
+79|Dormer A130|11250|finetoolsuae.com Dormer taper shank 17.5mm AED 125 (16.5mm listed nahi) -> PKR 11,250 (x90/AED)
+80|Dormer A130|12600|finetoolsuae.com Dormer taper shank 17mm AED 140 -> PKR 12,600 (x90/AED)
+81|Dormer A130|11250|finetoolsuae.com Dormer taper shank 17.5mm AED 125 -> PKR 11,250 (x90/AED)
+82|Dormer A130|12240|amazon.ae Dormer A130 19mm AED 136 -> PKR 12,240 (x90/AED)
+83|Dormer A130|13500|amazon.ae Dormer A130 22mm AED 150 (21mm listed nahi) -> PKR 13,500 (x90/AED)
+84|Dormer A130|20250|finetoolsuae.com Dormer taper shank 25mm AED 225 (amazon.ae 195) -> PKR 20,250 (x90/AED)
+85|Dormer A130|39640|finetoolsuae.com Dormer taper shank 32mm AED 440.45 (30mm nahi; amazon.ae 29.5mm AED 405) -> PKR 39,640 (x90/AED)
+86|Dormer A130|39640|finetoolsuae.com Dormer taper shank 32mm AED 440.45 -> PKR 39,640 (x90/AED)
+87|Dormer A130|40500|finetoolsuae.com Dormer taper shank 34mm AED 450 (35mm listed nahi) -> PKR 40,500 (x90/AED)
+88|Taiwan|3289|grizzly.com Morse taper sleeve MT3/MT2 USD 9.95 -> PKR 3,289 (x90/AED)
+89|Taiwan|14857|mscdirect.com Jacobs sleeve MT3/MT4 USD 44.95 -> PKR 14,857 (x90/AED)
+90|Taiwan|15188|ebay MT4-MT3 adapter USD 45.95 -> PKR 15,188 (x90/AED)
+91|Taiwan|6263|ebay carbide dead center MT3 USD 18.95 (MT2 same class) -> PKR 6,263 (x90/AED)
+92|Taiwan|6263|ebay carbide dead center MT3 USD 18.95 -> PKR 6,263 (x90/AED)
+66|Taiwan|17494|amazon.ae MT3 live revolving center AED 194.38 (MT4 listed nahi) -> PKR 17,494 (x90/AED)
+67|Taiwan|17494|amazon.ae MT3 live revolving center AED 194.38 -> PKR 17,494 (x90/AED)
 231|Ronix|5950|ingcomart.com.pk Ronix RH-4903 5T bottle jack Rs 5,360-5,950
 230|Ronix|5950|ingcomart.com.pk Ronix RH-4903 5T bottle jack Rs 5,360-5,950 (3T nahi mila, 5T diya)
 115|Tanaka|5000|akramengineering Tanaka oxygen regulator JGR-13A 5,000 (alt Gold Flex 4,000)
-116|NOT FOUND (fuel gas regulator)
+116|Industrial|12150|noon.com acetylene regulator AED 135 incl VAT -> PKR 12,150 (x90/AED)
 112|Industrial|8500|aliweldinghouse.pk 100B gas cutting torch with connectors Rs 8,500 (388 torch 6,500-7,000)
 234|Total|1740|powerhouseexpress Total TWAH8006 800A holder 1,610-1,740 -- SPEC: 800A (1000A nahi mila)
 235|Industrial|500|aliweldinghouse.pk earth clamp 500A Rs 500 (1000A listed nahi)
@@ -130,14 +130,14 @@
 152|Total|550|toolsmart Total PVC TSP1801 550; ktools Total 460
 7|Blue Eagle|350|mjstraders + hacsons Blue Eagle NP102 350
 121|Total|600|toolsmart Total welding goggle TSP303 600; mjstraders WG208 500
-104|NOT FOUND flip-front (alt Wadfow auto-darkening WWH2501 powerhouse 3,840)
+104|Industrial|6277|US listing flip front welding helmet USD 18.99 -> PKR 6,277 (x90/AED)
 6|Total|730|powerhouseexpress Total TSP2609 730-810 (alt Ingco 1,440)
 153|Total|730|same (yellow)
 155|7CF|450|7CF white 400ml 400-450 (autohousestore/7cfpak)
 156|7CF|450|7CF sky blue 400ml 450
 157|Mubah|400|Mubah leaf green SP-512 400ml 400 (alt Brighto 450-650)
-177|Ingco|794|purchaser.com.pk Ingco rivet 4x10mm 300pc bottle Rs 794 (4x25 1000pc nahi mila)
-140|NOT FOUND (125mm brass cup brush)
+177|Generic|9360|supplyvan.com pop rivet 4.8x25mm 500pc AED 52 (x2 = 1000pc) -> PKR 9,360 (x90/AED)
+140|Industrial|5629|ebay 125mm brass plated wire brush wheel USD 17.03 -> PKR 5,629 (x90/AED)
 103|Harden|540|toolsmart.pk Harden steel brush wood handle 4 row Rs 540; pakistanpowertools 325-510
 135|Total|990|Total 14in TAC2213551: pakistanpowertools 990; ktools 980; imsons 790
 138|Total|590|Total 9in TAC2212301HA: powerhouseexpress 590; pakistanpowertools 500
@@ -147,41 +147,41 @@
 43|NOT FOUND
 58|NOT FOUND
 59|NOT FOUND
-96|NOT FOUND (depth gauge 250)
-192|NOT FOUND
-193|NOT FOUND
-194|NOT FOUND
-195|NOT FOUND
-69|NOT FOUND
-70|NOT FOUND
+96|Insize|27919|higherprecision.com Insize 1247-200 depth gauge USD 84.47 (250mm listed nahi) -> PKR 27,919 (x90/AED)
+192|Insize|7685|zoro.com Insize 7261-150 inside spring caliper 6in USD 23.25 -> PKR 7,685 (x90/AED)
+193|Insize|11948|zoro.com Insize 7261-300 inside 12in USD 36.15 (20in listed nahi) -> PKR 11,948 (x90/AED)
+194|Insize|7387|zoro.com Insize 7262-150 outside spring caliper 6in USD 22.35 -> PKR 7,387 (x90/AED)
+195|Insize|12788|zoro.com Insize 7262-300 outside 12in USD 38.69 (20in listed nahi) -> PKR 12,788 (x90/AED)
+69|Insize|16156|wallersindustrialonline Insize 7114-950 circumference tape 60-950 USD 48.88 -> PKR 16,156 (x90/AED)
+70|Insize|11453|wallersindustrialonline Insize 7114-2200 940-2200 USD 34.65 -> PKR 11,453 (x90/AED)
 164|Zodian|1450|priceinfo.pk 2.5mm E6013 150pc (~2.5kg) 1,200-1,450; Pak Oxygen Zodian E6013 5kg 2,248 -- PACK SIZE confirm
 165|Zodian|2248|estore.pakoxygen.com Zodian E6013 5kg box 2,248; priceinfo 3.2mm 5kg 2,350-2,500 -- PACK SIZE confirm
 166|Fortrex|2325|estore.pakoxygen.com Fortrex E7018 5kg box 2,325; priceinfo E7018 2,300-2,450 -- PACK SIZE confirm
 167|Stainarc|4400|priceinfo.pk Stainarc stainless rod 4.0mm 1kg packet Rs 4,200-4,400 (309L 2.6mm exact nahi)
 168|Stainarc|4400|priceinfo.pk Stainarc stainless rod 4.0mm 1kg packet Rs 4,200-4,400 (316L 2.6mm exact nahi)
-123|NOT FOUND (TIG torch)
+123|Taiwan|25052|amazon.ae TywelMaster WP26V TIG torch 4m air cooled AED 278.36 (5m listed nahi) -> PKR 25,052 (x90/AED)
 124|NOT FOUND
-125|NOT FOUND
-126|NOT FOUND
-127|NOT FOUND
-128|NOT FOUND
-129|NOT FOUND
-130|NOT FOUND (tungsten - aliweldinghouse listed, price n/a)
-142|NOT FOUND
-143|NOT FOUND
-144|NOT FOUND
+125|Taiwan|826|weldingdirect.com Weldcraft 10N24 collet 2.4mm 5pk USD 12.50 (=2.50 ea) -> PKR 826 (x90/AED)
+126|Taiwan|767|harrisweldingsupplies.com Profax 10N32 collet body 5pk USD 11.60 (=2.32 ea) -> PKR 767 (x90/AED)
+127|Taiwan|397|walmart.com WeldingCity 10N49 ceramic cup #5 10pk USD 11.99 (=1.20 ea) -> PKR 397 (x90/AED)
+128|Taiwan|397|WeldingCity 10N series ceramic cup 10pk USD 11.99 (#6 same series) -> PKR 397 (x90/AED)
+129|Taiwan|397|WeldingCity 10N series ceramic cup 10pk USD 11.99 (#7 same series) -> PKR 397 (x90/AED)
+130|Taiwan|6521|amazon.com thoriated tungsten 2.4mm x 175mm 10pk USD 19.73 -> PKR 6,521 (x90/AED)
+142|Taiwan|4680|moglix.ae Gazelle 200mm aluminium oxide grinding wheel 36G AED 52 (grit 24 listed nahi) -> PKR 4,680 (x90/AED)
+143|Taiwan|4680|moglix.ae Gazelle 200mm aluminium oxide grinding wheel 46G AED 52 (grit 60 listed nahi) -> PKR 4,680 (x90/AED)
+144|Taiwan|20866|cutwel.co.uk 200mm green silicon carbide grinding wheel GBP 49.86 -> PKR 20,866 (x90/AED)
 8|Licota|272440|toolsmart.pk LICOTA MADE IN TAIWAN 7 Drawer Cabinet Trolley without tools Rs 272,440 in stock (screenshot Hassan)
 148|Tolsen|360|imsons.com.pk Tolsen 50mm wall scraper Rs 360
 160|SMT|65|experttoolsworld.com SMT Rawl anchor bolt 10mm heavy duty Rs 65 (length confirm)
-161|NOT FOUND
-162|NOT FOUND
-3|NOT FOUND (mech screw jack; alt hydraulic)
-5|NOT FOUND (mech screw jack; alt hydraulic)
+161|Taiwan|266|tss-store.com anchor bolt M12x120 AED 2.96 (page old; amazon.ae SS304 2pc AED 90) -> PKR 266 (AED x90 basis)
+162|Taiwan|266|tss-store.com anchor bolt M12x120 AED 2.96 (12x160 listed nahi) -> PKR 266 (AED x90 basis)
+3|JET (Taiwan)|59985|amazon.ae JET SJ-5T 5-ton screw jack AED 666.50 (mrouae.com 5T AED 550) -> PKR 59,985 (x90/AED)
+5|Taiwan|39600|mrouae.com mechanical jack 3 ton AED 440 -> PKR 39,600 (x90/AED)
 223|Ingco|31300|toolsmart.pk Ingco bench vice 8in HBV088 Rs 31,300; purchaser 24,360
-224|NOT FOUND (12in vise)
+224|Taiwan|39600|goldentools.ae Pioneer 10in heavy duty bench vise AED 440 (12in listed nahi) -> PKR 39,600 (x90/AED)
 122|WACTA20|126000|houseoftools.com.pk Inverter AC/DC TIG/MMA WACTA20 Rs 126,000 (TIG 5-200A, MMA 20-180A, 220V)
-236|NOT FOUND (welding cable)
-41|NOT FOUND (GDS 18V-350)
+236|Industrial|3609|enontraders.com 95mm flexible pure copper cable Rs 1,100/ft (=3,609/m) (PVC, welding rubber nahi)
+41|Bosch Professional|114345|alrahat.com Bosch GDS 18V-350 set (2x4Ah + charger) AED 1,270.50 incl VAT -> PKR 114,345 (x90/AED)
 97|Bosch Professional|199500|ktools Bosch GSB 18V-150C 199,500 (oos, single listing)
 54|Bosch Professional|115000|ktools GBH 180-Li 49,000 solo / 115,000 kit
 40|Bosch Professional|79000|ktools GDX 180-Li 45,000 solo / 79,000 kit; kamadi 75,200
@@ -203,21 +203,21 @@
 200|Insize|6875|imsons Insize 3203-100A 6,875
 201|Insize|8750|imsons Insize 3203-125A 8,750
 45|NOT FOUND (Yato round file)
-2|NOT FOUND
+2|Generic|306|shop.misar.ae TITAN steel nail 1-1/2in AED 85 / 25kg ctn (=3.40/kg) -> PKR 306 (x90/AED)
 113|Industrial|1600|aliweldinghouse.pk GK cutting nozzle Rs 1,600
 114|Industrial|1600|aliweldinghouse.pk GK cutting nozzle Rs 1,600
-117|NOT FOUND
-118|NOT FOUND
+117|Industrial|216|birigroup.ae twin hose blue/red 25m AED 59.99 (=2.40/m, 1/4in) -> PKR 216 (x90/AED)
+118|Industrial|216|birigroup.ae twin hose blue/red 25m AED 59.99 (=2.40/m, 1/4in) -> PKR 216 (x90/AED)
 119|NOT FOUND
-120|NOT FOUND
-132|NOT FOUND
-133|NOT FOUND
-134|NOT FOUND
+120|Industrial|495|finetoolsuae.com tip cleaner long 10cm AED 5.5 -> PKR 495 (x90/AED)
+132|Industrial|216|birigroup.ae twin hose 25m AED 59.99 (=2.40/m) (argon hose same class) -> PKR 216 (x90/AED)
+133|Industrial|338|finetoolsuae.com acetylene nut thread 3/8in for 8mm hose AED 3.75 -> PKR 338 (x90/AED)
+134|Industrial|1125|fepy.com QOP TIG welding gloves 12 pairs AED 150 (=12.5/pair) -> PKR 1,125 (x90/AED)
 139|NOT FOUND
 145|NOT FOUND
-154|NOT FOUND
+154|Industrial|10170|busydubai.com mineral powder red oxide AED 113 (pack size n/a) -> PKR 10,170 (x90/AED)
 158|Local|203|alclean.pk round toilet brush Rs 203; mjstraders 8142 toilet brush Rs 203
 159|Local|160|nasirnsons.com cotton waste per kg Rs 160 (cleaning cloth/rags)
 237|Industrial|150|fiaz.com.pk 95mm copper lug 140; enontraders.com 95mm thimble 150
-222|NOT FOUND
+222|Taiwan|27000|santoolsme.com SANOU 3-jaw lathe chuck 100mm AED 300 (excl VAT) -> PKR 27,000 (x90/AED)
 202|Total|1352|Total 6pc needle file THT91462: toolshop.pk 1,352; toolsmart.pk 1,190 (6pc, 5pc nahi)

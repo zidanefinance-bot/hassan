@@ -11,7 +11,7 @@ MARKUP = 0.15
 RED = colors.HexColor("#B71C1C")
 KNOWN = ["Bosch Professional", "Vertex (Taiwan)", "Toho (Taiwan)", "Masada (Japan)", "Licota", "Yato", "Insize", "Dormer",
          "YG-1", "Norton", "Karam", "WD-40", "Industrial", "Bosch"]
-MAP = {"Generic (Taiwan)": "Taiwan", "Taiwan HSS": "Taiwan", "Harris type": "Industrial", "Local": "Local", "Generic": "Local"}
+MAP = {"Generic (Taiwan)": "Taiwan", "Taiwan HSS": "Taiwan", "Harris type": "Industrial", "Local": "Local", "Generic": "Taiwan"}
 
 def brand(b):
     if b in DIRECT: return DIRECT[b]
@@ -25,7 +25,7 @@ def brand(b):
 
 DIRECT = {"Harden": "Harden", "Total": "Total", "Ingco": "Ingco", "Tolsen": "Tolsen", "Ronix": "Ronix", "Tanaka": "Tanaka",
           "Blue Eagle": "Blue Eagle", "Leather Forge": "Leather Forge", "7CF": "7CF", "Mubah": "Mubah", "Zodian": "Zodian",
-          "Fortrex": "Fortrex", "WM": "WM", "Industrial (VMAX)": "VMAX", "WACTA20": "Industrial", "Rhodius": "Rhodius", "Generic HSS": "HSS", "SMT": "SMT", "Stainarc": "Stainarc"}
+          "Fortrex": "Fortrex", "WM": "WM", "Industrial (VMAX)": "VMAX", "WACTA20": "Industrial", "Rhodius": "Rhodius", "Generic HSS": "HSS", "SMT": "SMT", "Stainarc": "Stainarc", "Taiwan": "Taiwan", "JET (Taiwan)": "JET (Taiwan)"}
 DORMER = "Dormer"
 
 def r10(x):
