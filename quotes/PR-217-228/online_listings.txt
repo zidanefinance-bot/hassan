@@ -5,7 +5,7 @@
 11|Licota|7430|toolsmart.pk Licota double open end 36x41 Rs 7,430
 12|Licota|12310|toolsmart.pk Licota double open end 41x46 Rs 12,310
 14|Licota|67130|toolsmart Licota 120pc 56,890-67,130
-15|Licota|5460|toolsmart Licota 6pc pin punch 5,460
+15|Licota|5460|toolsmart.pk Licota 6pc pin punch 5,460; ktools.pk 6,000 (oos)
 17|Licota|4400|toolsmart Licota 9pc long hex 4,400
 19|Licota|4400|same as 17
 30|Licota|4720|toolsmart Licota 5pc punch chisel 4,000-4,720
@@ -25,7 +25,7 @@
 35|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 7900)
 27|NOT FOUND (230mm circlip)
 28|NOT FOUND (230mm circlip)
-39|NOT FOUND 8in (alt 10in Harden toolsmart 1,660 / Ingco 1,790)
+39|Licota|4000|toolsmart.pk Licota curved jaw locking plier 10in Rs 4,000 / 7in Rs 3,730 (8in n/a)
 20|NOT FOUND
 21|NOT FOUND
 22|NOT FOUND
@@ -143,7 +143,7 @@
 138|Total|590|Total 9in TAC2212301HA: powerhouseexpress 590; pakistanpowertools 500
 136|Total|270|powerhouseexpress Total 5in metal cutting TAC2211253 270
 1|NOT FOUND stone 4in (metal 4in Permanent 120 / Rhodius 280)
-18|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 1420)
+18|Licota|3540|toolsmart.pk Licota 9pc short type hex key set 1.5-10mm Rs 3,540
 43|NOT FOUND
 58|NOT FOUND
 59|NOT FOUND
