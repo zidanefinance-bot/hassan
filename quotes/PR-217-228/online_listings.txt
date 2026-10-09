@@ -157,8 +157,8 @@
 164|Zodian|1450|priceinfo.pk 2.5mm E6013 150pc (~2.5kg) 1,200-1,450; Pak Oxygen Zodian E6013 5kg 2,248 -- PACK SIZE confirm
 165|Zodian|2248|estore.pakoxygen.com Zodian E6013 5kg box 2,248; priceinfo 3.2mm 5kg 2,350-2,500 -- PACK SIZE confirm
 166|Fortrex|2325|estore.pakoxygen.com Fortrex E7018 5kg box 2,325; priceinfo E7018 2,300-2,450 -- PACK SIZE confirm
-167|NOT FOUND (SS 309L)
-168|NOT FOUND (SS 316L)
+167|Stainarc|4400|priceinfo.pk Stainarc stainless rod 4.0mm 1kg packet Rs 4,200-4,400 (309L 2.6mm exact nahi)
+168|Stainarc|4400|priceinfo.pk Stainarc stainless rod 4.0mm 1kg packet Rs 4,200-4,400 (316L 2.6mm exact nahi)
 123|NOT FOUND (TIG torch)
 124|NOT FOUND
 125|NOT FOUND
@@ -216,8 +216,8 @@
 139|NOT FOUND
 145|NOT FOUND
 154|NOT FOUND
-158|NOT FOUND
-159|NOT FOUND
+158|Local|203|alclean.pk round toilet brush Rs 203; mjstraders 8142 toilet brush Rs 203
+159|Local|160|nasirnsons.com cotton waste per kg Rs 160 (cleaning cloth/rags)
 237|Industrial|150|fiaz.com.pk 95mm copper lug 140; enontraders.com 95mm thimble 150
 222|NOT FOUND
 202|Total|1352|Total 6pc needle file THT91462: toolshop.pk 1,352; toolsmart.pk 1,190 (6pc, 5pc nahi)
