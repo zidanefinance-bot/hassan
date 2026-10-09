@@ -12,7 +12,6 @@ hdr_fill = PatternFill("solid", fgColor="B71C1C")
 thin = Side(style="thin", color="BFBFBF"); bd = Border(left=thin, right=thin, top=thin, bottom=thin)
 
 ws["A1"] = "Zidane Corporation - Quote PR-217 & PR-228: Brand + Buying Rate Check"; ws["A1"].font = Font(name=F, bold=True, size=14)
-ws["A2"] = "Buying rates = Pakistani online retail (toolsmart.pk, w11stop.com, kamadi.pk, ktools.pk, purchaser.com.pk etc.), Oct 2026. Confidence V = seen online, P = sister item online, E = market estimate - phone pe confirm karo."
 ws["A2"].font = Font(name=F, italic=True, size=9)
 ws["A3"] = "Target markup on buying (High):"; ws["A3"].font = Font(name=F, bold=True)
 ws["E3"] = 0.15; ws["E3"].number_format = "0%"; ws["E3"].font = Font(name=F, color="0000FF", bold=True)
@@ -107,13 +106,6 @@ links = [
  ("toolsmart.pk - Licota 9pc extra long hex", "https://www.toolsmart.pk/products/licota-9pcs-extra-long-type-hex-key-set"),
  ("toolsmart.pk - Licota 120pc socket set", "https://www.toolsmart.pk/products/licota-120pcs-1-4-3-8-1-2-dr-socket-set"),
  ("toolsmart.pk - grease guns (Licota 400cc Rs 7,760)", "https://www.toolsmart.pk/collections/all-tools/grease-gun"),
- ("w11stop.com - Licota catalogue", "https://w11stop.com/licota"),
- ("w11stop.com - Licota ATB-1004F 3-jaw puller", "https://w11stop.com/licota-atb-1004f-gear-puller"),
- ("w11stop.com - Licota ATB-1003G 2-jaw puller", "https://w11stop.com/licota-atb-1003g-gear-puller"),
- ("w11stop.com - Licota ATB-1017D puller", "https://w11stop.com/licota-atb-1017d-gear-puller"),
- ("w11stop.com - WD-40 330ml", "https://w11stop.com/lubricants-and-removal/wd-40-330-ml-lubricant"),
- ("w11stop.com - Bosch GWS 2200-230 H", "https://w11stop.com/bosch-gws-2200-230-h-grinder"),
- ("w11stop.com - Bosch GBH 180-LI", "https://w11stop.com/bosch-gbh-180-li-rotary-hammer"),
  ("kamadi.pk - Bosch GDS 18V-1000", "https://kamadi.pk/products/gds-18v-1000-bosch-cordless-impact-wrench-650n-m-18v"),
  ("kamadi.pk - Bosch GDX 180-Li", "https://kamadi.pk/products/gdx-180-li-bosch-cordless-impact-driver-wrench-180n-m-18v"),
  ("kamadi.pk - Bosch GWS 2200-230 H", "https://kamadi.pk/products/bosch-gws-2200-230-h-angle-grinder"),
@@ -132,6 +124,12 @@ links = [
  ("eqmachines.com - hand pallet truck", "https://eqmachines.com/products/hand-pallet-truck-pakistan"),
  ("pakwheels.com - bottle jacks", "https://www.pakwheels.com/accessories-spare-parts/car-jack/213239"),
  ("ingcotool.pk - Total 8in bench vise", "https://ingcotool.pk/product/total-swivel-base-bench-vise-with-anvil-6-150mm-tht6166/"),
+ ("naheed.pk - WD-40 330ml Rs 1,380", "https://www.naheed.pk/wd-40-330ml"),
+ ("autohub.pk - WD-40 330ml Rs 1,299", "https://autohub.pk/products/wd-40-330ml"),
+ ("imartpk.com - Bosch GWS 22-230 H", "https://imartpk.com/products/gws-22-230-h-professional"),
+ ("goldentools.ae - Licota 3-jaw puller (UAE ref)", "https://www.goldentools.ae/gttecom/singleitemmob/LICOTA/Bearing-and-Seal-Tools/?brcd=4712834507742"),
+ ("amazon.ae - Licota 6in 3-jaw puller (UAE ref)", "https://www.amazon.ae/LICOTA-GEAR-PULLER-ATB-1002C-AT-2102A/dp/B08CTD3842"),
+ ("goldentools.ae - Licota 12mm hex key (UAE ref)", "https://www.goldentools.ae/item/4712818539608"),
  ("goldpeaktools.com.ph - Licota AWX-2603GN 7-drawer (ref)", "https://shop.goldpeaktools.com.ph/products/licota-awx-2603gn-tool-cabinet-carriage-7-drawers"),
 ]
 src["A1"] = "Sources (checked Oct 2026 - prices change, confirm before PO)"; src["A1"].font = Font(name=F, bold=True)

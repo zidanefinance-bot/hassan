@@ -11,18 +11,18 @@ ROWS = """
 8|7 DRAWER TOOL TROLLEY|Licota|3|161070|Licota (AWX series, empty)|150000|210000|goldpeak PH Licota 7-drawer PHP26k + import; ktools Force 7-drawer|P|Empty ya tools ke saath? Confirm
 9|DOUBLE OPEN RING OFFSET WRENCH SET (12PCS)|Licota|4|18200|Licota|20000|26000|toolsmart Licota 14pc set 25,660|P|
 10|DOUBLE OPEN END WRENCH 6 TO 32 (12 PCS SET)|Licota|4|15600|Licota|16000|21000|toolsmart Licota; Ingco 12pc 9,899|P|
-11|DOUBLE OPEN END WRENCH 36X41|Licota|3|3640|Licota|4500|5800|w11stop Licota single 10x11 = 530 (scaled)|E|
-12|DOUBLE OPEN END WRENCH 41X46|Licota|3|4550|Licota|6000|7500|w11stop Licota singles (scaled)|E|
+11|DOUBLE OPEN END WRENCH 36X41|Licota|3|3640|Licota|4500|5800|toolsmart Licota wrench sets (scaled); goldentools.ae Licota|E|
+12|DOUBLE OPEN END WRENCH 41X46|Licota|3|4550|Licota|6000|7500|toolsmart Licota wrench sets (scaled); goldentools.ae Licota|E|
 13|COMBINATION WRENCH 8 TO 32 (14 PCS SET)|Licota|4|22100|Licota|24000|30000|toolsmart Licota 14pc combo 25,660|V|
 14|SOCKET SET (113PCS) 1/4" & 1/2"|Licota|4|75400|Licota|56900|67200|toolsmart Licota 120pc 56,890-67,130|V|
 15|PIN PUNCH SET (06PCS SET)|Licota|4|5850|Licota|5460|6200|toolsmart Licota 6pc 5,460|V|
 16|HOLLOW PUNCH (3MM-25MM) (15PCS SET)|Licota|4|8450|Yato|6500|9000|ingcotool Harden 12pc 4,699; Licota not in PK|P|Licota PK mein nahi mila
-17|LONG TYPE HEX KEY WRENCH SET 09 PCS|Licota|4|2548|Licota|2320|4400|toolsmart 4,400; w11stop 2,320|V|
-18|SHORT TYPE HEX KEY WRENCH SET (09PCS)|Licota|4|1846|Licota|2000|3000|toolsmart/w11stop Licota hex|P|
-19|LONG TYPE HEX WRENCH SET 09 PCS|Licota|4|2548|Licota|2320|4400|toolsmart 4,400; w11stop 2,320|V|Item 17 ka duplicate lagta hai
-20|ALLEN HEX KEY 12MM|Licota|3|910|Licota|1100|1500|w11stop Licota 4mm = 790 (scaled)|E|
-21|ALLEN (HEX) KEY 14MM|Licota|3|1170|Licota|1400|1900|w11stop Licota (scaled)|E|
-22|ALLEN (HEX) KEY 16MM|Licota|3|1430|Licota|1800|2400|w11stop Licota (scaled)|E|
+17|LONG TYPE HEX KEY WRENCH SET 09 PCS|Licota|4|2548|Licota|3740|4400|toolsmart 4,400 (long) / 3,740 (extra long)|V|
+18|SHORT TYPE HEX KEY WRENCH SET (09PCS)|Licota|4|1846|Licota|2000|3000|toolsmart Licota hex sets (scaled)|P|
+19|LONG TYPE HEX WRENCH SET 09 PCS|Licota|4|2548|Licota|3740|4400|toolsmart 4,400 (long) / 3,740 (extra long)|V|Item 17 ka duplicate lagta hai
+20|ALLEN HEX KEY 12MM|Licota|3|910|Licota|950|1300|goldentools.ae Licota 12mm AED 250/20pc (~PKR 950 ea)|P|
+21|ALLEN (HEX) KEY 14MM|Licota|3|1170|Licota|1200|1700|goldentools.ae Licota 12mm (scaled)|E|
+22|ALLEN (HEX) KEY 16MM|Licota|3|1430|Licota|1500|2100|goldentools.ae Licota 12mm (scaled)|E|
 23|CIRCLIP PLIER INTERNAL STRAIGHT 175MM|Licota|4|4940|Licota|4500|5500|toolsmart Licota pliers 3,830-5,210|P|
 24|CIRCLIP PLIER INTERNAL BENT 175MM|Licota|4|4940|Licota|4500|5500|toolsmart Licota pliers|P|
 25|CIRCLIP PLIER EXTERNAL STRAIGHT 175MM|Licota|4|4940|Licota|4500|5500|toolsmart Licota pliers|P|
@@ -45,14 +45,14 @@ ROWS = """
 43|HEX IMPACT ADAPTOR 1/2" FEMALE TO 1/4" FEMALE|Licota|4|1560|Licota|1800|2400|toolsmart Licota impact accessories|E|
 44|FLAT FILE 12"|Licota|4|1950|Yato|1700|2300|Market (Licota files PK mein nahi)|E|
 45|ROUNDE FILE 12"|Licota|4|2210|Yato|1700|2300|Market|E|
-47|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAKE 21|Licota|3|13000|Licota|18000|22000|w11stop Licota ATB-1017D 19,880|V|
-48|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAK 250|Licota|2|15600|Licota|22000|32700|w11stop Licota 2-jaw ATB-1003G 32,700|P|
-49|UNIVERSAL PULLER 2-ARMED 160 X 300 MM 5T|Licota|1|20800|Licota|25000|33000|w11stop Licota pullers|P|
-50|UNIVERSAL PULLER 2-ARMED 250 X 300 MM 7.5T|Licota|1|28600|Licota|32000|42000|w11stop Licota pullers|P|
+47|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAKE 21|Licota|3|13000|Licota|12000|16000|goldentools.ae/amazon.ae Licota 6in 3-jaw AED 105-120 (~PKR 9k) scaled + import|E|
+48|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAK 250|Licota|2|15600|Licota|16000|24000|goldentools.ae Licota pullers (scaled) + import|E|
+49|UNIVERSAL PULLER 2-ARMED 160 X 300 MM 5T|Licota|1|20800|Licota|20000|28000|goldentools.ae Licota pullers (scaled) + import|E|
+50|UNIVERSAL PULLER 2-ARMED 250 X 300 MM 7.5T|Licota|1|28600|Licota|28000|38000|goldentools.ae Licota pullers (scaled) + import|E|
 51|INTERNAL EXTRACTOR WITH REINFORCED COLLAR|Licota|1|32500|Licota|30000|45000|Licota catalogue; no PK listing|E|
-52|MECHANICAL PULLER 3 ARMED 200X200|Licota|2|18200|Licota|22500|30000|w11stop Licota 3-jaw ATB-1004F 22,500-38,100|V|
-53|MECHANICAL PULLER 3 ARMED 250X250|Licota|1|23400|Licota|30000|38100|w11stop Licota 3-jaw 38,100|V|
-54|DRILL MACHINE CORDLESS ROTARY HAMMER Bosch|Bosch Professional|2|400946|Bosch GBH 180-LI / GBH 18V-26|49000|130000|ktools 49k solo / 115k kit; w11stop 81,400-130,350|V|Rate cost se 3x - customer pakray ga
+52|MECHANICAL PULLER 3 ARMED 200X200|Licota|2|18200|Licota|18000|25000|goldentools.ae Licota 6in 3-jaw AED 120 (scaled to 8in) + import|E|
+53|MECHANICAL PULLER 3 ARMED 250X250|Licota|1|23400|Licota|24000|32000|goldentools.ae Licota 3-jaw (scaled to 10in) + import|E|
+54|DRILL MACHINE CORDLESS ROTARY HAMMER Bosch|Bosch Professional|2|400946|Bosch GBH 180-LI / GBH 18V-26|49000|115000|ktools 49,000 solo / 115,000 kit|V|Rate cost se 3x - customer pakray ga
 55|MANUAL GREASE GUN 5KG|Licota|2|15600|Yato / Industrial (bucket type)|12000|18000|Market|E|Licota 5kg bucket gun nahi milta
 56|AIR GREASE GUN 500CC|Licota|1|10400|Licota|9000|13000|toolsmart Licota grease gun 7,760 (air premium)|P|
 57|HAND GREASE GUN WITH HOSE 500CC|Licota|4|4550|Licota|7760|9000|toolsmart Licota 400cc 7,760|V|
@@ -143,7 +143,7 @@ ROWS = """
 146|HYDRAULIC HAND TROLLY 3T|Industrial|1|105788|Industrial (VMAX/BAOLI)|80000|85000|eqmachines 82,000; rafiqbrothers 80,000; OLX 85,000|V|
 147|HYDRAULIC HAND TROLLY 5T|Industrial|1|245700|Industrial (VMAX)|200000|225000|rafiqbrothers 200,000-225,000|V|
 148|FLATE METAL SCRAPPER 50MM|Licota|12|650|Generic|300|500|Market|E|
-149|WD 40 330ML (MULTI PURPOSE)|Industrial|100|1754|WD-40|1100|1420|w11stop 1,100; bloompakistan 1,299-1,420|V|
+149|WD 40 330ML (MULTI PURPOSE)|Industrial|100|1754|WD-40|1299|1380|naheed.pk 1,380; autohub.pk 1,299; toolsmart (oos)|V|
 150|PU COATED SAFETY GLOVES LEVEL 5 CUT RESISTA|Industrial|100|1235|Industrial|700|1000|Market|E|
 151|NITRILE SAFETY GLOOVES OIL RESISTANT|Industrial|100|650|Industrial|350|500|Market|E|
 152|PVC SAFETY GLOVES LARGE CHEMICAL RESISTANT|Industrial|24|546|Industrial|300|450|Market|E|
@@ -221,7 +221,7 @@ ROWS = """
 236|WELDING CABLE 1000 AMPERE|Industrial|200|2860|Industrial (copper)|2400|3200|Market (per metre)|E|Copper rate pe depend
 237|CABLE LUGS 1000 AMPERE|Licota|24|845|Industrial|450|700|Market|E|
 238|FULL BODY HARNESS BELT|Licota|6|8450|Karam / 3M|6000|9000|Market|E|Licota harness nahi banata
-239|ANGLE GRINDER 9" BOSCH PRO STONE BONDED CU|Bosch Professional|50|65000|Bosch GWS 2200-230 H|43200|50460|kamadi 43,200; ktools 44,000; w11stop 50,460|V|PR check karo: grinder hai ya 9" cutting disc?
+239|ANGLE GRINDER 9" BOSCH PRO STONE BONDED CU|Bosch Professional|50|65000|Bosch GWS 2200-230 H|36570|44000|imartpk 36,570; kamadi 43,200; ktools 44,000|V|PR check karo: grinder hai ya 9" cutting disc?
 240|DRILL BIT 4MM|Licota|50|325|Yato|150|250|Market|E|
 """
 ITEMS = []
