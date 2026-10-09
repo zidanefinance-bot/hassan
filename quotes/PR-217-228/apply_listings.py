@@ -6,7 +6,7 @@ N = not listed online by any brand - estimate only, needs dealer quote
 """
 from items import ITEMS
 
-SPEC = {9, 39, 97, 111, 164, 165, 166, 230, 234}
+SPEC = {1, 9, 16, 36, 39, 60, 62, 73, 97, 110, 111, 122, 160, 164, 165, 166, 177, 202, 230, 234, 235, 237}
 
 def load():
     d = {}

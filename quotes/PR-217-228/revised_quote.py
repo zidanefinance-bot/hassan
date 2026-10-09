@@ -25,7 +25,7 @@ def brand(b):
 
 DIRECT = {"Harden": "Harden", "Total": "Total", "Ingco": "Ingco", "Tolsen": "Tolsen", "Ronix": "Ronix", "Tanaka": "Tanaka",
           "Blue Eagle": "Blue Eagle", "Leather Forge": "Leather Forge", "7CF": "7CF", "Mubah": "Mubah", "Zodian": "Zodian",
-          "Fortrex": "Fortrex", "WM": "WM", "Industrial (VMAX)": "VMAX"}
+          "Fortrex": "Fortrex", "WM": "WM", "Industrial (VMAX)": "VMAX", "WACTA20": "Industrial", "Rhodius": "Rhodius", "Generic HSS": "HSS", "SMT": "SMT"}
 DORMER = "Dormer"
 
 def r10(x):

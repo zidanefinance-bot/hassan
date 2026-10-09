@@ -1,7 +1,7 @@
 # sr | brand | buy price | source(s)
 9|Licota|29600|toolsmart.pk Licota offset ring singles 8x10 1,230 / 14x15 2,060 / 24x26 3,420 / 30x32 4,240 -> 12pc 6-32 sum ~29,600
-10|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 12630)
-13|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Tolsen 11780)
+10|Harden|12630|toolsmart.pk Harden double open-end spanner 6-32mm 12pc Rs 12,630 (alt Ingco HKSPA2142 ingcotool 9,899)
+13|Tolsen|11780|imsons.com.pk Tolsen 15889 combination spanner 6-32mm 14pc Rs 11,780; toolexpert.pk 7,500
 11|Licota|7430|toolsmart.pk Licota double open end 36x41 Rs 7,430
 12|Licota|12310|toolsmart.pk Licota double open end 41x46 Rs 12,310
 14|Licota|67130|toolsmart Licota 120pc 56,890-67,130
@@ -18,24 +18,24 @@
 24|Licota|3438|toolsmart.pk Licota 4pc snap ring set 175mm Rs 13,750 (=3,438/pc)
 25|Licota|3438|toolsmart.pk Licota 4pc snap ring set 175mm Rs 13,750 (=3,438/pc)
 26|Licota|3438|toolsmart.pk Licota 4pc snap ring set 175mm Rs 13,750 (=3,438/pc)
-63|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 3890)
-31|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 1700)
-32|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 2850)
-34|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 6560)
-35|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 7900)
+63|Ingco|4630|toolsmart.pk Ingco 15in adjustable HADW131152 Rs 4,630 (alt Total 3,890)
+31|Total|1700|toolsmart.pk Total pipe wrench 10in Rs 1,700; totaltool.pk 1,400
+32|Harden|2850|toolsmart.pk Harden heavy duty pipe wrench 12in Rs 2,850
+34|Harden|6560|toolsmart.pk Harden pipe wrench 24in Rs 6,560
+35|Total|7900|totaltool.pk Total pipe wrench 36in THT171366 Rs 7,900 (alt Wiseup toolshub 6,300)
 27|NOT FOUND (230mm circlip)
 28|NOT FOUND (230mm circlip)
 39|Licota|4000|toolsmart.pk Licota curved jaw locking plier 10in Rs 4,000 / 7in Rs 3,730 (8in n/a)
 20|NOT FOUND
 21|NOT FOUND
 22|NOT FOUND
-37|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 3380)
-38|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 2450)
-16|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 4699)
-62|NOT FOUND (pry bar)
-36|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 2000)
-52|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Yato 8500)
-53|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Yato 19030)
+37|Harden|3380|toolsmart.pk Harden 3lb sledge fibreglass 590323 Rs 3,380
+38|Harden|2450|pakistanpowertools.com Harden dead blow mallet 590445 Rs 1,987-2,450
+16|Harden|4699|Harden 12pc hollow punch 3-16mm 610848: toolsmart 4,140; ingcotool 4,199-4,699; toolshop 4,399
+62|Ingco|3499|toolshop.pk Ingco crow wrecking bar HWBA01242 (24in) Rs 3,499 (18in nahi)
+36|Total|2000|toolsmart.pk Total sledge 2lb THT79026 Rs 2,000; purchaser 1,820 (1lb nahi mila)
+52|Yato|8500|zeeshanhardware.pk Yato YT-2522 bearing puller 8in Rs 8,500
+53|Yato|19030|imartpk.com Yato 3 arms jaw puller 12in Rs 19,030
 47|NOT FOUND
 48|NOT FOUND
 49|NOT FOUND
@@ -43,16 +43,16 @@
 51|NOT FOUND
 55|NOT FOUND (5kg bucket grease pump)
 56|NOT FOUND (air grease gun)
-60|NOT FOUND steel 100m (alt Total fibreglass 100m toolsmart 5,250)
-61|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ingco 5920)
-71|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 1000)
-108|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 3350)
+60|Total|5250|toolsmart.pk Total fibreglass tape 100m TMTF131006 Rs 5,250 (steel 100m nahi mila)
+61|Ingco|5920|toolsmart.pk Ingco 50m steel tape HSMT8550 Rs 5,920 (alt Total TMT710506 4,750)
+71|Total|1000|toolsmart.pk Total steel tape 5m TMT126251 Rs 1,000; totaltool.pk 700-770
+108|Total|3350|Total spirit level 100cm TMT210026: powerhouseexpress 2,808-3,350; totaltool 2,600 (Yato 600mm amjadhardware 2,800)
 109|NOT FOUND (12in magnetic level)
-110|NOT FOUND (150mm square)
-111|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 3125)
-106|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 2420)
+110|Ingco|860|toolshop.pk Ingco stainless try square HSMT08352 Rs 860 (size confirm)
+111|Harden|3125|ezmakaan.com Harden aluminium try square 300mm 580713 Rs 3,125
+106|Total|2420|toolsmart.pk Total G clamp 6in THT13161 Rs 2,420
 107|NOT FOUND 12in (Total G clamp range totaltool 1,430-3,699 size unclear)
-73|NOT FOUND (Dormer 25pc cobalt set; alt Ingco AKD1251 M2 22,185)
+73|Ingco|22185|pakistanpowertools.com Ingco AKD1251 25pc 1-13mm Rs 22,185; almirajtrading 15,968 (M2 HSS)
 74|NOT FOUND (29pc inch set)
 4|NOT FOUND single 8mm (ktools Bosch HSS range 520-5,500)
 240|NOT FOUND single 4mm
@@ -88,7 +88,7 @@
 205|NOT FOUND
 206|NOT FOUND
 207|NOT FOUND
-208|NOT FOUND
+208|Generic HSS|2900|hallroadlahore.pk 12x12x53x110 4-flute HSS end mill Rs 2,900
 209|NOT FOUND
 210|NOT FOUND
 211|NOT FOUND
@@ -118,13 +118,13 @@
 92|NOT FOUND
 66|NOT FOUND
 67|NOT FOUND
-231|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ronix 5950)
-230|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ronix 5950)
+231|Ronix|5950|ingcomart.com.pk Ronix RH-4903 5T bottle jack Rs 5,360-5,950
+230|Ronix|5950|ingcomart.com.pk Ronix RH-4903 5T bottle jack Rs 5,360-5,950 (3T nahi mila, 5T diya)
 115|Tanaka|5000|akramengineering Tanaka oxygen regulator JGR-13A 5,000 (alt Gold Flex 4,000)
 116|NOT FOUND (fuel gas regulator)
-112|NOT FOUND (cutting torch)
+112|Industrial|8500|aliweldinghouse.pk 100B gas cutting torch with connectors Rs 8,500 (388 torch 6,500-7,000)
 234|Total|1740|powerhouseexpress Total TWAH8006 800A holder 1,610-1,740 -- SPEC: 800A (1000A nahi mila)
-235|NOT FOUND (earth clamp)
+235|Industrial|500|aliweldinghouse.pk earth clamp 500A Rs 500 (1000A listed nahi)
 105|Leather Forge|800|mjstraders Leather Forge 16in welding gloves 800 (alt Total TSP15161 toolsmart 2,640)
 151|Total|590|toolsmart Total nitrile oil XL TSP12105 590; ktools Total 390-480; Ingco 490
 152|Total|550|toolsmart Total PVC TSP1801 550; ktools Total 460
@@ -136,13 +136,13 @@
 155|7CF|450|7CF white 400ml 400-450 (autohousestore/7cfpak)
 156|7CF|450|7CF sky blue 400ml 450
 157|Mubah|400|Mubah leaf green SP-512 400ml 400 (alt Brighto 450-650)
-177|NOT FOUND (4x25 1000pc; alt Ingco 4x10 300pc purchaser 794)
+177|Ingco|794|purchaser.com.pk Ingco rivet 4x10mm 300pc bottle Rs 794 (4x25 1000pc nahi mila)
 140|NOT FOUND (125mm brass cup brush)
-103|NOT FOUND
+103|Harden|540|toolsmart.pk Harden steel brush wood handle 4 row Rs 540; pakistanpowertools 325-510
 135|Total|990|Total 14in TAC2213551: pakistanpowertools 990; ktools 980; imsons 790
 138|Total|590|Total 9in TAC2212301HA: powerhouseexpress 590; pakistanpowertools 500
 136|Total|270|powerhouseexpress Total 5in metal cutting TAC2211253 270
-1|NOT FOUND stone 4in (metal 4in Permanent 120 / Rhodius 280)
+1|Rhodius|280|nasirnsons.com Rhodius 4in cutting disc Rs 280; toolshub Permanent 4in 120
 18|Licota|3540|toolsmart.pk Licota 9pc short type hex key set 1.5-10mm Rs 3,540
 43|NOT FOUND
 58|NOT FOUND
@@ -171,15 +171,15 @@
 143|NOT FOUND
 144|NOT FOUND
 8|Licota|272440|toolsmart.pk LICOTA MADE IN TAIWAN 7 Drawer Cabinet Trolley without tools Rs 272,440 in stock (screenshot Hassan)
-148|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Tolsen 360)
-160|NOT FOUND
+148|Tolsen|360|imsons.com.pk Tolsen 50mm wall scraper Rs 360
+160|SMT|65|experttoolsworld.com SMT Rawl anchor bolt 10mm heavy duty Rs 65 (length confirm)
 161|NOT FOUND
 162|NOT FOUND
 3|NOT FOUND (mech screw jack; alt hydraulic)
 5|NOT FOUND (mech screw jack; alt hydraulic)
-223|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ingco 31300)
+223|Ingco|31300|toolsmart.pk Ingco bench vice 8in HBV088 Rs 31,300; purchaser 24,360
 224|NOT FOUND (12in vise)
-122|NOT FOUND (300A AC/DC; houseoftools WACTA20 126,000 amps n/a)
+122|WACTA20|126000|houseoftools.com.pk Inverter AC/DC TIG/MMA WACTA20 Rs 126,000 (TIG 5-200A, MMA 20-180A, 220V)
 236|NOT FOUND (welding cable)
 41|NOT FOUND (GDS 18V-350)
 97|Bosch Professional|199500|ktools Bosch GSB 18V-150C 199,500 (oos, single listing)
@@ -204,8 +204,8 @@
 201|Insize|8750|imsons Insize 3203-125A 8,750
 45|NOT FOUND (Yato round file)
 2|NOT FOUND
-113|NOT FOUND
-114|NOT FOUND
+113|Industrial|1600|aliweldinghouse.pk GK cutting nozzle Rs 1,600
+114|Industrial|1600|aliweldinghouse.pk GK cutting nozzle Rs 1,600
 117|NOT FOUND
 118|NOT FOUND
 119|NOT FOUND
@@ -218,6 +218,6 @@
 154|NOT FOUND
 158|NOT FOUND
 159|NOT FOUND
-237|NOT FOUND
+237|Industrial|150|fiaz.com.pk 95mm copper lug 140; enontraders.com 95mm thimble 150
 222|NOT FOUND
-202|NOT FOUND
+202|Total|1352|Total 6pc needle file THT91462: toolshop.pk 1,352; toolsmart.pk 1,190 (6pc, 5pc nahi)
