@@ -36,7 +36,14 @@ def rate(it):
     if q > hi * 1.8: return r10(hi * 1.35)
     return max(q, r10(hi * (1 + MARKUP)))
 
-rows = [(it["sr"], it["desc"], brand(it["brand"]), it["qty"], rate(it)) for it in ITEMS]
+KEEP = ("Bosch", "WD-40", "Insize")
+def shown(it):
+    b = brand(it["brand"])
+    if it["qbrand"] == "Industrial" and not b.startswith(KEEP):
+        return "Industrial"
+    return b
+
+rows = [(it["sr"], it["desc"], shown(it), it["qty"], rate(it)) for it in ITEMS]
 
 # ---- PDF in the same layout as the original quotation ----
 PER_PAGE = 46

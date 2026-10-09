@@ -1,7 +1,7 @@
 # sr | brand | buy price | source(s)
-9|Harden|15190|toolsmart Harden double ring 6-32 12pc 15,190 (alt Ingco offset ring 12pc hetools 10,390)
-10|Harden|12630|toolsmart Harden DOE 6-32 12pc 12,630 (alt Ingco HKSPA2142 ingcotool 9,899)
-13|Tolsen|11780|imsons Tolsen 15889 6-32 14pc 11,780; toolexpert 7,500
+9|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 15190)
+10|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 12630)
+13|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Tolsen 11780)
 11|NOT FOUND
 12|NOT FOUND
 14|Licota|67130|toolsmart Licota 120pc 56,890-67,130
@@ -18,24 +18,24 @@
 24|Licota|2913|same set
 25|Licota|2913|same set
 26|Licota|2913|same set
-63|Total|3890|toolsmart Total 15in THT1010153 3,890; pakistanpowertools 3,700 (alt Ingco 4,630)
-31|Total|1700|toolsmart Total 10in pipe wrench 1,700; totaltool 1,400
-32|Harden|2850|toolsmart Harden HD 12in pipe wrench 2,850 (alt Total 12in totaltool 1,900)
-34|Harden|6560|toolsmart Harden 24in pipe wrench 6,560
-35|Total|7900|totaltool Total 36in THT171366 7,900 (alt Wiseup toolshub 6,300)
+63|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 3890)
+31|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 1700)
+32|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 2850)
+34|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 6560)
+35|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 7900)
 27|NOT FOUND (230mm circlip)
 28|NOT FOUND (230mm circlip)
 39|NOT FOUND 8in (alt 10in Harden toolsmart 1,660 / Ingco 1,790)
 20|NOT FOUND
 21|NOT FOUND
 22|NOT FOUND
-37|Harden|3380|toolsmart Harden 3lb sledge fibreglass 590323 3,380 (alt Total 3lb 2,460/purchaser 2,240)
-38|Harden|2450|pakistanpowertools Harden dead blow 590445 1,987-2,450
-16|Harden|4699|Harden 12pc hollow punch 3-16mm: toolsmart 4,140; ingcotool 4,199-4,699; toolshop 4,399 -- SPEC MISMATCH (3-25 15pc nahi mila)
+37|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 3380)
+38|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 2450)
+16|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 4699)
 62|NOT FOUND (pry bar)
-36|Total|2000|toolsmart Total 2lb sledge THT79026 2,000; purchaser 1,820 -- SPEC: 2lb (1lb sledge nahi mila)
-52|Yato|8500|zeeshanhardware Yato YT-2522 bearing puller 8in 8,500 -- jaw count confirm
-53|Yato|19030|imartpk Yato 3-arm jaw puller 12in 19,030 (page ~2yr old)
+36|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 2000)
+52|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Yato 8500)
+53|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Yato 19030)
 47|NOT FOUND
 48|NOT FOUND
 49|NOT FOUND
@@ -44,13 +44,13 @@
 55|NOT FOUND (5kg bucket grease pump)
 56|NOT FOUND (air grease gun)
 60|NOT FOUND steel 100m (alt Total fibreglass 100m toolsmart 5,250)
-61|Ingco|5920|toolsmart Ingco 50m steel HSMT8550 5,920 (alt Total TMT710506 4,750)
-71|Total|1000|toolsmart Total 5m TMT126251 1,000; totaltool 700-770
-108|Total|3350|Total 100cm TMT210026: totaltool 2,600; powerhouseexpress 2,808-3,350
+61|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ingco 5920)
+71|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 1000)
+108|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 3350)
 109|NOT FOUND (12in magnetic level)
 110|NOT FOUND (150mm square)
-111|Harden|3125|ezmakaan Harden aluminium try square 300mm 580713 3,125 (old page) -- SPEC: aluminium
-106|Total|2420|toolsmart Total G clamp 6in THT13161 2,420
+111|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 3125)
+106|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 2420)
 107|NOT FOUND 12in (Total G clamp range totaltool 1,430-3,699 size unclear)
 73|NOT FOUND (Dormer 25pc cobalt set; alt Ingco AKD1251 M2 22,185)
 74|NOT FOUND (29pc inch set)
@@ -118,8 +118,8 @@
 92|NOT FOUND
 66|NOT FOUND
 67|NOT FOUND
-231|Ronix|5950|ingcomart Ronix RH-4903 5T bottle jack 5,360-5,950
-230|Ronix|5950|SPEC: 3T nahi mila, Ronix 5T diya (ingcomart 5,950); alt ktools Ingco 4T range 6,300-7,600
+231|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ronix 5950)
+230|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ronix 5950)
 115|Tanaka|5000|akramengineering Tanaka oxygen regulator JGR-13A 5,000 (alt Gold Flex 4,000)
 116|NOT FOUND (fuel gas regulator)
 112|NOT FOUND (cutting torch)
@@ -143,7 +143,7 @@
 138|Total|590|Total 9in TAC2212301HA: powerhouseexpress 590; pakistanpowertools 500
 136|Total|270|powerhouseexpress Total 5in metal cutting TAC2211253 270
 1|NOT FOUND stone 4in (metal 4in Permanent 120 / Rhodius 280)
-18|Harden|1420|toolsmart Harden 9pc short hex 1.5-10mm 1,420
+18|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Harden 1420)
 43|NOT FOUND
 58|NOT FOUND
 59|NOT FOUND
@@ -170,14 +170,14 @@
 142|NOT FOUND
 143|NOT FOUND
 144|NOT FOUND
-8|Total|87000|ktools Total 7-drawer roller cabinet THRC02071P 85,000-87,000 (oos) -- Licota PK mein nahi; alt Stanley 7-drawer ktools 135,000
-148|Tolsen|360|imsons Tolsen 50mm wall scraper 360
+8|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Total 87000)
+148|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Tolsen 360)
 160|NOT FOUND
 161|NOT FOUND
 162|NOT FOUND
 3|NOT FOUND (mech screw jack; alt hydraulic)
 5|NOT FOUND (mech screw jack; alt hydraulic)
-223|Ingco|31300|toolsmart Ingco 8in bench vice HBV088 31,300; purchaser 24,360 -- Yato PK mein nahi
+223|NOT FOUND (Licota/Yato PK listing nahi; sasta alt: Ingco 31300)
 224|NOT FOUND (12in vise)
 122|NOT FOUND (300A AC/DC; houseoftools WACTA20 126,000 amps n/a)
 236|NOT FOUND (welding cable)
