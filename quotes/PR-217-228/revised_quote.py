@@ -37,11 +37,12 @@ def rate(it):
     return max(q, r10(hi * (1 + MARKUP)))
 
 KEEP = ("Bosch", "WD-40", "Insize")
+FOREIGN = {int(l) for l in open("foreign_sourced.txt") if l.strip() and not l.startswith("#")}
 def shown(it):
     b = brand(it["brand"])
     if it["qbrand"] == "Industrial" and not b.startswith(KEEP):
-        return "Industrial"
-    return b
+        b = "Industrial"
+    return b + " / Equivalent" if it["sr"] in FOREIGN else b
 
 rows = [(it["sr"], it["desc"], shown(it), it["qty"], rate(it)) for it in ITEMS]
 
@@ -70,7 +71,7 @@ story = []
 for i, pg in enumerate(pages):
     data = [["SR#", "Item Description", "Brand", "Qty", "Unit Rate (PKR)"]]
     data += [[str(s), d, b, str(q), f"Rs {r:,.0f}"] for s, d, b, q, r in pg]
-    t = Table(data, colWidths=[13*mm, 85*mm, 35*mm, 16*mm, 37*mm], repeatRows=1, rowHeights=[7*mm] + [4.95*mm]*len(pg))
+    t = Table(data, colWidths=[13*mm, 85*mm, 35*mm, 16*mm, 37*mm], repeatRows=1, rowHeights=[7*mm] + [4.7*mm]*len(pg))
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), RED), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 9), ("FONT", (0, 1), (-1, -1), "Helvetica", 7.4),
