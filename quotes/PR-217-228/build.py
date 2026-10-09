@@ -1,3 +1,4 @@
+from overrides import SELL_OVERRIDE
 import sys
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -41,8 +42,12 @@ for it in ITEMS:
     ws.cell(r, 14, f"=D{r}*H{r}")
     ws.cell(r, 15, f'=IF(ISNUMBER(SEARCH(C{r},F{r})),"","YES")')
     ws.cell(r, 16, it["conf"]); ws.cell(r, 17, it["src"]); ws.cell(r, 18, it["note"])
+    if it["sr"] in SELL_OVERRIDE:
+        ws.cell(r, 11, SELL_OVERRIDE[it["sr"]])
+        ws.cell(r, 18, f"Selling rate fixed by Hassan at {SELL_OVERRIDE[it['sr']]:,}. " + (it["note"] or ""))
     for c in range(1, 19):
-        cell = ws.cell(r, c); cell.border = bd; cell.font = Font(name=F, size=9, color="0000FF" if c in (7, 8) else "000000")
+        cell = ws.cell(r, c); cell.border = bd
+        cell.font = Font(name=F, size=9, color="0000FF" if c in (7, 8) or (c == 11 and it["sr"] in SELL_OVERRIDE) else "000000")
         cell.alignment = Alignment(vertical="center", wrap_text=c in (2, 6, 17, 18))
     for c in (5, 7, 8, 11, 12, 13, 14):
         ws.cell(r, c).number_format = '#,##0;(#,##0);-'

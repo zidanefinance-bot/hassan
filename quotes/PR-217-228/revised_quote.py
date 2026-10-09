@@ -6,6 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from decimal import Decimal, ROUND_HALF_UP
 from apply_listings import ITEMS_ONLINE as ITEMS
+from overrides import SELL_OVERRIDE
 
 MARKUP = 0.15
 RED = colors.HexColor("#B71C1C")
@@ -32,6 +33,7 @@ def r10(x):
     return float(Decimal(str(round(x, 6))).quantize(Decimal("1E1"), rounding=ROUND_HALF_UP))
 
 def rate(it):
+    if it["sr"] in SELL_OVERRIDE: return SELL_OVERRIDE[it["sr"]]
     hi, q = it["high"], it["rate"]
     if q > hi * 1.8: return r10(hi * 1.35)
     return max(q, r10(hi * (1 + MARKUP)))
