@@ -10,58 +10,58 @@ ROWS = """
 7|SAFETY GOOGLES|Industrial|24|507|Industrial|250|400|Market|E|
 8|7 DRAWER TOOL TROLLEY|Licota|3|161070|Licota (AWX series, empty)|150000|210000|ktools Yato 7-drawer 211pc 315,000 / 6-drawer 177pc 220,000 (with tools); empty Licota est|P|Empty ya tools ke saath? Confirm
 9|DOUBLE OPEN RING OFFSET WRENCH SET (12PCS)|Licota|4|18200|Licota|20000|26000|toolsmart Licota 14pc set 25,660|P|
-10|DOUBLE OPEN END WRENCH 6 TO 32 (12 PCS SET)|Licota|4|15600|Licota|16000|21000|toolsmart Licota; Ingco 12pc 9,899|P|
+10|DOUBLE OPEN END WRENCH 6 TO 32 (12 PCS SET)|Licota|4|15600|Licota|23000|27000|toolsmart.pk Licota DOE 36x41 7,430 / 41x46 12,310 + offset ring singles 1,230-4,240 -> 12pc 6-32 DOE ~85% of ring set|E|Licota - UAE dealer price x90 (PK listing nahi)
 11|DOUBLE OPEN END WRENCH 36X41|Licota|3|3640|Licota|7000|8000|goldentools.ae Licota DOE 21x23 AED 26 scaled to 36x41|E|Licota - PK listing nahi, Licota dealer se confirm
 12|DOUBLE OPEN END WRENCH 41X46|Licota|3|4550|Licota|9500|10500|goldentools.ae Licota DOE 21x23 AED 26 scaled to 41x46|E|Licota - PK listing nahi, Licota dealer se confirm
-13|COMBINATION WRENCH 8 TO 32 (14 PCS SET)|Licota|4|22100|Licota|24000|30000|toolsmart Licota 14pc combo 25,660|V|
+13|COMBINATION WRENCH 8 TO 32 (14 PCS SET)|Licota|4|22100|Licota|25660|28000|toolsmart.pk Licota 14pc European combination 5/16-1-1/4in (=8-32mm range) Rs 25,660|E|Licota - UAE dealer price x90 (PK listing nahi)
 14|SOCKET SET (113PCS) 1/4" & 1/2"|Licota|4|75400|Licota|56900|67200|toolsmart Licota 120pc 56,890-67,130|V|
 15|PIN PUNCH SET (06PCS SET)|Licota|4|5850|Licota|5460|6200|toolsmart Licota 6pc 5,460|V|
 16|HOLLOW PUNCH (3MM-25MM) (15PCS SET)|Licota|4|8450|Licota|12000|16000|Licota TAP-50042 hollow punch (PH) scaled to 15pc 3-25mm|E|Licota - PK listing nahi, Licota dealer se confirm
 17|LONG TYPE HEX KEY WRENCH SET 09 PCS|Licota|4|2548|Licota|3740|4400|toolsmart 4,400 (long) / 3,740 (extra long)|V|
 18|SHORT TYPE HEX KEY WRENCH SET (09PCS)|Licota|4|1846|Licota|2000|3000|toolsmart Licota hex sets (scaled)|P|
 19|LONG TYPE HEX WRENCH SET 09 PCS|Licota|4|2548|Licota|3740|4400|toolsmart 4,400 (long) / 3,740 (extra long)|V|Item 17 ka duplicate lagta hai
-20|ALLEN HEX KEY 12MM|Licota|3|910|Licota|1100|1300|goldentools.ae Licota 12mm hex AED 250/20pc|E|Licota - PK listing nahi, Licota dealer se confirm
-21|ALLEN (HEX) KEY 14MM|Licota|3|1170|Licota|1400|1700|goldentools.ae Licota 12mm hex scaled|E|Licota - PK listing nahi, Licota dealer se confirm
-22|ALLEN (HEX) KEY 16MM|Licota|3|1430|Licota|1800|2100|goldentools.ae Licota 12mm hex scaled|E|Licota - PK listing nahi, Licota dealer se confirm
+20|ALLEN HEX KEY 12MM|Licota|3|910|Licota|1050|1250|goldentools.ae Licota 12mm hex AED 250/20pc (12.5 ea) x90; Licota PK/UAE ratio ~90 (calibrated: locking plier 10in 4,000/AED42, 143pc 104,750/AED1,200, pin punch 5,460/AED48, hex 9pc 4,400/AED45)|E|Licota - UAE dealer price x90 (PK listing nahi)
+21|ALLEN (HEX) KEY 14MM|Licota|3|1170|Licota|1350|1600|goldentools.ae Licota hex 12mm scaled to 14mm x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+22|ALLEN (HEX) KEY 16MM|Licota|3|1430|Licota|1700|2000|goldentools.ae Licota hex 12mm scaled to 16mm x90|E|Licota - UAE dealer price x90 (PK listing nahi)
 23|CIRCLIP PLIER INTERNAL STRAIGHT 175MM|Licota|4|4940|Licota|4500|5500|toolsmart Licota pliers 3,830-5,210|P|
 24|CIRCLIP PLIER INTERNAL BENT 175MM|Licota|4|4940|Licota|4500|5500|toolsmart Licota pliers|P|
 25|CIRCLIP PLIER EXTERNAL STRAIGHT 175MM|Licota|4|4940|Licota|4500|5500|toolsmart Licota pliers|P|
 26|CIRCLIP PLIER EXTERNAL BENT 175MM|Licota|4|4940|Licota|4500|5500|toolsmart Licota pliers|P|
-27|CIRCLIP PLIER INTERNAL STRAIGHT 230MM|Licota|4|6760|Licota|4000|4800|toolsmart.pk Licota 175mm snap ring set (2,913/pc) scaled to 230mm|E|Licota - PK listing nahi, Licota dealer se confirm
-28|CIRCLIP PLIER EXTERNAL STRAIGHT 230MM|Licota|3|6760|Licota|4000|4800|toolsmart.pk Licota 175mm snap ring set (2,913/pc) scaled to 230mm|E|Licota - PK listing nahi, Licota dealer se confirm
+27|CIRCLIP PLIER INTERNAL STRAIGHT 230MM|Licota|4|6760|Licota|4300|4800|goldentools.ae Licota snap ring set 4pc 175mm AED 212.5; toolsmart.pk same set 13,750 (3,438/pc) -> 230mm +30%|E|Licota - UAE dealer price x90 (PK listing nahi)
+28|CIRCLIP PLIER EXTERNAL STRAIGHT 230MM|Licota|3|6760|Licota|4300|4800|goldentools.ae Licota snap ring set 4pc 175mm AED 212.5; toolsmart.pk same set 13,750 (3,438/pc) -> 230mm +30%|E|Licota - UAE dealer price x90 (PK listing nahi)
 30|CHISEL SET (05 PCS SET)|Licota|4|6136|Licota|4000|4720|toolsmart Licota 5pc 4,000-4,720|V|
-31|PIPE WRENCH SIZE 10"|Licota|3|2210|Licota|4000|4500|toolsmart.pk Licota 18in 9,620 / 14in 6,730 scaled|E|Licota - PK listing nahi, Licota dealer se confirm
-32|PIPE WRENCH SIZE 12"|Licota|3|2886|Licota|5200|5800|toolsmart.pk Licota 18in 9,620 / 14in 6,730 scaled|E|Licota - PK listing nahi, Licota dealer se confirm
+31|PIPE WRENCH SIZE 10"|Licota|3|2210|Licota|5300|5800|toolsmart.pk Licota ridgid pipe wrench 14in 7,940 / 18in 9,620 scaled to 10in|E|Licota - UAE dealer price x90 (PK listing nahi)
+32|PIPE WRENCH SIZE 12"|Licota|3|2886|Licota|6300|6800|toolsmart.pk Licota ridgid pipe wrench 14in 7,940 / 18in 9,620 scaled to 12in|E|Licota - UAE dealer price x90 (PK listing nahi)
 33|PIPE WRENCH SIZE 18"|Licota|3|5902|Licota|9620|10500|toolsmart Licota 18" 9,620|V|
-34|PIPE WRENCH SIZE 24"|Licota|2|6120|Licota|14000|15500|toolsmart.pk Licota 18in 9,620 / 14in 6,730 scaled|E|Licota - PK listing nahi, Licota dealer se confirm
-35|PIPE WRENCH SIZE 36"|Licota|2|12870|Licota|26000|29000|toolsmart.pk Licota 18in 9,620 / 14in 6,730 scaled|E|Licota - PK listing nahi, Licota dealer se confirm
-36|SLEDGE HAMMER 1 LBS WITH FIBREGLASS HANDLE|Licota|3|1950|Licota|5000|6000|goldentools.ae Licota sledge 1500g AED 96 scaled to 1lb|E|Licota - PK listing nahi, Licota dealer se confirm
-37|SLEDGE HAMMER 3 LBS WITH FIBREGLASS HANDLE|Licota|3|4550|Licota|8500|9500|goldentools.ae Licota sledge 1500g AED 96|E|Licota - PK listing nahi, Licota dealer se confirm
-38|SOFT FACE DEAD BLOW HAMMER 50MM|Licota|3|6240|Licota|6500|7500|goldentools.ae Licota dead blow 45mm AED 65|E|Licota - PK listing nahi, Licota dealer se confirm
+34|PIPE WRENCH SIZE 24"|Licota|2|6120|Licota|14000|16000|toolsmart.pk Licota 18in 9,620 scaled; goldentools.ae Licota 48in AED 1,000|E|Licota - UAE dealer price x90 (PK listing nahi)
+35|PIPE WRENCH SIZE 36"|Licota|2|12870|Licota|30000|36000|toolsmart.pk Licota 18in 9,620 scaled; goldentools.ae Licota 48in AED 1,000 (x90=90,000)|E|Licota - UAE dealer price x90 (PK listing nahi)
+36|SLEDGE HAMMER 1 LBS WITH FIBREGLASS HANDLE|Licota|3|1950|Licota|5400|6300|goldentools.ae Licota sledge 1500g AED 96 / 2000g AED 110 -> 1lb ~AED 65 x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+37|SLEDGE HAMMER 3 LBS WITH FIBREGLASS HANDLE|Licota|3|4550|Licota|8200|9500|goldentools.ae Licota sledge 1500g AED 96 x90 (3lb=1.36kg)|E|Licota - UAE dealer price x90 (PK listing nahi)
+38|SOFT FACE DEAD BLOW HAMMER 50MM|Licota|3|6240|Licota|6000|7000|goldentools.ae Licota dead blow 45mm AED 65 -> 50mm ~AED 72 x90|E|Licota - UAE dealer price x90 (PK listing nahi)
 39|VICE GRIP PLIER 08"|Licota|3|1950|Licota|3500|4000|goldentools.ae Licota locking plier 10in AED 42|E|Licota - PK listing nahi, Licota dealer se confirm
 40|CORDLESS IMPACT WRENCH 185NM (Bosch)|Bosch Professional|3|79300|Bosch Professional GDX 180-Li|45000|79000|ktools 45,000 solo / 79,000 kit; kamadi 75,200|V|Kit (battery+charger) ho to loss
-41|CORDLESS IMPACT WRENCH 350N (Bosch)|Bosch Professional|3|128700|Bosch Professional GDS 18V-350|95000|140000|No PK listing; est from GDX/GDS range|E|
+41|CORDLESS IMPACT WRENCH 350N (Bosch)|Bosch Professional|3|128700|Bosch Professional GDS 18V-350|80000|100000|bosch-pt.com.ph GDS 18V-350 bare PHP 5,915 x~5.6 (calibrated: GDS 18V-1000 PH 12,600 vs PK solo 70,000) + 2x4Ah battery & charger|E|Kit (battery+charger) ke hisaab se
 42|CORDLESS IMPACT WRENCH 1000N (Bosch)|Bosch Professional|2|106600|Bosch Professional GDS 18V-1000|70000|143800|ktools 70,000 solo (oos); kamadi 143,800 kit|V|Kit diya to har piece par 37k loss
-43|HEX IMPACT ADAPTOR 1/2" FEMALE TO 1/4" FEMALE|Licota|4|1560|Licota|1800|2200|goldentools.ae Licota AED x~100 (AED76 + PK import)|E|Licota - PK listing nahi, Licota dealer se confirm
+43|HEX IMPACT ADAPTOR 1/2" FEMALE TO 1/4" FEMALE|Licota|4|1560|Licota|1300|1600|toolsmart.pk Licota impact adapter 3/8F x 1/2M 1,130 (similar)|E|Licota - UAE dealer price x90 (PK listing nahi)
 44|FLAT FILE 12"|Licota|4|1950|Yato|1750|2000|zeeshanhardware Yato YT-6190 12in 1,750|V|
 45|ROUNDE FILE 12"|Licota|4|2210|Yato|1750|2000|zeeshanhardware Yato 12in file 1,750 (flat; round similar)|P|
-47|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAKE 21|Licota|3|13000|Licota|12000|16000|goldentools.ae/amazon.ae Licota 6in 3-jaw AED 105-120 (~PKR 9k) scaled + import|E|
-48|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAK 250|Licota|2|15600|Licota|16000|24000|goldentools.ae Licota pullers (scaled) + import|E|
-49|UNIVERSAL PULLER 2-ARMED 160 X 300 MM 5T|Licota|1|20800|Licota|20000|28000|goldentools.ae Licota pullers (scaled) + import|E|
-50|UNIVERSAL PULLER 2-ARMED 250 X 300 MM 7.5T|Licota|1|28600|Licota|28000|38000|goldentools.ae Licota pullers (scaled) + import|E|
-51|INTERNAL EXTRACTOR WITH REINFORCED COLLAR|Licota|1|32500|Licota|30000|45000|Licota catalogue; no PK listing|E|
-52|MECHANICAL PULLER 3 ARMED 200X200|Licota|2|18200|Licota|17000|20000|goldentools.ae Licota 3-jaw 6in AED 120 scaled to 8in|E|Licota - PK listing nahi, Licota dealer se confirm
-53|MECHANICAL PULLER 3 ARMED 250X250|Licota|1|23400|Licota|26000|30000|goldentools.ae Licota 3-jaw 6in AED 120 scaled to 10in|E|Licota - PK listing nahi, Licota dealer se confirm
+47|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAKE 21|Licota|3|13000|Licota|15000|20000|goldentools.ae Licota 3-jaw 6in AED 120 / 4in AED 65 scaled x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+48|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAK 250|Licota|2|15600|Licota|20000|26000|goldentools.ae Licota puller AED 120 (6in) scaled to 250mm x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+49|UNIVERSAL PULLER 2-ARMED 160 X 300 MM 5T|Licota|1|20800|Licota|24000|30000|goldentools.ae Licota puller scaled to 160x300 5T x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+50|UNIVERSAL PULLER 2-ARMED 250 X 300 MM 7.5T|Licota|1|28600|Licota|32000|40000|goldentools.ae Licota puller scaled to 250x300 7.5T x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+51|INTERNAL EXTRACTOR WITH REINFORCED COLLAR|Licota|1|32500|Licota|32000|42000|Licota internal extractor (ATB-1208 class) est x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+52|MECHANICAL PULLER 3 ARMED 200X200|Licota|2|18200|Licota|16000|19000|goldentools.ae Licota 3-jaw 6in AED 120 scaled to 8in (~AED 190) x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+53|MECHANICAL PULLER 3 ARMED 250X250|Licota|1|23400|Licota|24000|28000|goldentools.ae Licota 3-jaw 6in AED 120 scaled to 10in (~AED 290) x90|E|Licota - UAE dealer price x90 (PK listing nahi)
 54|DRILL MACHINE CORDLESS ROTARY HAMMER Bosch|Bosch Professional|2|400946|Bosch Professional GBH 180-LI / GBH 18V-26|49000|115000|ktools 49,000 solo / 115,000 kit|V|Rate cost se 3x - customer pakray ga
 55|MANUAL GREASE GUN 5KG|Licota|2|15600|Yato / Industrial (bucket type)|12000|18000|Market|E|Licota 5kg bucket gun nahi milta
-56|AIR GREASE GUN 500CC|Licota|1|10400|Licota|9000|13000|toolsmart Licota grease gun 7,760 (air premium)|P|
+56|AIR GREASE GUN 500CC|Licota|1|10400|Licota|10000|13000|goldentools.ae Licota hand grease gun AGH-10004H AED 120 (=toolsmart 7,760) -> air gun ~1.5x|E|Licota - UAE dealer price x90 (PK listing nahi)
 57|HAND GREASE GUN WITH HOSE 500CC|Licota|4|4550|Licota|7760|9000|toolsmart Licota 400cc 7,760|V|
 58|GREASE PIPE 1/4"X12"|Licota|12|715|Licota|800|1200|Market|E|
 59|DOUBLE HANDLE GREASE NOZZLE|Licota|12|1950|Licota|1200|1800|Market|E|
 60|STEEL MEASURMENT TAPE 100M|Licota|2|9100|Yato|8000|12000|Market (Licota tapes PK mein nahi)|E|
 61|STEEL MEASURMENT TAPE 50M|Licota|2|5850|Yato|5000|7500|Market|E|
-62|ALIGNING PRY BAR DIA 5/8" X 18" LENGTH|Licota|3|2600|Licota|3000|4000|Market|E|
-63|ADJUSTABLE WRENCH 15"|Licota|1|5551|Licota|9000|11000|toolsmart Licota 10" 5,310; Total 15" 3,700-3,890|P|
+62|ALIGNING PRY BAR DIA 5/8" X 18" LENGTH|Licota|3|2600|Licota|3200|4000|Licota pry bar (khmtools PH 4pc set) est x90|E|Licota - UAE dealer price x90 (PK listing nahi)
+63|ADJUSTABLE WRENCH 15"|Licota|1|5551|Licota|10500|12500|toolsmart.pk Licota adjustable angle 10in 5,310-6,270 / goldentools.ae AED 85 -> 15in ~2x|E|Licota - UAE dealer price x90 (PK listing nahi)
 64|ROUGH FILE SMOOTH 10"|Licota|3|1560|Yato|1350|1600|zeeshanhardware Yato YT-6228 10in 1,350|V|
 65|POLISH FILE SMOOTH 10"|Licota|3|1560|Yato|1350|1600|zeeshanhardware Yato YT-6228 10in 1,350|V|
 66|REVOLVING CENTRE MT4|Licota|2|11700|Vertex (Taiwan)|14000|18000|Market|E|Licota lathe centre nahi banata
@@ -104,7 +104,7 @@ ROWS = """
 105|WELDING LEATHER GLOVES 16"|Industrial|12|1170|Industrial|600|900|Market|E|
 106|C-CLAMP 6"|Licota|6|3640|Yato|2000|2800|Market|E|
 107|C-CLAMP 12"|Licota|6|6760|Yato|4500|6000|Market|E|
-108|SPIRIT LEVEL 1 METER|Licota|3|4550|Yato|3500|5000|Market|E|
+108|SPIRIT LEVEL 1 METER|Licota|3|4550|Yato|3800|4200|amjadhardware.com Yato YT-3022 600mm 2,800; speedextools.com Yato YT-3024 1000mm AED 41 x90|E|Yato - PK listing nahi, UAE/brand price se
 109|MAGNET SPIRIT LEVEL 12"|Licota|6|2340|Yato|1800|2500|Market|E|
 110|CARBON STEEL RIGHT ANGLE 150MM|Licota|3|1820|Insize|2000|2800|Market|E|
 111|CARBON STEEL RIGHT ANGLE 300MM|Licota|3|2860|Insize|4000|5500|Insize square est (industrybuying 2280-300 INR ref)|E|Insize - dealer confirm
@@ -213,8 +213,8 @@ ROWS = """
 227|HSS TOOL 12MMX12MMX200MM|Licota|24|1820|Dormer|3500|4800|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
 228|HSS TOOL 16MMX16MMX200MM|Licota|24|2860|Dormer|6000|8000|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
 229|HSS PARTING OFF TOOL 1/8" X 3/4" X 8"|Licota|24|2340|Dormer|3200|4500|Dormer HSS toolbit - PK listing n/a, est ~1.8x generic|E|Dormer toolbit stock confirm
-230|HYDRAULIC JACK 3 TON|Licota|1|9750|Yato YT-17001|6000|8500|pakwheels 5T bottle jack 4,000-5,999; purchaser 8,390|P|
-231|HYDRAULIC JACK 5 TON|Licota|1|12350|Yato YT-17002|8000|11000|pakwheels 5,499-5,999 (generic); Yato premium|P|
+230|HYDRAULIC JACK 3 TON|Licota|1|9750|Yato YT-17001|5300|6000|speedextools/UAE Yato YT-17001 3T AED 59 x90|E|Yato - PK listing nahi, UAE/brand price se
+231|HYDRAULIC JACK 5 TON|Licota|1|12350|Yato YT-17002|6500|7500|Yato YT-17002 5T EU EUR 26-30 / UAE ref x90|E|Yato - PK listing nahi, UAE/brand price se
 233|CORDLESS SMALL ANGLE GRINDER 125MM EQUIVAL|Bosch Professional|2|52000|Bosch Professional GWS 180-LI / GWS 18V-10|38340|85000|powerhouseexpress 38,340 solo; ktools 40,000 solo|V|Kit diya to loss
 234|WELDING ELCTRODE HOLDER 1000 AMP|Industrial|3|3094|Industrial|1800|2600|Market|E|
 235|EARTH CLAMP 1000 AMP|Licota|3|2860|Industrial|1500|2300|Market|E|
