@@ -1,0 +1,223 @@
+# sr | brand | buy price | source(s)
+9|Harden|15190|toolsmart Harden double ring 6-32 12pc 15,190 (alt Ingco offset ring 12pc hetools 10,390)
+10|Harden|12630|toolsmart Harden DOE 6-32 12pc 12,630 (alt Ingco HKSPA2142 ingcotool 9,899)
+13|Tolsen|11780|imsons Tolsen 15889 6-32 14pc 11,780; toolexpert 7,500
+11|NOT FOUND
+12|NOT FOUND
+14|Licota|67130|toolsmart Licota 120pc 56,890-67,130
+15|Licota|5460|toolsmart Licota 6pc pin punch 5,460
+17|Licota|4400|toolsmart Licota 9pc long hex 4,400
+19|Licota|4400|same as 17
+30|Licota|4720|toolsmart Licota 5pc punch chisel 4,000-4,720
+33|Licota|9620|toolsmart Licota 18in pipe wrench 9,620
+57|Licota|7760|toolsmart Licota grease gun 400cc 7,760
+44|Yato|1750|zeeshanhardware Yato YT-6190 12in 1,750
+64|Yato|1350|zeeshanhardware Yato YT-6228 10in 1,350
+65|Yato|1350|zeeshanhardware Yato YT-6228 10in 1,350
+23|Licota|2913|toolsmart Licota 4pc snap ring plier set 175mm 11,650 (=int/ext straight/bent, per pc 2,913)
+24|Licota|2913|same set
+25|Licota|2913|same set
+26|Licota|2913|same set
+63|Total|3890|toolsmart Total 15in THT1010153 3,890; pakistanpowertools 3,700 (alt Ingco 4,630)
+31|Total|1700|toolsmart Total 10in pipe wrench 1,700; totaltool 1,400
+32|Harden|2850|toolsmart Harden HD 12in pipe wrench 2,850 (alt Total 12in totaltool 1,900)
+34|Harden|6560|toolsmart Harden 24in pipe wrench 6,560
+35|Total|7900|totaltool Total 36in THT171366 7,900 (alt Wiseup toolshub 6,300)
+27|NOT FOUND (230mm circlip)
+28|NOT FOUND (230mm circlip)
+39|NOT FOUND 8in (alt 10in Harden toolsmart 1,660 / Ingco 1,790)
+20|NOT FOUND
+21|NOT FOUND
+22|NOT FOUND
+37|Harden|3380|toolsmart Harden 3lb sledge fibreglass 590323 3,380 (alt Total 3lb 2,460/purchaser 2,240)
+38|Harden|2450|pakistanpowertools Harden dead blow 590445 1,987-2,450
+16|Harden|4699|Harden 12pc hollow punch 3-16mm: toolsmart 4,140; ingcotool 4,199-4,699; toolshop 4,399 -- SPEC MISMATCH (3-25 15pc nahi mila)
+62|NOT FOUND (pry bar)
+36|Total|2000|toolsmart Total 2lb sledge THT79026 2,000; purchaser 1,820 -- SPEC: 2lb (1lb sledge nahi mila)
+52|Yato|8500|zeeshanhardware Yato YT-2522 bearing puller 8in 8,500 -- jaw count confirm
+53|Yato|19030|imartpk Yato 3-arm jaw puller 12in 19,030 (page ~2yr old)
+47|NOT FOUND
+48|NOT FOUND
+49|NOT FOUND
+50|NOT FOUND
+51|NOT FOUND
+55|NOT FOUND (5kg bucket grease pump)
+56|NOT FOUND (air grease gun)
+60|NOT FOUND steel 100m (alt Total fibreglass 100m toolsmart 5,250)
+61|Ingco|5920|toolsmart Ingco 50m steel HSMT8550 5,920 (alt Total TMT710506 4,750)
+71|Total|1000|toolsmart Total 5m TMT126251 1,000; totaltool 700-770
+108|Total|3350|Total 100cm TMT210026: totaltool 2,600; powerhouseexpress 2,808-3,350
+109|NOT FOUND (12in magnetic level)
+110|NOT FOUND (150mm square)
+111|Harden|3125|ezmakaan Harden aluminium try square 300mm 580713 3,125 (old page) -- SPEC: aluminium
+106|Total|2420|toolsmart Total G clamp 6in THT13161 2,420
+107|NOT FOUND 12in (Total G clamp range totaltool 1,430-3,699 size unclear)
+73|Ingco|22185|pakistanpowertools Ingco AKD1251 25pc 1-13mm 22,185; almirajtrading 15,968 -- SPEC: M2 HSS not cobalt
+74|NOT FOUND (29pc inch set)
+4|NOT FOUND single 8mm (ktools Bosch HSS range 520-5,500)
+240|NOT FOUND single 4mm
+98|NOT FOUND
+99|NOT FOUND
+100|NOT FOUND
+101|NOT FOUND
+102|NOT FOUND
+179|NOT FOUND
+180|NOT FOUND
+181|NOT FOUND
+182|NOT FOUND
+183|NOT FOUND
+184|NOT FOUND
+185|NOT FOUND
+186|NOT FOUND
+187|NOT FOUND
+188|NOT FOUND
+189|NOT FOUND
+190|NOT FOUND
+191|NOT FOUND
+196|NOT FOUND
+213|NOT FOUND
+214|NOT FOUND
+215|NOT FOUND
+216|NOT FOUND
+217|NOT FOUND
+218|NOT FOUND
+219|NOT FOUND
+220|NOT FOUND
+221|NOT FOUND
+204|NOT FOUND
+205|NOT FOUND
+206|NOT FOUND
+207|NOT FOUND
+208|NOT FOUND
+209|NOT FOUND
+210|NOT FOUND
+211|NOT FOUND
+212|NOT FOUND
+225|NOT FOUND
+226|NOT FOUND
+227|NOT FOUND
+228|NOT FOUND
+229|NOT FOUND
+75|NOT FOUND
+76|NOT FOUND
+77|NOT FOUND
+78|NOT FOUND
+79|NOT FOUND
+80|NOT FOUND
+81|NOT FOUND
+82|NOT FOUND
+83|NOT FOUND
+84|NOT FOUND
+85|NOT FOUND
+86|NOT FOUND
+87|NOT FOUND
+88|NOT FOUND
+89|NOT FOUND
+90|NOT FOUND
+91|NOT FOUND
+92|NOT FOUND
+66|NOT FOUND
+67|NOT FOUND
+231|Ronix|5950|ingcomart Ronix RH-4903 5T bottle jack 5,360-5,950
+230|Ronix|5950|SPEC: 3T nahi mila, Ronix 5T diya (ingcomart 5,950); alt ktools Ingco 4T range 6,300-7,600
+115|Tanaka|5000|akramengineering Tanaka oxygen regulator JGR-13A 5,000 (alt Gold Flex 4,000)
+116|NOT FOUND (fuel gas regulator)
+112|NOT FOUND (cutting torch)
+234|Total|1740|powerhouseexpress Total TWAH8006 800A holder 1,610-1,740 -- SPEC: 800A (1000A nahi mila)
+235|NOT FOUND (earth clamp)
+105|Leather Forge|800|mjstraders Leather Forge 16in welding gloves 800 (alt Total TSP15161 toolsmart 2,640)
+151|Total|590|toolsmart Total nitrile oil XL TSP12105 590; ktools Total 390-480; Ingco 490
+152|Total|550|toolsmart Total PVC TSP1801 550; ktools Total 460
+7|Blue Eagle|350|mjstraders + hacsons Blue Eagle NP102 350
+121|Total|600|toolsmart Total welding goggle TSP303 600; mjstraders WG208 500
+104|NOT FOUND flip-front (alt Wadfow auto-darkening WWH2501 powerhouse 3,840)
+6|Total|730|powerhouseexpress Total TSP2609 730-810 (alt Ingco 1,440)
+153|Total|730|same (yellow)
+155|7CF|450|7CF white 400ml 400-450 (autohousestore/7cfpak)
+156|7CF|450|7CF sky blue 400ml 450
+157|Mubah|400|Mubah leaf green SP-512 400ml 400 (alt Brighto 450-650)
+177|NOT FOUND (4x25 1000pc; alt Ingco 4x10 300pc purchaser 794)
+140|NOT FOUND (125mm brass cup brush)
+103|NOT FOUND
+135|Total|990|Total 14in TAC2213551: pakistanpowertools 990; ktools 980; imsons 790
+138|Total|590|Total 9in TAC2212301HA: powerhouseexpress 590; pakistanpowertools 500
+136|Total|270|powerhouseexpress Total 5in metal cutting TAC2211253 270
+1|NOT FOUND stone 4in (metal 4in Permanent 120 / Rhodius 280)
+18|Harden|1420|toolsmart Harden 9pc short hex 1.5-10mm 1,420
+43|NOT FOUND
+58|NOT FOUND
+59|NOT FOUND
+96|NOT FOUND (depth gauge 250)
+192|NOT FOUND
+193|NOT FOUND
+194|NOT FOUND
+195|NOT FOUND
+69|NOT FOUND
+70|NOT FOUND
+164|Zodian|1450|priceinfo.pk 2.5mm E6013 150pc (~2.5kg) 1,200-1,450; Pak Oxygen Zodian E6013 5kg 2,248 -- PACK SIZE confirm
+165|Zodian|2248|estore.pakoxygen.com Zodian E6013 5kg box 2,248; priceinfo 3.2mm 5kg 2,350-2,500 -- PACK SIZE confirm
+166|Fortrex|2325|estore.pakoxygen.com Fortrex E7018 5kg box 2,325; priceinfo E7018 2,300-2,450 -- PACK SIZE confirm
+167|NOT FOUND (SS 309L)
+168|NOT FOUND (SS 316L)
+123|NOT FOUND (TIG torch)
+124|NOT FOUND
+125|NOT FOUND
+126|NOT FOUND
+127|NOT FOUND
+128|NOT FOUND
+129|NOT FOUND
+130|NOT FOUND (tungsten - aliweldinghouse listed, price n/a)
+142|NOT FOUND
+143|NOT FOUND
+144|NOT FOUND
+8|Total|87000|ktools Total 7-drawer roller cabinet THRC02071P 85,000-87,000 (oos) -- Licota PK mein nahi; alt Stanley 7-drawer ktools 135,000
+148|Tolsen|360|imsons Tolsen 50mm wall scraper 360
+160|NOT FOUND
+161|NOT FOUND
+162|NOT FOUND
+3|NOT FOUND (mech screw jack; alt hydraulic)
+5|NOT FOUND (mech screw jack; alt hydraulic)
+223|Ingco|31300|toolsmart Ingco 8in bench vice HBV088 31,300; purchaser 24,360 -- Yato PK mein nahi
+224|NOT FOUND (12in vise)
+122|NOT FOUND (300A AC/DC; houseoftools WACTA20 126,000 amps n/a)
+236|NOT FOUND (welding cable)
+41|NOT FOUND (GDS 18V-350)
+97|Bosch Professional|199500|ktools Bosch GSB 18V-150C 199,500 (oos, single listing)
+54|Bosch Professional|115000|ktools GBH 180-Li 49,000 solo / 115,000 kit
+40|Bosch Professional|79000|ktools GDX 180-Li 45,000 solo / 79,000 kit; kamadi 75,200
+42|Bosch Professional|143800|kamadi GDS 18V-1000 kit 143,800; ktools solo 70,000 (oos)
+233|Bosch Professional|40000|ktools GWS 180-LI 40,000 (solo, discontinued); powerhouseexpress 38,340
+239|Bosch Professional|44000|kamadi GWS 2200-230H 43,200; ktools 44,000; imartpk 36,570
+93|Insize|18100|kamadi 1108-300 18,100; amjadhardware 15,800; ktools 19,500
+94|Insize|15800|kamadi 1205-300S 15,800
+95|Insize|7928|purchaser 1205-200S 7,928
+146|Industrial (VMAX)|82000|eqmachines 82,000; rafiqbrothers VMAX 80,000; OLX 85,000
+147|Industrial (VMAX)|225000|rafiqbrothers VMAX 5T 200,000-225,000
+149|WD-40|1380|naheed.pk 1,380; autohub.pk 1,299
+150|Total|900|ktools Total HPPE level 5 900; mjstraders Safeyear 600; hacsons 1,000
+238|Toho (Taiwan)|7800|mjstraders Toho MH106 3D 7,800
+131|WM|5000|aliweldinghouse WM argon regulator 5,000-6,000
+197|Insize|5500|kamadi 3203-25A 5,500; imsons 4,815
+198|Insize|5500|imsons Insize 3203 series range 4,815-9,625 (50mm size)
+199|Insize|6200|imsons Insize 3203 series range (75mm size)
+200|Insize|6875|imsons Insize 3203-100A 6,875
+201|Insize|8750|imsons Insize 3203-125A 8,750
+45|NOT FOUND (Yato round file)
+2|NOT FOUND
+113|NOT FOUND
+114|NOT FOUND
+117|NOT FOUND
+118|NOT FOUND
+119|NOT FOUND
+120|NOT FOUND
+132|NOT FOUND
+133|NOT FOUND
+134|NOT FOUND
+139|NOT FOUND
+145|NOT FOUND
+154|NOT FOUND
+158|NOT FOUND
+159|NOT FOUND
+237|NOT FOUND
+222|NOT FOUND
+202|NOT FOUND

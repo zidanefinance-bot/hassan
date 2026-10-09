@@ -3,7 +3,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.utils import get_column_letter
-from items import ITEMS
+from apply_listings import ITEMS_ONLINE as ITEMS
 
 wb = Workbook()
 ws = wb.active; ws.title = "Rate Check"
@@ -20,7 +20,7 @@ ws["F3"] = "<- yellow cell change karo, revised rates update ho jayenge"; ws["F3
 
 heads = ["SR#", "Item Description", "Quoted Brand", "Qty", "Quoted Rate (PKR)", "Correct / Suggested Brand",
          "Buying Low (PKR)", "Buying High (PKR)", "Margin on High Buy", "Status", "Revised Rate (PKR)",
-         "Quoted Total", "Revised Total", "Cost Total (High)", "Brand Changed?", "Confidence", "Source / Basis", "Note"]
+         "Quoted Total", "Revised Total", "Cost Total (High)", "Brand Changed?", "Status (V/S/N)", "Source / Basis", "Note"]
 HR = 5
 for c, h in enumerate(heads, 1):
     cell = ws.cell(HR, c, h); cell.font = Font(name=F, bold=True, color="FFFFFF"); cell.fill = hdr_fill
@@ -90,6 +90,10 @@ rows = [
     ("", None),
     ("Revised quote total (PKR)", f"={R}M{tot}"),
     ("Revised margin %", "=IF(B16=0,0,(B16-B11)/B16)"),
+    ("", None),
+    ("V items (exact online listing)", f'=COUNTIF({R}P{first}:P{last},"V")'),
+    ("S items (listed, spec/pack farq)", f'=COUNTIF({R}P{first}:P{last},"S")'),
+    ("N items (online nahi - dealer quote)", f'=COUNTIF({R}P{first}:P{last},"N")'),
 ]
 s["A1"] = "Summary - Quote PR-217 & PR-228"; s["A1"].font = Font(name=F, bold=True, size=13)
 for i, (k, v) in enumerate(rows, 3):

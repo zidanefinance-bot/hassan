@@ -5,7 +5,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from decimal import Decimal, ROUND_HALF_UP
-from items import ITEMS
+from apply_listings import ITEMS_ONLINE as ITEMS
 
 MARKUP = 0.15
 RED = colors.HexColor("#B71C1C")
@@ -14,12 +14,17 @@ KNOWN = ["Bosch Professional", "Vertex (Taiwan)", "Toho (Taiwan)", "Masada (Japa
 MAP = {"Generic (Taiwan)": "Taiwan", "Taiwan HSS": "Taiwan", "Harris type": "Industrial", "Local": "Local", "Generic": "Local"}
 
 def brand(b):
+    if b in DIRECT: return DIRECT[b]
     first = b.split(" / ")[0].strip()
     for k, v in MAP.items():
         if first.startswith(k): return v
     for k in KNOWN:
         if first.startswith(k): return k
     raise ValueError(b)
+
+DIRECT = {"Harden": "Harden", "Total": "Total", "Ingco": "Ingco", "Tolsen": "Tolsen", "Ronix": "Ronix", "Tanaka": "Tanaka",
+          "Blue Eagle": "Blue Eagle", "Leather Forge": "Leather Forge", "7CF": "7CF", "Mubah": "Mubah", "Zodian": "Zodian",
+          "Fortrex": "Fortrex", "WM": "WM", "Industrial (VMAX)": "VMAX"}
 
 def r10(x):
     return float(Decimal(str(round(x, 6))).quantize(Decimal("1E1"), rounding=ROUND_HALF_UP))
