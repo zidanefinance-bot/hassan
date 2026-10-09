@@ -39,9 +39,9 @@ ROWS = """
 37|SLEDGE HAMMER 3 LBS WITH FIBREGLASS HANDLE|Licota|3|4550|Licota|4500|6000|toolsmart Harden fibreglass (Licota premium)|E|
 38|SOFT FACE DEAD BLOW HAMMER 50MM|Licota|3|6240|Licota|5000|7000|pakistanpowertools Harden dead blow 1,987-2,450 (Licota premium)|E|
 39|VICE GRIP PLIER 08"|Licota|3|1950|Licota|3500|4500|ingcotool locking plier 1,499; Licota premium|E|
-40|CORDLESS IMPACT WRENCH 185NM (Bosch)|Bosch Professional|3|79300|Bosch GDX 180-Li|45000|79000|ktools 45,000 solo / 79,000 kit; kamadi 75,200|V|Kit (battery+charger) ho to loss
-41|CORDLESS IMPACT WRENCH 350N (Bosch)|Bosch Professional|3|128700|Bosch GDS 18V-350|95000|140000|No PK listing; est from GDX/GDS range|E|
-42|CORDLESS IMPACT WRENCH 1000N (Bosch)|Bosch Professional|2|106600|Bosch GDS 18V-1000|70000|143800|ktools 70,000 solo (oos); kamadi 143,800 kit|V|Kit diya to har piece par 37k loss
+40|CORDLESS IMPACT WRENCH 185NM (Bosch)|Bosch Professional|3|79300|Bosch Professional GDX 180-Li|45000|79000|ktools 45,000 solo / 79,000 kit; kamadi 75,200|V|Kit (battery+charger) ho to loss
+41|CORDLESS IMPACT WRENCH 350N (Bosch)|Bosch Professional|3|128700|Bosch Professional GDS 18V-350|95000|140000|No PK listing; est from GDX/GDS range|E|
+42|CORDLESS IMPACT WRENCH 1000N (Bosch)|Bosch Professional|2|106600|Bosch Professional GDS 18V-1000|70000|143800|ktools 70,000 solo (oos); kamadi 143,800 kit|V|Kit diya to har piece par 37k loss
 43|HEX IMPACT ADAPTOR 1/2" FEMALE TO 1/4" FEMALE|Licota|4|1560|Licota|1800|2400|toolsmart Licota impact accessories|E|
 44|FLAT FILE 12"|Licota|4|1950|Yato|1700|2300|Market (Licota files PK mein nahi)|E|
 45|ROUNDE FILE 12"|Licota|4|2210|Yato|1700|2300|Market|E|
@@ -52,7 +52,7 @@ ROWS = """
 51|INTERNAL EXTRACTOR WITH REINFORCED COLLAR|Licota|1|32500|Licota|30000|45000|Licota catalogue; no PK listing|E|
 52|MECHANICAL PULLER 3 ARMED 200X200|Licota|2|18200|Licota|18000|25000|goldentools.ae Licota 6in 3-jaw AED 120 (scaled to 8in) + import|E|
 53|MECHANICAL PULLER 3 ARMED 250X250|Licota|1|23400|Licota|24000|32000|goldentools.ae Licota 3-jaw (scaled to 10in) + import|E|
-54|DRILL MACHINE CORDLESS ROTARY HAMMER Bosch|Bosch Professional|2|400946|Bosch GBH 180-LI / GBH 18V-26|49000|115000|ktools 49,000 solo / 115,000 kit|V|Rate cost se 3x - customer pakray ga
+54|DRILL MACHINE CORDLESS ROTARY HAMMER Bosch|Bosch Professional|2|400946|Bosch Professional GBH 180-LI / GBH 18V-26|49000|115000|ktools 49,000 solo / 115,000 kit|V|Rate cost se 3x - customer pakray ga
 55|MANUAL GREASE GUN 5KG|Licota|2|15600|Yato / Industrial (bucket type)|12000|18000|Market|E|Licota 5kg bucket gun nahi milta
 56|AIR GREASE GUN 500CC|Licota|1|10400|Licota|9000|13000|toolsmart Licota grease gun 7,760 (air premium)|P|
 57|HAND GREASE GUN WITH HOSE 500CC|Licota|4|4550|Licota|7760|9000|toolsmart Licota 400cc 7,760|V|
@@ -93,7 +93,7 @@ ROWS = """
 94|MANUAL VERNIER CALLIPER 12" (Insize brand)|Insize|3|8138|Insize 1205-300S|15800|18900|kamadi 15,800|V|Rate cost ka aadha hai
 95|MANUAL VERNIER CALLIPER 8" (Insize (Bosch))|Insize|3|6370|Insize 1205-200S|7928|8800|purchaser.com.pk 7,928|V|
 96|VERNIER DEPTH GUAGE 250MM GRADUATION 0.02M|Licota|2|14950|Insize|15000|20000|Market|E|Licota measuring nahi banata
-97|CORDLESS DRILL DRIVER 150NM Bosch|Bosch Professional|2|286000|Bosch GSR/GSB 18V-150 C|110000|199500|ktools GSB 18V-150C 199,500 (oos)|P|Rate bohat zyada - verify kit
+97|CORDLESS DRILL DRIVER 150NM Bosch|Bosch Professional|2|286000|Bosch Professional GSR/GSB 18V-150 C|110000|199500|ktools GSB 18V-150C 199,500 (oos)|P|Rate bohat zyada - verify kit
 98|TAP SET 1/2" BSPF LEFT HAND (Dormer)|Dormer|1|15600|Dormer|12000|16000|Market|E|
 99|TAP SET 1/2" BSPF RIGHT HAND|Licota|1|11050|Dormer / Totem|8000|11000|Market|E|Licota taps PK mein nahi
 100|TAP SET 3/8" BSPF|Licota|1|9100|Dormer / Totem|6500|9000|Market|E|
@@ -215,13 +215,13 @@ ROWS = """
 229|HSS PARTING OFF TOOL 1/8" X 3/4" X 8"|Licota|24|2340|Taiwan HSS / Dormer|1800|2600|Market|E|
 230|HYDRAULIC JACK 3 TON|Licota|1|9750|Yato YT-17001|6000|8500|pakwheels 5T bottle jack 4,000-5,999; purchaser 8,390|P|
 231|HYDRAULIC JACK 5 TON|Licota|1|12350|Yato YT-17002|8000|11000|pakwheels 5,499-5,999 (generic); Yato premium|P|
-233|CORDLESS SMALL ANGLE GRINDER 125MM EQUIVAL|Bosch Professional|2|52000|Bosch GWS 180-LI / GWS 18V-10|38340|85000|powerhouseexpress 38,340 solo; ktools 40,000 solo|V|Kit diya to loss
+233|CORDLESS SMALL ANGLE GRINDER 125MM EQUIVAL|Bosch Professional|2|52000|Bosch Professional GWS 180-LI / GWS 18V-10|38340|85000|powerhouseexpress 38,340 solo; ktools 40,000 solo|V|Kit diya to loss
 234|WELDING ELCTRODE HOLDER 1000 AMP|Industrial|3|3094|Industrial|1800|2600|Market|E|
 235|EARTH CLAMP 1000 AMP|Licota|3|2860|Industrial|1500|2300|Market|E|
 236|WELDING CABLE 1000 AMPERE|Industrial|200|2860|Industrial (copper)|2400|3200|Market (per metre)|E|Copper rate pe depend
 237|CABLE LUGS 1000 AMPERE|Licota|24|845|Industrial|450|700|Market|E|
 238|FULL BODY HARNESS BELT|Licota|6|8450|Karam / 3M|6000|9000|Market|E|Licota harness nahi banata
-239|ANGLE GRINDER 9" BOSCH PRO STONE BONDED CU|Bosch Professional|50|65000|Bosch GWS 2200-230 H|36570|44000|imartpk 36,570; kamadi 43,200; ktools 44,000|V|PR check karo: grinder hai ya 9" cutting disc?
+239|ANGLE GRINDER 9" BOSCH PRO STONE BONDED CU|Bosch Professional|50|65000|Bosch Professional GWS 2200-230 H|36570|44000|imartpk 36,570; kamadi 43,200; ktools 44,000|V|PR check karo: grinder hai ya 9" cutting disc?
 240|DRILL BIT 4MM|Licota|50|325|Yato|150|250|Market|E|
 """
 ITEMS = []
