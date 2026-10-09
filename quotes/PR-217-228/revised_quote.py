@@ -4,11 +4,12 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from decimal import Decimal, ROUND_HALF_UP
 from items import ITEMS
 
 MARKUP = 0.15
 RED = colors.HexColor("#B71C1C")
-KNOWN = ["Bosch Professional", "Vertex (Taiwan)", "Masada (Japan)", "Licota", "Yato", "Insize", "Dormer",
+KNOWN = ["Bosch Professional", "Vertex (Taiwan)", "Toho (Taiwan)", "Masada (Japan)", "Licota", "Yato", "Insize", "Dormer",
          "YG-1", "Norton", "Karam", "WD-40", "Industrial", "Bosch"]
 MAP = {"Generic (Taiwan)": "Taiwan", "Taiwan HSS": "Taiwan", "Harris type": "Industrial", "Local": "Local", "Generic": "Local"}
 
@@ -20,10 +21,13 @@ def brand(b):
         if first.startswith(k): return k
     raise ValueError(b)
 
+def r10(x):
+    return float(Decimal(str(x)).quantize(Decimal("1E1"), rounding=ROUND_HALF_UP))
+
 def rate(it):
     hi, q = it["high"], it["rate"]
-    if q > hi * 1.8: return round(hi * 1.35, -1)
-    return max(q, round(hi * (1 + MARKUP), -1))
+    if q > hi * 1.8: return r10(hi * 1.35)
+    return max(q, r10(hi * (1 + MARKUP)))
 
 rows = [(it["sr"], it["desc"], brand(it["brand"]), it["qty"], rate(it)) for it in ITEMS]
 

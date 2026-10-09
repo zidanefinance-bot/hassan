@@ -1,14 +1,14 @@
 # sr | description | quoted brand | qty | quoted rate | correct brand | buy low | buy high | source | confidence | note
 # confidence: V = seen on Pakistani online store, P = similar/sister item listed online, E = market estimate (verify by phone)
 ROWS = """
-1|STONE CUTTING DISC 4"|Industrial|30|325|Bosch / Industrial|130|220|Daraz/hardware mkt|E|
+1|STONE CUTTING DISC 4"|Industrial|30|325|Bosch / Industrial|120|280|toolshub/ingcomart Permanent 4in 120; nasirnsons Rhodius 280|V|
 2|STEEL NAIL 1-1/2" Taiwan|Licota|2|455|Generic (Taiwan)|300|450|Hardware mkt|E|Licota nails nahi banata
 3|MECHANICAL JACK 5 TON (Japan or Germany)|Licota|2|58500|Masada (Japan) / Yato|45000|75000|Importer quote needed|E|Licota jack nahi banata; Japan brand confirm karo
 4|DRILL BIT 08 MM (Yato or any Good brand taiwan)|Licota|50|715|Yato|350|500|ktools/imartpk Yato|E|
 5|MECHANICAL JACK 03 TONS (Japan or germany)|Licota|2|41600|Masada (Japan) / Yato|32000|55000|Importer quote needed|E|
-6|SAFETY HELMET (WHITE)|Industrial|6|1105|Industrial|600|900|Market|E|
+6|SAFETY HELMET (WHITE)|Industrial|6|1105|Industrial|730|1000|powerhouseexpress Total 730; toolsmart Ingco 1,440; local 500-750|V|
 7|SAFETY GOOGLES|Industrial|24|507|Industrial|250|400|Market|E|
-8|7 DRAWER TOOL TROLLEY|Licota|3|161070|Licota (AWX series, empty)|150000|210000|goldpeak PH Licota 7-drawer PHP26k + import; ktools Force 7-drawer|P|Empty ya tools ke saath? Confirm
+8|7 DRAWER TOOL TROLLEY|Licota|3|161070|Licota (AWX series, empty)|150000|210000|ktools Yato 7-drawer 211pc 315,000 / 6-drawer 177pc 220,000 (with tools); empty Licota est|P|Empty ya tools ke saath? Confirm
 9|DOUBLE OPEN RING OFFSET WRENCH SET (12PCS)|Licota|4|18200|Licota|20000|26000|toolsmart Licota 14pc set 25,660|P|
 10|DOUBLE OPEN END WRENCH 6 TO 32 (12 PCS SET)|Licota|4|15600|Licota|16000|21000|toolsmart Licota; Ingco 12pc 9,899|P|
 11|DOUBLE OPEN END WRENCH 36X41|Licota|3|3640|Licota|4500|5800|toolsmart Licota wrench sets (scaled); goldentools.ae Licota|E|
@@ -43,8 +43,8 @@ ROWS = """
 41|CORDLESS IMPACT WRENCH 350N (Bosch)|Bosch Professional|3|128700|Bosch Professional GDS 18V-350|95000|140000|No PK listing; est from GDX/GDS range|E|
 42|CORDLESS IMPACT WRENCH 1000N (Bosch)|Bosch Professional|2|106600|Bosch Professional GDS 18V-1000|70000|143800|ktools 70,000 solo (oos); kamadi 143,800 kit|V|Kit diya to har piece par 37k loss
 43|HEX IMPACT ADAPTOR 1/2" FEMALE TO 1/4" FEMALE|Licota|4|1560|Licota|1800|2400|toolsmart Licota impact accessories|E|
-44|FLAT FILE 12"|Licota|4|1950|Yato|1700|2300|Market (Licota files PK mein nahi)|E|
-45|ROUNDE FILE 12"|Licota|4|2210|Yato|1700|2300|Market|E|
+44|FLAT FILE 12"|Licota|4|1950|Yato|1750|2000|zeeshanhardware Yato YT-6190 12in 1,750|V|
+45|ROUNDE FILE 12"|Licota|4|2210|Yato|1750|2000|zeeshanhardware Yato 12in file 1,750 (flat; round similar)|P|
 47|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAKE 21|Licota|3|13000|Licota|12000|16000|goldentools.ae/amazon.ae Licota 6in 3-jaw AED 105-120 (~PKR 9k) scaled + import|E|
 48|UNIVERSAL PULLER 2-ARMED WITH HOOK BRAK 250|Licota|2|15600|Licota|16000|24000|goldentools.ae Licota pullers (scaled) + import|E|
 49|UNIVERSAL PULLER 2-ARMED 160 X 300 MM 5T|Licota|1|20800|Licota|20000|28000|goldentools.ae Licota pullers (scaled) + import|E|
@@ -62,8 +62,8 @@ ROWS = """
 61|STEEL MEASURMENT TAPE 50M|Licota|2|5850|Yato|5000|7500|Market|E|
 62|ALIGNING PRY BAR DIA 5/8" X 18" LENGTH|Licota|3|2600|Licota|3000|4000|Market|E|
 63|ADJUSTABLE WRENCH 15"|Licota|1|5551|Licota|9000|11000|toolsmart Licota 10" 5,310; Total 15" 3,700-3,890|P|
-64|ROUGH FILE SMOOTH 10"|Licota|3|1560|Yato|1300|1800|Market|E|
-65|POLISH FILE SMOOTH 10"|Licota|3|1560|Yato|1300|1800|Market|E|
+64|ROUGH FILE SMOOTH 10"|Licota|3|1560|Yato|1350|1600|zeeshanhardware Yato YT-6228 10in 1,350|V|
+65|POLISH FILE SMOOTH 10"|Licota|3|1560|Yato|1350|1600|zeeshanhardware Yato YT-6228 10in 1,350|V|
 66|REVOLVING CENTRE MT4|Licota|2|11700|Vertex (Taiwan)|14000|18000|Market|E|Licota lathe centre nahi banata
 67|REVOLVING CENTRE MT3|Licota|2|9750|Vertex (Taiwan)|12000|15000|Market|E|
 69|CIRCUMFERENCE TAPE (60-950) (D20-300)|Licota|2|23400|Insize|15000|25000|Market|E|
@@ -118,7 +118,7 @@ ROWS = """
 119|CYLINDER KEY/SPANNER|Licota|2|910|Industrial|400|700|Market|E|
 120|TIP CLEANER FOR GAS WELDING TORCH|Industrial|6|910|Industrial|400|650|Market|E|
 121|WELDING/CUTTING GOGGLES|Industrial|6|637|Industrial|300|450|Market|E|
-122|AC/DC SINGLE PHASE WELDING PLANT 300 AMP|Industrial|1|357500|Industrial (AC/DC TIG 300A)|200000|330000|India ref INR 95k-146k; no PK listing|E|Model/brand confirm karo
+122|AC/DC SINGLE PHASE WELDING PLANT 300 AMP|Industrial|1|357500|Industrial (AC/DC TIG 300A)|200000|330000|houseoftools.com.pk AC/DC TIG WACTA20 126,000 (amp n/a); hyundaipower TIG-200 AC/DC 86,500 - 300A est|P|Model/brand confirm karo
 123|TIG WELDING TORCH AIR-COOLED 5METER|Industrial|2|23400|Industrial|14000|20000|Market|E|
 124|TORCH HEAD ARGON WELDING|Industrial|2|4550|Industrial|2500|3500|Market|E|
 125|COLLECT OF ARGON 2.4MM|Industrial|12|585|Industrial|250|400|Market|E|
@@ -127,12 +127,12 @@ ROWS = """
 128|CERAMIC CUP NO.6|Industrial|6|455|Industrial|200|350|Market|E|
 129|CERAMIC CUP NO.7|Industrial|6|455|Industrial|200|350|Market|E|
 130|TUNGSTEN ELECTRODE 2.4MM|Industrial|6|2340|Industrial|1500|2200|Market (per pack of 10)|E|
-131|ARGON REGULATOR FLOW METER|Industrial|2|7800|Industrial|5000|7000|Market|E|
+131|ARGON REGULATOR FLOW METER|Industrial|2|7800|Industrial|5000|6000|aliweldinghouse.pk WM argon regulator 5,000-6,000|V|
 132|ARGON GAS HOSE 06MM|Industrial|10|455|Industrial|250|400|Market (per metre)|E|
 133|GAS HOSE CONNECTOR|Licota|6|650|Industrial|300|500|Market|E|
 134|SHORT SLEEVE TIG WELDING GLOVES 10-INCH|Industrial|6|1040|Industrial|600|900|Market|E|
 135|CUTTING DISC 355MM (14")|Industrial|6|2860|Industrial|1800|2500|Market|E|
-136|CUTTING DISC 125MM X 01MM|Industrial|500|130|Industrial|80|120|Market|E|
+136|CUTTING DISC 125MM X 01MM|Industrial|500|130|Industrial|150|270|powerhouseexpress Total 5in metal cutting 270; ktools/toolshub 4in 75-120|P|Aapka 130 kam hai - 125mm thin disc 150-270
 138|CUTTING DISC 230MM X 03MM|Industrial|24|1170|Industrial|600|900|Market|E|
 139|BUFFING DISC 125MM|Licota|24|715|Industrial|350|600|Market|E|
 140|BRASS PLATED CUP WIRE BRUSH 125MM|Industrial|24|1560|Industrial|900|1300|Market|E|
@@ -144,10 +144,10 @@ ROWS = """
 147|HYDRAULIC HAND TROLLY 5T|Industrial|1|245700|Industrial (VMAX)|200000|225000|rafiqbrothers 200,000-225,000|V|
 148|FLATE METAL SCRAPPER 50MM|Licota|12|650|Generic|300|500|Market|E|
 149|WD 40 330ML (MULTI PURPOSE)|Industrial|100|1754|WD-40|1299|1380|naheed.pk 1,380; autohub.pk 1,299; toolsmart (oos)|V|
-150|PU COATED SAFETY GLOVES LEVEL 5 CUT RESISTA|Industrial|100|1235|Industrial|700|1000|Market|E|
+150|PU COATED SAFETY GLOVES LEVEL 5 CUT RESISTA|Industrial|100|1235|Industrial|600|1000|mjstraders Safeyear 600; ktools Total HPPE 800-900; hacsons 1,000|V|
 151|NITRILE SAFETY GLOOVES OIL RESISTANT|Industrial|100|650|Industrial|350|500|Market|E|
 152|PVC SAFETY GLOVES LARGE CHEMICAL RESISTANT|Industrial|24|546|Industrial|300|450|Market|E|
-153|SAFETY HELMET YELLOW|Industrial|24|1105|Industrial|600|900|Market|E|
+153|SAFETY HELMET YELLOW|Industrial|24|1105|Industrial|730|1000|powerhouseexpress Total 730; toolsmart Ingco 1,440; local 500-750|V|
 154|RED OXIDE POWDER|Industrial|12|1560|Industrial|900|1300|Market|E|
 155|SPRAY WHITE|Industrial|50|748|Industrial|400|600|Market|E|
 156|SPRAY BLUE|Industrial|30|748|Industrial|400|600|Market|E|
@@ -181,11 +181,11 @@ ROWS = """
 194|OUTSIDE CALIPER 06"|Licota|3|1950|Generic (Taiwan)|1200|1800|Market|E|
 195|OUTSIDE CALIPER 20"|Licota|2|5850|Generic (Taiwan)|4000|5500|Market|E|
 196|RACHET TAP HANDLE|Licota|2|4550|Yato|3500|4800|Market|E|
-197|MICROMETER 0 TO 25MM|Licota|1|17940|Insize 3203-25A|6000|8000|kamadi Insize digital 3109-25A 14,900|P|Analog Insize sasta; digital chahiye to 14,900+
-198|MICROMETER 25 TO 50MM|Licota|1|18850|Insize 3203-50A|7500|9500|Market|E|
-199|MICROMETER 50 TO 75MM|Licota|1|19500|Insize 3203-75A|8500|11000|Market|E|
-200|MICROMETER 75 TO 100MM|Licota|1|20800|Insize 3203-100A|10000|12500|Market|E|
-201|MICROMETER 100 TO 125MM|Licota|1|22750|Insize 3203-125A|12000|15000|Market|E|
+197|MICROMETER 0 TO 25MM|Licota|1|17940|Insize 3203-25A|4815|5500|imsons Insize 3203-25A 4,815; kamadi 5,500|V|Analog Insize; digital chahiye to ~15k+
+198|MICROMETER 25 TO 50MM|Licota|1|18850|Insize 3203-50A|5300|6500|imsons Insize 3203 series (4,815-9,625)|P|Analog Insize; digital chahiye to ~15k+
+199|MICROMETER 50 TO 75MM|Licota|1|19500|Insize 3203-75A|6000|7200|imsons Insize 3203 series (4,815-9,625)|P|Analog Insize; digital chahiye to ~15k+
+200|MICROMETER 75 TO 100MM|Licota|1|20800|Insize 3203-100A|6875|7800|imsons Insize 3203-100A 6,875|V|Analog Insize; digital chahiye to ~15k+
+201|MICROMETER 100 TO 125MM|Licota|1|22750|Insize 3203-125A|8750|9800|imsons Insize 3203-125A 8,750|V|Analog Insize; digital chahiye to ~15k+
 202|NEEDLE FILE (5PCS SET)|Licota|2|2340|Yato|1500|2000|Market|E|
 204|END MILL CUTTER SIZE 5MM|Licota|6|845|YG-1 / Taiwan HSS-Co|800|1200|Market|E|Licota end mill nahi banata
 205|END MILL CUTTER SIZE 6MM|Licota|6|910|YG-1 / Taiwan HSS-Co|900|1300|Market|E|
@@ -218,9 +218,9 @@ ROWS = """
 233|CORDLESS SMALL ANGLE GRINDER 125MM EQUIVAL|Bosch Professional|2|52000|Bosch Professional GWS 180-LI / GWS 18V-10|38340|85000|powerhouseexpress 38,340 solo; ktools 40,000 solo|V|Kit diya to loss
 234|WELDING ELCTRODE HOLDER 1000 AMP|Industrial|3|3094|Industrial|1800|2600|Market|E|
 235|EARTH CLAMP 1000 AMP|Licota|3|2860|Industrial|1500|2300|Market|E|
-236|WELDING CABLE 1000 AMPERE|Industrial|200|2860|Industrial (copper)|2400|3200|Market (per metre)|E|Copper rate pe depend
+236|WELDING CABLE 1000 AMPERE|Industrial|200|2860|Industrial (copper)|2400|3200|enontraders 95mm copper flexible ~3,600/m; thetoolsstore welding cable 580/m (size n/a)|P|Copper rate pe depend
 237|CABLE LUGS 1000 AMPERE|Licota|24|845|Industrial|450|700|Market|E|
-238|FULL BODY HARNESS BELT|Licota|6|8450|Karam / 3M|6000|9000|Market|E|Licota harness nahi banata
+238|FULL BODY HARNESS BELT|Licota|6|8450|Toho (Taiwan)|6500|7800|mjstraders Toho MH106 3D 7,800; imsons Yamada 6,500; citex 5,800|V|Karam PK mein nahi; Toho Taiwan brand
 239|ANGLE GRINDER 9" BOSCH PRO STONE BONDED CU|Bosch Professional|50|65000|Bosch Professional GWS 2200-230 H|36570|44000|imartpk 36,570; kamadi 43,200; ktools 44,000|V|PR check karo: grinder hai ya 9" cutting disc?
 240|DRILL BIT 4MM|Licota|50|325|Yato|150|250|Market|E|
 """
