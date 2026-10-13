@@ -11,12 +11,13 @@ const FACES = [
   { family: "Fraunces", weight: "600", file: "fraunces-latin-600-normal.woff2" },
   { family: "Fraunces", weight: "600", style: "italic", file: "fraunces-latin-600-italic.woff2" },
   { family: "Fraunces", weight: "400", style: "italic", file: "fraunces-latin-400-italic.woff2" },
+  { family: "Passion One", weight: "900", file: "passion-one-900.ttf" },
 ];
 
 const handle = delayRender("Loading fonts");
 Promise.all(
   FACES.map(async (f) => {
-    const face = new FontFace(f.family, `url(${staticFile(`fonts/${f.file}`)}) format("woff2")`, { weight: f.weight, style: (f as { style?: string }).style ?? "normal" });
+    const face = new FontFace(f.family, `url(${staticFile(`fonts/${f.file}`)}) format("${f.file.endsWith(".ttf") ? "truetype" : "woff2"}")`, { weight: f.weight, style: (f as { style?: string }).style ?? "normal" });
     await face.load();
     document.fonts.add(face);
   }),
