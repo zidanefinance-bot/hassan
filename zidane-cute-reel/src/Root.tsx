@@ -13,6 +13,7 @@ import { TruckArtReel, TRUCKART_TOTAL } from "./truckart/TruckArt";
 import { PinkCompositions } from "./pink/PinkOctober";
 import { FoodDayCompositions } from "./foodday/WorldFoodDay";
 import { ViceCompositions } from "./vice/KarachiVice";
+import { ViceSixCompositions } from "./vice/ViceSix";
 import { BannerCompositions } from "./corporate/Banners";
 import { CatalogCompositions } from "./corporate/CatalogPdf";
 import { CorpBrands, BRANDS_TOTAL, CorpBiryani, BIRYANI_TOTAL, CorpChai, CHAI_TOTAL, CorpQuestions, QUESTIONS_TOTAL, CorpListQuote, LISTQUOTE_TOTAL } from "./corporate/ProductReels";
@@ -23,6 +24,7 @@ const size = { fps: FPS, width: 1080, height: 1920 } as const;
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <ViceSixCompositions />
     <ViceCompositions />
     <FoodDayCompositions />
     <PinkCompositions />

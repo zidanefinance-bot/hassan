@@ -29,7 +29,7 @@ const GradTitle: React.FC<{ size: number; children: string; fill: string }> = ({
 
 // ── Canteen set: empty (hook) or stocked (payoff) ──
 const stock = ["1148810", "1200458", "1119315", "1145167", "1017740", "1018326"];
-const Canteen: React.FC<{ full: boolean }> = ({ full }) => {
+export const Canteen: React.FC<{ full: boolean }> = ({ full }) => {
   const shelves = [520, 820];
   return (
     <AbsoluteFill style={{ background: "repeating-linear-gradient(0deg, #D9D2C3 0 118px, #BDB4A3 118px 122px), #D9D2C3" }}>
@@ -96,7 +96,7 @@ const Palm: React.FC<{ x: number; h: number; flip?: boolean; sway: number }> = (
     </g>
   </svg>
 );
-const Sunset: React.FC = () => {
+export const Sunset: React.FC = () => {
   const frame = useCurrentFrame();
   const sway = Math.sin(frame / 25) * 3;
   return (
