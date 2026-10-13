@@ -146,8 +146,8 @@ export const PinkOctoberReel: React.FC = () => {
       <Sequence from={a} durationInFrames={sec(S.line)}><PinkBg dark /><Fade len={sec(S.line)}><BigLine /></Fade></Sequence>
       <Sequence from={b} durationInFrames={sec(S.steps)}><PinkBg /><Fade len={sec(S.steps)}><Steps /></Fade></Sequence>
       <Sequence from={c} durationInFrames={sec(S.close)}><PinkBg dark /><Fade len={sec(S.close) + 8}><Close /></Fade></Sequence>
-      <Audio src={staticFile("sfx/corp-bed-36.wav")} endAt={durationInFrames}
-        volume={(f) => interpolate(f, [0, 20, durationInFrames - 30, durationInFrames], [0, 0.4, 0.4, 0], clamp)} />
+      <Audio src={staticFile("sfx/pink-piano.wav")} endAt={durationInFrames}
+        volume={(f) => interpolate(f, [0, 10, durationInFrames - 20, durationInFrames], [0, 0.9, 0.9, 0], clamp)} />
     </AbsoluteFill>
   );
 };
