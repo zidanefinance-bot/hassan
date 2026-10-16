@@ -1,4 +1,4 @@
-// "Daal hai to dinner hai": pulses reel built from one top-down photo of bowls, cut into spinning circles.
+// "Daal hai to lunch hai": pulses reel built from one top-down photo of bowls, cut into spinning circles.
 // Hook pull-back → bowl spotlights with Urdu/English names → bowls fly into a Z → corporate end card.
 import React from "react";
 import { AbsoluteFill, Audio, Composition, Easing, Img, interpolate, random, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
@@ -49,7 +49,7 @@ const Hook: React.FC = () => {
           <Kicker>Zidane · Pulses desk</Kicker>
           <div style={{ marginTop: 36 }}>
             <HookLine delay={4} color={corp.text}>Daal hai,</HookLine>
-            <HookLine delay={10} color={corp.red}>to dinner hai.</HookLine>
+            <HookLine delay={10} color={corp.red}>to lunch hai.</HookLine>
           </div>
         </Sequence>
       </AbsoluteFill>
