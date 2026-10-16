@@ -15,6 +15,7 @@ import { FoodDayCompositions } from "./foodday/WorldFoodDay";
 import { ViceCompositions } from "./vice/KarachiVice";
 import { ViceSixCompositions } from "./vice/ViceSix";
 import { ProfileCompositions } from "./corporate/Profile";
+import { PulsesCompositions } from "./pulses/PulsesReel";
 import { BannerCompositions } from "./corporate/Banners";
 import { CatalogCompositions } from "./corporate/CatalogPdf";
 import { CorpBrands, BRANDS_TOTAL, CorpBiryani, BIRYANI_TOTAL, CorpChai, CHAI_TOTAL, CorpQuestions, QUESTIONS_TOTAL, CorpListQuote, LISTQUOTE_TOTAL } from "./corporate/ProductReels";
@@ -25,6 +26,7 @@ const size = { fps: FPS, width: 1080, height: 1920 } as const;
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <PulsesCompositions />
     <ProfileCompositions />
     <ViceSixCompositions />
     <ViceCompositions />
