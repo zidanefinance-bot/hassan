@@ -16,7 +16,7 @@ with separate roles. Currency is PKR and GST rates can be configured.
 | Team | Logins with roles: **admin** (everything), **accountant** (all except users/settings), **sales** (customers, quotes, invoices, receipts). Enforced on the server, not just hidden in the UI. Activity log on the dashboard |
 | Settings | Company details on documents, NTN/STRN, tax rates, number prefixes, payment terms |
 
-It is document-based. It is not yet a full double-entry ledger. See `ROADMAP` in the Business OS review for what comes next.
+It is document-based. It is not yet a full double-entry ledger (no chart of accounts, journals or bank reconciliation yet).
 
 ## Run it
 
