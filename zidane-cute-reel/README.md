@@ -79,3 +79,12 @@ the family opens the bag, a bag goes to the neighbour, then iftar and dua. It en
   `python3 scripts/make_ramadan_vo.py <kokoro_dir> [hm_omega|hm_psi|hf_alpha|hf_beta]`. The model files come from
   github.com/thewh1teagle/kokoro-onnx/releases (model-files-v1.0). Subtitles are in Roman Urdu.
 - Music bed (no hum, sits under the VO): `python3 scripts/gen-ramadan-audio.py bed`
+
+## "Crazy Zidane": fast pop-art animated reel with English voiceover
+
+A 40s reel. Factory with 500 workers → supplier chaos (ringing phones, prices flipping) → "STOP. Meet Zidane." → a wall of 100+ products →
+any list format goes into the Zidane machine → the quote prints and the truck zooms off → ration bags for team/NGO/Ramadan → end card.
+
+- Render: `renders/crazy/Zidane-Crazy-Animated.mp4` · Code: `src/crazy/CrazyZidane.tsx` (word-by-word captions are timed from VO length)
+- Voiceover: `python3 scripts/make_crazy_vo.py <kokoro_dir> [am_michael]` (Kokoro, local)
+- Music: `python3 scripts/gen-crazy-audio.py`. It reads the VO durations, so re-run it after changing the voiceover.
