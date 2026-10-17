@@ -2,7 +2,9 @@
 Soft, cozy naat-style instrumental: a hummed melody in maqam Hijaz on D (formant-filtered voice),
 warm drone pad, gentle daf, oud plucks, chimes and a long reverb.
 72 BPM = exactly 25 video frames per beat at 30fps; 60 beats = 50s.
-usage: python3 scripts/gen-ramadan-audio.py   (needs numpy + scipy)"""
+usage: python3 scripts/gen-ramadan-audio.py [bed]   (needs numpy + scipy)
+"bed" leaves out the hummed melody (for use under a voiceover) and writes ramadan-bed.wav."""
+import sys
 import wave
 import numpy as np
 from scipy.signal import butter, fftconvolve, lfilter, sosfilt
@@ -12,6 +14,7 @@ BPM = 72
 BEAT = 60 / BPM
 DUR = 60 * BEAT  # 50s
 rng = np.random.default_rng(3)
+BED = len(sys.argv) > 1 and sys.argv[1] == "bed"
 buf = np.zeros(int((DUR + 4) * SR))
 
 
@@ -78,7 +81,7 @@ A = [("A3", 1), ("Bb3", .5), ("A3", .5), ("G3", 1), ("F#3", 1), ("G3", 1), ("A3"
 B = [("F#3", 1), ("G3", .5), ("F#3", .5), ("Eb3", 1), ("D3", 1), ("Eb3", 1), ("D3", 2), ("-", 1)]
 C = [("D4", 1), ("C4", .5), ("Bb3", .5), ("A3", 1), ("G3", 1), ("A3", 1), ("Bb3", .5), ("A3", .5), ("G3", 2)]
 D = [("F#3", 1), ("G3", 1), ("A3", 1), ("G3", .5), ("F#3", .5), ("Eb3", 1), ("D3", 3)]
-for start, ph in [(4, A), (12, B), (20, C), (28, D), (36, A), (44, D)]:
+for start, ph in [] if BED else [(4, A), (12, B), (20, C), (28, D), (36, A), (44, D)]:
     v = voice(ph)
     place(v / np.abs(v).max(), start * BEAT, 0.42)
     if start >= 20:  # a soft second voice an octave up joins for warmth
@@ -158,7 +161,8 @@ fade = int(2.5 * SR)
 mix[-fade:] *= np.linspace(1, 0, fade) ** 2
 mix[: int(0.05 * SR)] *= np.linspace(0, 1, int(0.05 * SR))
 mix = mix / np.abs(mix).max() * 0.85
-with wave.open("public/sfx/ramadan-naat.wav", "wb") as w:
+name = "ramadan-bed" if BED else "ramadan-naat"
+with wave.open(f"public/sfx/{name}.wav", "wb") as w:
     w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes((mix * 32767).astype("<i2").tobytes())
-print(f"wrote ramadan-naat.wav {DUR:.1f}s @ {BPM} BPM")
+print(f"wrote {name}.wav {DUR:.1f}s @ {BPM} BPM")

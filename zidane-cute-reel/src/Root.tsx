@@ -20,6 +20,7 @@ import { AttaCompositions } from "./atta/AttaRoti";
 import { RealTeamCompositions } from "./real/RealTeam";
 import { ZidaneModeCompositions } from "./hype/ZidaneMode";
 import { RamadanCompositions } from "./ramadan/RamadanReel";
+import { RehmatStoryCompositions } from "./ramadan/RehmatStory";
 import { BannerCompositions } from "./corporate/Banners";
 import { CatalogCompositions } from "./corporate/CatalogPdf";
 import { CorpBrands, BRANDS_TOTAL, CorpBiryani, BIRYANI_TOTAL, CorpChai, CHAI_TOTAL, CorpQuestions, QUESTIONS_TOTAL, CorpListQuote, LISTQUOTE_TOTAL } from "./corporate/ProductReels";
@@ -30,6 +31,7 @@ const size = { fps: FPS, width: 1080, height: 1920 } as const;
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <RehmatStoryCompositions />
     <RamadanCompositions />
     <ZidaneModeCompositions />
     <RealTeamCompositions />

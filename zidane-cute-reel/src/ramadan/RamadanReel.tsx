@@ -11,7 +11,7 @@ const B = 25; // frames per beat
 const TOTAL = 60 * B; // 50s
 const clamp = corp.clamp;
 const ease = corp.out;
-const C = {
+export const C = {
   night: "#071425",
   night2: "#0E2A40",
   gold: "#E8C170",
@@ -23,7 +23,7 @@ const C = {
 const fade = (frame: number, a: number, b: number) => interpolate(frame, [a, b], [0, 1], { easing: ease, ...clamp });
 
 // ---------- shared backdrop pieces
-const Stars: React.FC<{ n?: number }> = ({ n = 90 }) => {
+export const Stars: React.FC<{ n?: number }> = ({ n = 90 }) => {
   const frame = useCurrentFrame();
   return (
     <AbsoluteFill>
@@ -38,7 +38,7 @@ const Stars: React.FC<{ n?: number }> = ({ n = 90 }) => {
 };
 
 // eight-point star tile, very faint
-const Pattern: React.FC<{ opacity?: number }> = ({ opacity = 0.06 }) => {
+export const Pattern: React.FC<{ opacity?: number }> = ({ opacity = 0.06 }) => {
   const frame = useCurrentFrame();
   return (
     <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, opacity }}>
@@ -57,7 +57,7 @@ const Pattern: React.FC<{ opacity?: number }> = ({ opacity = 0.06 }) => {
   );
 };
 
-const Crescent: React.FC<{ size: number; x: number; y: number; glow?: number }> = ({ size, x, y, glow = 1 }) => (
+export const Crescent: React.FC<{ size: number; x: number; y: number; glow?: number }> = ({ size, x, y, glow = 1 }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" style={{ position: "absolute", left: x, top: y, filter: `drop-shadow(0 0 ${30 * glow}px rgba(232,193,112,0.8))` }}>
     <defs><mask id={`cm${size}`}><rect width="100" height="100" fill="#fff" /><circle cx="64" cy="40" r="38" fill="#000" /></mask></defs>
     <circle cx="48" cy="52" r="42" fill={C.gold} mask={`url(#cm${size})`} />
@@ -65,7 +65,7 @@ const Crescent: React.FC<{ size: number; x: number; y: number; glow?: number }> 
 );
 
 // hanging fanoos lantern on a string, swinging
-const Lantern: React.FC<{ x: number; len: number; scale?: number; phase?: number; drop?: number }> = ({ x, len, scale = 1, phase = 0, drop = 1 }) => {
+export const Lantern: React.FC<{ x: number; len: number; scale?: number; phase?: number; drop?: number }> = ({ x, len, scale = 1, phase = 0, drop = 1 }) => {
   const frame = useCurrentFrame();
   const swing = Math.sin(frame / 28 + phase) * 6;
   const flicker = 0.85 + 0.15 * Math.sin(frame / 3 + phase * 7);
@@ -84,7 +84,7 @@ const Lantern: React.FC<{ x: number; len: number; scale?: number; phase?: number
   );
 };
 
-const Skyline: React.FC<{ rise?: number; color?: string }> = ({ rise = 1, color = "#040B16" }) => (
+export const Skyline: React.FC<{ rise?: number; color?: string }> = ({ rise = 1, color = "#040B16" }) => (
   <svg width="1080" height="560" viewBox="0 0 1080 560" style={{ position: "absolute", left: 0, bottom: -10, transform: `translateY(${(1 - rise) * 300}px)` }}>
     <path fill={color} d="M0 560 V420 H80 V360 H90 V300 L100 270 L110 300 V360 H120 V420 H260 V380 Q260 290 360 250 Q380 200 400 180 Q420 200 440 250 Q540 290 540 380 V420 H600 V330 H610 V250 L622 210 L634 250 V330 H644 V420 H760 V390 Q760 330 830 305 Q850 280 860 270 Q870 280 890 305 Q960 330 960 390 V420 H1080 V560 Z" />
     <circle cx="400" cy="168" r="10" fill={C.gold} opacity="0.9" />

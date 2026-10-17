@@ -68,3 +68,14 @@ Ramadan bag, then all four reference packages from zidane.com.pk/ration-packages
 - Music: `python3 scripts/gen-ramadan-audio.py` → `public/sfx/ramadan-naat.wav`. This is a soft naat-style
   instrumental: a hummed melody in maqam Hijaz, daf, oud plucks, a drone and chimes, at 72 BPM (25 frames per beat). It needs scipy.
 - Prices are labelled "2026 reference". The website says the 2027 rate is confirmed by quotation.
+
+## "Aao, Rehmatein Baantein": animated Ramadan story with Urdu voiceover
+
+A 45s 2D-animated story. Workers pack bags in the warehouse, ration day happens at a factory gate, Rashid chacha rides home,
+the family opens the bag, a bag goes to the neighbour, then iftar and dua. It ends on the four packages. Everything is free and local.
+
+- Render: `renders/ramadan/Zidane-Rehmat-Story.mp4` · Code: `src/ramadan/RehmatStory.tsx`
+- Voiceover: Kokoro TTS (open source, CPU). There is no Urdu voice, so the Hindi voices speak the lines, written in Devanagari:
+  `python3 scripts/make_ramadan_vo.py <kokoro_dir> [hm_omega|hm_psi|hf_alpha|hf_beta]`. The model files come from
+  github.com/thewh1teagle/kokoro-onnx/releases (model-files-v1.0). Subtitles are in Roman Urdu.
+- Music bed (no hum, sits under the VO): `python3 scripts/gen-ramadan-audio.py bed`
