@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, PageHead, Search, useForm, useLoad, useToast } from "../lib.jsx";
+import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 
 export function ContactForm({ type, initial, onClose, onSaved }) {
   const [f, bind] = useForm(initial || { type, name: "", company: "", phone: "", email: "", address: "", ntn: "", notes: "" });
@@ -33,12 +33,14 @@ export default function Contacts({ type }) {
   const [adding, setAdding] = useState(false);
   const state = useLoad(`/contacts?type=${type}&q=${encodeURIComponent(q)}`);
   const nav = useNavigate();
+  const { can } = useAuth();
+  const canWrite = can(type === "customer" ? "sales.write" : "ops.write");
   const title = type === "customer" ? "Customers" : "Suppliers";
   return (
     <>
       <PageHead title={title} sub={type === "customer" ? "Companies, factories and NGOs you sell to." : "Who you buy stock from."}>
         <Search value={q} onChange={setQ} placeholder={`Search ${title.toLowerCase()}…`} />
-        <button className="btn primary" onClick={() => setAdding(true)}>+ New</button>
+        {canWrite && <button className="btn primary" onClick={() => setAdding(true)}>+ New</button>}
       </PageHead>
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No {title.toLowerCase()} yet. Add your first one.</div> : (
         <div className="card flush"><table className="table">
@@ -61,6 +63,7 @@ export function ContactView() {
   const [editing, setEditing] = useState(false);
   const nav = useNavigate();
   const toast = useToast();
+  const { can } = useAuth();
   const del = async (c) => {
     if (!confirm(`Delete ${c.name}?`)) return;
     try { await api(`/contacts/${c.id}`, { method: "DELETE" }); toast("Deleted"); nav(c.type === "customer" ? "/customers" : "/suppliers"); } catch (x) { toast(x.message, "err"); }
@@ -72,9 +75,11 @@ export function ContactView() {
       return (
         <>
           <PageHead title={c.name} sub={`${isCust ? "Customer" : "Supplier"}${c.company ? " · " + c.company : ""}`}>
-            <Link className="btn primary" to={`/${isCust ? "invoices" : "bills"}/new?contact=${c.id}`}>+ New {isCust ? "Invoice" : "Bill"}</Link>
-            <button className="btn" onClick={() => setEditing(true)}>Edit</button>
-            <button className="btn ghost danger" onClick={() => del(c)}>Delete</button>
+            {isCust && can("sales.write") && <Link className="btn primary" to={`/quotes/new?enquiry=1&contact=${c.id}`}>+ Enquiry</Link>}
+            {isCust && can("sales.write") && <Link className="btn" to={`/jobs/new?customer=${c.id}`}>+ Job</Link>}
+            {!isCust && can("buy") && <Link className="btn primary" to={`/bills/new?contact=${c.id}`}>+ Supplier bill</Link>}
+            {can(isCust ? "sales.write" : "ops.write") && <button className="btn" onClick={() => setEditing(true)}>Edit</button>}
+            {can(isCust ? "sales.write" : "ops.write") && <button className="btn ghost danger" onClick={() => del(c)}>Delete</button>}
           </PageHead>
           <div className="grid-2">
             <section className="card">
@@ -85,13 +90,18 @@ export function ContactView() {
             </section>
             <section className="card stat big"><small>{isCust ? "They owe you" : "You owe them"}</small><b className={outstanding > 0 ? "neg" : ""}>{money(outstanding)}</b></section>
           </div>
+          {c.jobs.length > 0 && (
+            <section className="card flush"><h3 className="pad">Jobs</h3>
+              <table className="table"><tbody>{c.jobs.map((j) => <tr key={j.id} className="click" onClick={() => nav(`/jobs/${j.id}`)}><td><b>{j.number}</b></td><td><Badge status={j.ops_status} /></td><td>{fmtDate(j.required_date)}</td><td className="muted">{j.closed ? "closed" : ""}</td></tr>)}</tbody></table>
+            </section>
+          )}
           <section className="card flush">
             <h3 className="pad">Transactions</h3>
             {c.documents.length === 0 ? <p className="muted pad">No transactions yet.</p> : (
               <table className="table"><thead><tr><th>Date</th><th>Type</th><th>Number</th><th>Status</th><th className="r">Total</th><th className="r">Balance</th></tr></thead>
                 <tbody>{c.documents.map((d) => (
                   <tr key={d.id} className="click" onClick={() => nav(`/${KIND[d.kind].path}/${d.id}`)}>
-                    <td>{fmtDate(d.date)}</td><td>{KIND[d.kind].label}</td><td>{d.number}</td><td><Badge status={d.display_status} /></td><td className="r">{money(d.total)}</td>
+                    <td>{fmtDate(d.date)}</td><td>{KIND[d.kind].label}</td><td>{d.number}</td><td><Badge status={d.display_status} /></td><td className="r">{d.kind === "dc" ? "" : money(d.total)}</td>
                     <td className="r">{["invoice", "bill"].includes(d.kind) && d.status === "open" ? money(d.total - d.paid) : ""}</td>
                   </tr>
                 ))}</tbody></table>

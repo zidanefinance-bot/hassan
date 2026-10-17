@@ -20,10 +20,11 @@ export const today = () => new Date().toISOString().slice(0, 10);
 export const addDays = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
 
 export const KIND = {
-  quote: { label: "Quote", plural: "Quotes", path: "quotes", contact: "customer" },
+  quote: { label: "Quote", plural: "Enquiries & Quotes", path: "quotes", contact: "customer" },
+  dc: { label: "Delivery Challan", plural: "Delivery Challans", path: "delivery-challans", contact: "customer" },
   invoice: { label: "Invoice", plural: "Invoices", path: "invoices", contact: "customer" },
   po: { label: "Purchase Order", plural: "Purchase Orders", path: "purchase-orders", contact: "supplier" },
-  bill: { label: "Bill", plural: "Bills", path: "bills", contact: "supplier" },
+  bill: { label: "Supplier Bill", plural: "Supplier Bills", path: "bills", contact: "supplier" },
 };
 
 // ---- auth
@@ -68,8 +69,10 @@ export function ToastProvider({ children }) {
 export const useToast = () => useContext(ToastCtx);
 
 // ---- UI bits
-export const STATUS_TONE = { draft: "grey", sent: "blue", open: "blue", issued: "blue", accepted: "green", paid: "green", invoiced: "green", billed: "green", partial: "amber", overdue: "red", declined: "red", void: "grey", cancelled: "grey" };
-export const Badge = ({ status }) => <span className={`badge ${STATUS_TONE[status] || "grey"}`}>{status}</span>;
+export const STATUS_TONE = { enquiry: "amber", converted: "green", signed: "green", new: "red", procurement_started: "amber", partially_purchased: "amber", purchase_complete: "blue", material_ready: "green", dispatched: "blue", delivered: "green", draft: "grey", sent: "blue", open: "blue", issued: "blue", accepted: "green", paid: "green", invoiced: "green", billed: "green", partial: "amber", overdue: "red", declined: "red", void: "grey", cancelled: "grey" };
+export const Badge = ({ status }) => <span className={`badge ${STATUS_TONE[status] || "grey"}`}>{String(status).replace(/_/g, " ")}</span>;
+export const OPS_STEPS = ["new", "procurement_started", "partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"];
+export const label = (s) => String(s || "").replace(/_/g, " ");
 
 export function PageHead({ title, sub, children }) {
   return (

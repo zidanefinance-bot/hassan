@@ -31,18 +31,28 @@ export function computeLines(lines) {
   return { lines: out, subtotal, discount_total: discount, tax_total: tax, total: round2(subtotal - discount + tax) };
 }
 
+// kind is a document kind or "job"
 export function nextNumber(db, kind) {
   const prefixes = getSetting(db, "prefixes"), next = getSetting(db, "nextNumbers");
   let n = next[kind] || 1, number;
   do { number = `${prefixes[kind]}${String(n).padStart(5, "0")}`; n++; }
-  while (db.prepare("SELECT 1 FROM documents WHERE kind = ? AND number = ?").get(kind, number));
+  while (kind === "job" ? db.prepare("SELECT 1 FROM jobs WHERE number = ?").get(number) : db.prepare("SELECT 1 FROM documents WHERE kind = ? AND number = ?").get(kind, number));
   setSetting(db, "nextNumbers", { ...next, [kind]: n });
   return number;
 }
 
-// statuses that move stock: an issued invoice takes stock out, an issued bill brings it in
-const STOCK_SIGN = { invoice: -1, bill: 1 };
-const MOVES_STOCK = (doc) => STOCK_SIGN[doc.kind] && doc.status === "open";
+// Stock rules. A bill brings stock in. For Job orders the delivery challan takes it out (the invoice then
+// doesn't, so nothing is counted twice); a direct sale invoice with no Job takes it out itself.
+// Direct-delivery Jobs (supplier delivers straight to the customer) never touch the warehouse.
+const STOCK_SIGN = { invoice: -1, bill: 1, dc: -1 };
+function movesStock(db, doc) {
+  if (!STOCK_SIGN[doc.kind]) return false;
+  const job = doc.job_id ? db.prepare("SELECT fulfilment_type FROM jobs WHERE id = ?").get(doc.job_id) : null;
+  if (job?.fulfilment_type === "direct") return false;
+  if (doc.kind === "dc") return ["issued", "signed"].includes(doc.status);
+  if (doc.kind === "invoice") return doc.status === "open" && !doc.job_id;
+  return doc.status === "open";
+}
 
 function reverseStock(db, docId) {
   for (const m of db.prepare("SELECT item_id, qty FROM stock_moves WHERE document_id = ?").all(docId)) {
@@ -52,7 +62,7 @@ function reverseStock(db, docId) {
 }
 
 function applyStock(db, doc, lines) {
-  if (!MOVES_STOCK(doc)) return;
+  if (!movesStock(db, doc)) return;
   for (const l of lines) {
     if (!l.item_id) continue;
     const item = db.prepare("SELECT track_stock FROM items WHERE id = ?").get(l.item_id);
@@ -64,8 +74,9 @@ function applyStock(db, doc, lines) {
   }
 }
 
-const KIND_STATUSES = {
-  quote: ["draft", "sent", "accepted", "declined", "invoiced"],
+export const KIND_STATUSES = {
+  quote: ["enquiry", "draft", "sent", "accepted", "declined", "converted"],
+  dc: ["draft", "issued", "signed", "void"],
   invoice: ["draft", "open", "void"],
   po: ["draft", "issued", "billed", "cancelled"],
   bill: ["draft", "open", "void"],
@@ -88,16 +99,16 @@ export function saveDocument(db, userId, input, id = null) {
       if (!doc) throw httpError(404, "Not found");
       if (doc.kind !== kind) throw httpError(400, "Kind cannot change");
       reverseStock(db, id);
-      db.prepare(`UPDATE documents SET contact_id=?, date=?, due_date=?, status=?, notes=?, terms=?, reference=?, subtotal=?, discount_total=?, tax_total=?, total=? WHERE id=?`)
+      db.prepare(`UPDATE documents SET contact_id=?, date=?, due_date=?, status=?, notes=?, terms=?, reference=?, subtotal=?, discount_total=?, tax_total=?, total=?, job_id=? WHERE id=?`)
         .run(input.contact_id, input.date || today(), input.due_date || null, status, input.notes || null, input.terms || null, input.reference || null,
-          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, id);
+          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.job_id === undefined ? doc.job_id : input.job_id || null, id);
       db.prepare("DELETE FROM document_lines WHERE document_id = ?").run(id);
     } else {
       const number = input.number?.trim() || nextNumber(db, kind);
-      const r = db.prepare(`INSERT INTO documents (kind, number, contact_id, date, due_date, status, notes, terms, reference, subtotal, discount_total, tax_total, total, source_id, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      const r = db.prepare(`INSERT INTO documents (kind, number, contact_id, date, due_date, status, notes, terms, reference, subtotal, discount_total, tax_total, total, source_id, job_id, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(kind, number, input.contact_id, input.date || today(), input.due_date || null, status, input.notes || null, input.terms || null, input.reference || null,
-          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.source_id || null, userId ?? null);
+          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.source_id || null, input.job_id || null, userId ?? null);
       id = Number(r.lastInsertRowid);
     }
     for (const l of calc.lines) {
@@ -138,16 +149,16 @@ export function deleteDocument(db, userId, id) {
   });
 }
 
-// quote → invoice, po → bill
+// purchase order → supplier bill (quotes become Jobs, see jobs.js)
 export function convertDocument(db, userId, id) {
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
-  if (!doc || !["quote", "po"].includes(doc.kind)) throw httpError(400, "Only quotes and purchase orders can be converted");
-  const target = doc.kind === "quote" ? "invoice" : "bill";
+  if (!doc || doc.kind !== "po") throw httpError(400, "Only purchase orders can be converted to bills");
+  const target = "bill";
   const lines = db.prepare("SELECT item_id, description, qty, rate, discount_pct, tax_rate FROM document_lines WHERE document_id = ?").all(id);
   const days = getSetting(db, "paymentTermsDays") || 0;
   const due = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
-  const newId = saveDocument(db, userId, { kind: target, contact_id: doc.contact_id, date: today(), due_date: due, status: "draft", notes: doc.notes, terms: doc.terms, reference: doc.number, source_id: doc.id, lines });
-  db.prepare("UPDATE documents SET status = ? WHERE id = ?").run(doc.kind === "quote" ? "invoiced" : "billed", id);
+  const newId = saveDocument(db, userId, { kind: target, contact_id: doc.contact_id, date: today(), due_date: due, status: "draft", notes: doc.notes, terms: doc.terms, reference: doc.number, source_id: doc.id, job_id: doc.job_id, lines });
+  db.prepare("UPDATE documents SET status = 'billed' WHERE id = ?").run(id);
   return newId;
 }
 

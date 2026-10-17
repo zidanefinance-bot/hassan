@@ -7,7 +7,13 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   if (file !== ":memory:") mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+  const version = db.prepare("PRAGMA user_version").get().user_version;
+  const hasTables = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'").get();
+  if (hasTables && version < SCHEMA_VERSION) {
+    throw new Error(`${file} was made by an older version (schema ${version}, need ${SCHEMA_VERSION}). It only holds test data: delete it and start again.`);
+  }
   db.exec(SCHEMA);
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
     db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(k, JSON.stringify(v));
   }
@@ -39,18 +45,21 @@ export const DEFAULT_SETTINGS = {
   },
   currency: "PKR",
   taxes: [{ name: "GST", rate: 18 }, { name: "Reduced GST", rate: 10 }, { name: "Exempt", rate: 0 }],
-  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-" },
-  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1 },
+  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-" },
+  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1 },
   paymentTermsDays: 15,
+  jobExpenseCategories: ["Freight", "Loading / Unloading", "Packing", "Labour", "Vehicle", "Market expense", "Other direct cost"],
   expenseCategories: ["Rent", "Salaries", "Fuel & Transport", "Utilities", "Packaging", "Loading & Labour", "Office", "Marketing", "Bank Charges", "Other"],
   invoiceFooter: "Thank you for your business. Groceries for business.",
 };
+
+export const SCHEMA_VERSION = 2;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('admin','accountant','sales')),
+  password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('director','sales','operations','purchaser','accounts')),
   active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS sessions (
@@ -67,12 +76,27 @@ CREATE TABLE IF NOT EXISTS items (
   stock_qty REAL NOT NULL DEFAULT 0, reorder_level REAL NOT NULL DEFAULT 0, track_stock INTEGER NOT NULL DEFAULT 1,
   active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS jobs (
+  id INTEGER PRIMARY KEY, number TEXT NOT NULL UNIQUE, customer_id INTEGER NOT NULL REFERENCES contacts(id),
+  quote_id INTEGER, customer_po_number TEXT, customer_po_date TEXT, order_source TEXT NOT NULL DEFAULT 'call',
+  required_date TEXT, delivery_location TEXT, priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low','normal','high','urgent')),
+  fulfilment_type TEXT NOT NULL DEFAULT 'stock' CHECK (fulfilment_type IN ('stock','direct')), instructions TEXT,
+  ops_status TEXT NOT NULL DEFAULT 'new', closed INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS job_items (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE, item_id INTEGER REFERENCES items(id),
+  description TEXT, qty REAL NOT NULL, sale_rate REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0,
+  procurement_status TEXT NOT NULL DEFAULT 'to_buy' CHECK (procurement_status IN ('to_buy','partial','bought','not_available','from_stock'))
+);
 CREATE TABLE IF NOT EXISTS documents (
-  id INTEGER PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('quote','invoice','po','bill')), number TEXT NOT NULL,
+  id INTEGER PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('quote','invoice','po','bill','dc')), number TEXT NOT NULL,
   contact_id INTEGER NOT NULL REFERENCES contacts(id), date TEXT NOT NULL, due_date TEXT,
   status TEXT NOT NULL, notes TEXT, terms TEXT, reference TEXT,
   subtotal REAL NOT NULL DEFAULT 0, discount_total REAL NOT NULL DEFAULT 0, tax_total REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0,
-  source_id INTEGER REFERENCES documents(id), created_by INTEGER REFERENCES users(id),
+  source_id INTEGER REFERENCES documents(id), job_id INTEGER REFERENCES jobs(id),
+  submitted_date TEXT, verified_by INTEGER REFERENCES users(id), verified_at TEXT,
+  signed_at TEXT, signed_by_name TEXT, created_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE (kind, number)
 );
 CREATE TABLE IF NOT EXISTS document_lines (
@@ -88,7 +112,7 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 CREATE TABLE IF NOT EXISTS expenses (
   id INTEGER PRIMARY KEY, date TEXT NOT NULL, category TEXT NOT NULL, amount REAL NOT NULL CHECK (amount > 0),
-  paid_through TEXT NOT NULL DEFAULT 'cash', contact_id INTEGER REFERENCES contacts(id), reference TEXT, notes TEXT,
+  paid_through TEXT NOT NULL DEFAULT 'cash', contact_id INTEGER REFERENCES contacts(id), job_id INTEGER REFERENCES jobs(id), reference TEXT, notes TEXT,
   created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS stock_moves (
@@ -102,4 +126,6 @@ CREATE TABLE IF NOT EXISTS activity (
 CREATE INDEX IF NOT EXISTS idx_docs_kind ON documents(kind, date);
 CREATE INDEX IF NOT EXISTS idx_lines_doc ON document_lines(document_id);
 CREATE INDEX IF NOT EXISTS idx_pay_doc ON payments(document_id);
+CREATE INDEX IF NOT EXISTS idx_docs_job ON documents(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_items ON job_items(job_id);
 `;

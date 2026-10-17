@@ -7,7 +7,7 @@ export default function Payments({ direction }) {
   const isIn = direction === "in";
   return (
     <>
-      <PageHead title={isIn ? "Payments Received" : "Payments Made"} sub={isIn ? "Money collected from customers. Record new ones from an invoice." : "Money paid to suppliers. Record new ones from a bill."} />
+      <PageHead title={isIn ? "Payments Received" : "Payments Made"} sub={isIn ? "Customer receipts, posted by Accounts against invoices." : "Supplier payments, posted by Accounts against bills."} />
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No payments yet.</div> : (
         <div className="card flush"><table className="table">
           <thead><tr><th>Date</th><th>{isIn ? "Customer" : "Supplier"}</th><th>Against</th><th>Mode</th><th>Reference</th><th className="r">Amount</th></tr></thead>

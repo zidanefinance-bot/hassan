@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { api, Field, Loading, Modal, PageHead, useAuth, useLoad, useToast } from "../lib.jsx";
 
-const ROLE_INFO = { admin: "Everything, including users and settings", accountant: "Sales, purchases, stock, expenses and reports", sales: "Customers, quotes, invoices and payments received" };
+const ROLE_INFO = {
+  director: "Everything: approvals, profit, all departments, users and settings",
+  sales: "Customers, enquiries, quotes, Jobs, customer DCs and invoices. Can't see purchase costs, supplier bills or margins",
+  operations: "Jobs to fulfil, procurement, suppliers, purchases, supplier bills, freight and direct costs. Can't see selling rates or customer invoices",
+  purchaser: "What to buy today, mark bought / not available, record purchases. No customer rates, no money",
+  accounts: "Verify invoices and bills, receive payments, pay suppliers, expenses and financial reports. Doesn't re-enter Sales or Operations data",
+};
+const ROLE_LABEL = { director: "Director", sales: "Sales", operations: "Operations", purchaser: "Field Purchaser", accounts: "Accounts" };
 
 function Users() {
   const state = useLoad("/users");
@@ -20,16 +27,16 @@ function Users() {
       <div className="card-head"><h3>Team</h3><button className="btn sm primary" onClick={() => setForm({ name: "", email: "", role: "sales", password: "" })}>+ Add user</button></div>
       <Loading state={state}>{(rows) => (
         <table className="table compact"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th /></tr></thead>
-          <tbody>{rows.map((u) => <tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{u.role}</td><td>{u.active ? "Active" : <span className="muted">Disabled</span>}</td>
+          <tbody>{rows.map((u) => <tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{ROLE_LABEL[u.role]}</td><td>{u.active ? "Active" : <span className="muted">Disabled</span>}</td>
             <td className="r"><button className="btn sm ghost" onClick={() => setForm({ ...u, active: !!u.active, password: "" })}>Edit</button></td></tr>)}</tbody></table>
       )}</Loading>
-      <dl className="kv small">{Object.entries(ROLE_INFO).map(([r, t]) => <React.Fragment key={r}><dt>{r}</dt><dd className="muted">{t}</dd></React.Fragment>)}</dl>
+      <dl className="kv small">{Object.entries(ROLE_INFO).map(([r, t]) => <React.Fragment key={r}><dt>{ROLE_LABEL[r]}</dt><dd className="muted">{t}</dd></React.Fragment>)}</dl>
       {form && (
         <Modal title={form.id ? `Edit ${form.name}` : "Add user"} onClose={() => setForm(null)}>
           <form className="form" onSubmit={save}>
             <div className="row-2"><Field label="Name"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
               <Field label="Email"><input type="email" value={form.email} disabled={!!form.id} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></Field></div>
-            <div className="row-2"><Field label="Role"><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{Object.keys(ROLE_INFO).map((r) => <option key={r}>{r}</option>)}</select></Field>
+            <div className="row-2"><Field label="Role"><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{Object.keys(ROLE_INFO).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></Field>
               <Field label={form.id ? "New password (optional)" : "Password"} hint="At least 8 characters"><input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!form.id} /></Field></div>
             {form.id && form.id !== user.id && <label className="check"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active (can sign in)</label>}
             <div className="form-actions"><button type="button" className="btn ghost" onClick={() => setForm(null)}>Cancel</button><button className="btn primary">Save</button></div>
@@ -61,7 +68,7 @@ export default function Settings() {
   const toast = useToast();
   useEffect(() => { if (state.data) setS(state.data); }, [state.data]);
   const save = async () => {
-    try { await api("/settings", { method: "PUT", body: { ...s, expenseCategories: s.expenseCategories.map((x) => x.trim()).filter(Boolean) } }); toast("Settings saved"); state.reload(); } catch (x) { toast(x.message, "err"); }
+    try { await api("/settings", { method: "PUT", body: { ...s, expenseCategories: s.expenseCategories.map((x) => x.trim()).filter(Boolean), jobExpenseCategories: (s.jobExpenseCategories || []).map((x) => x.trim()).filter(Boolean) } }); toast("Settings saved"); state.reload(); } catch (x) { toast(x.message, "err"); }
   };
   const co = (k) => ({ value: s.company[k] || "", onChange: (e) => setS({ ...s, company: { ...s.company, [k]: e.target.value } }) });
   return (
@@ -79,10 +86,10 @@ export default function Settings() {
           </section>
           <section className="card form">
             <h3>Numbering & terms</h3>
-            {["quote", "invoice", "po", "bill"].map((k) => (
+            {["job", "quote", "dc", "invoice", "po", "bill"].map((k) => (
               <div className="row-2" key={k}>
-                <Field label={`${k.toUpperCase()} prefix`}><input value={s.prefixes[k]} onChange={(e) => setS({ ...s, prefixes: { ...s.prefixes, [k]: e.target.value } })} /></Field>
-                <Field label="Next number"><input type="number" min={1} value={s.nextNumbers[k]} onChange={(e) => setS({ ...s, nextNumbers: { ...s.nextNumbers, [k]: Number(e.target.value) } })} /></Field>
+                <Field label={`${{ job: "Job", quote: "Quote", dc: "Delivery challan", invoice: "Invoice", po: "Purchase order", bill: "Supplier bill" }[k]} prefix`}><input value={s.prefixes[k] ?? ""} onChange={(e) => setS({ ...s, prefixes: { ...s.prefixes, [k]: e.target.value } })} /></Field>
+                <Field label="Next number"><input type="number" min={1} value={s.nextNumbers[k] ?? 1} onChange={(e) => setS({ ...s, nextNumbers: { ...s.nextNumbers, [k]: Number(e.target.value) } })} /></Field>
               </div>
             ))}
             <Field label="Default payment terms (days)"><input type="number" min={0} value={s.paymentTermsDays} onChange={(e) => setS({ ...s, paymentTermsDays: Number(e.target.value) })} /></Field>
@@ -100,7 +107,8 @@ export default function Settings() {
           </section>
           <section className="card form">
             <h3>Expense categories</h3>
-            <Field label="One per line"><textarea rows={8} value={s.expenseCategories.join("\n")} onChange={(e) => setS({ ...s, expenseCategories: e.target.value.split("\n") })} /></Field>
+            <Field label="Company expenses (Accounts), one per line"><textarea rows={8} value={s.expenseCategories.join("\n")} onChange={(e) => setS({ ...s, expenseCategories: e.target.value.split("\n") })} /></Field>
+            <Field label="Job direct costs (Operations), one per line"><textarea rows={6} value={(s.jobExpenseCategories || []).join("\n")} onChange={(e) => setS({ ...s, jobExpenseCategories: e.target.value.split("\n") })} /></Field>
           </section>
           <Users />
           <Password />

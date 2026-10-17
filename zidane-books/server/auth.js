@@ -20,12 +20,22 @@ export function createSession(db, userId) {
   return { token, maxAge: SESSION_DAYS * 864e5 };
 }
 
-// What each role may do. Everyone signed in can see the dashboard and read items.
+// What each role may do. The blueprint's rule: Sales owns the customer side, Operations owns fulfilment and cost,
+// Accounts owns money, Directors see everything. Every API route checks these on the server.
+//   sales.read/write   customers, enquiries, quotes, Jobs (create), customer DCs, invoices
+//   ops.read/write     suppliers, purchase orders, supplier bills, Job fulfilment, job expenses
+//   buy                record purchases/bills and procurement progress (Field Purchaser)
+//   money              receive customer payments, pay suppliers
+//   verify             verify invoices and supplier bills
+//   price.view / cost.view / profit.view   see selling rates / purchase costs / margins
 export const ROLES = {
-  admin: ["sales", "purchases", "items:write", "expenses", "reports", "admin"],
-  accountant: ["sales", "purchases", "items:write", "expenses", "reports"],
-  sales: ["sales"],
+  director: ["sales.read", "sales.write", "ops.read", "ops.write", "buy", "money", "verify", "expenses", "items.write", "price.view", "cost.view", "profit.view", "reports.finance", "admin"],
+  sales: ["sales.read", "sales.write", "price.view"],
+  operations: ["ops.read", "ops.write", "buy", "items.write", "cost.view"],
+  purchaser: ["ops.read", "buy", "cost.view"],
+  accounts: ["sales.read", "ops.read", "money", "verify", "expenses", "items.write", "price.view", "cost.view", "profit.view", "reports.finance"],
 };
+export const ROLE_LABELS = { director: "Director", sales: "Sales", operations: "Operations", purchaser: "Field Purchaser", accounts: "Accounts" };
 export const can = (user, perm) => Boolean(user && ROLES[user.role]?.includes(perm));
 
 export function authMiddleware(db) {

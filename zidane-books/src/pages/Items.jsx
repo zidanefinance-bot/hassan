@@ -4,6 +4,7 @@ import { api, Field, fmtDate, Loading, Modal, money, num, PageHead, Search, useA
 
 function ItemForm({ initial, onClose, onSaved }) {
   const settings = useLoad("/settings");
+  const { can } = useAuth();
   const [f, bind] = useForm(initial ? { ...initial, track_stock: !!initial.track_stock } : { name: "", sku: "", unit: "pcs", category: "", purchase_rate: "", sale_rate: "", tax_rate: 0, reorder_level: "", opening_stock: "", track_stock: true });
   const [err, setErr] = useState("");
   const toast = useToast();
@@ -22,8 +23,8 @@ function ItemForm({ initial, onClose, onSaved }) {
         <Field label="Name *"><input {...bind("name")} required autoFocus placeholder="e.g. Super Fine Atta 10kg" /></Field>
         <div className="row-3"><Field label="SKU"><input {...bind("sku")} /></Field><Field label="Unit"><input {...bind("unit")} placeholder="bag, kg, tin…" /></Field><Field label="Category"><input {...bind("category")} /></Field></div>
         <div className="row-3">
-          <Field label="Purchase rate (Rs)"><input type="number" step="0.01" {...bind("purchase_rate")} /></Field>
-          <Field label="Selling rate (Rs)" hint={margin !== null ? `Margin ${margin}%` : null}><input type="number" step="0.01" {...bind("sale_rate")} /></Field>
+          {can("cost.view") && <Field label="Purchase rate (Rs)"><input type="number" step="0.01" {...bind("purchase_rate")} /></Field>}
+          {can("price.view") && <Field label="Default selling rate (Rs)" hint={margin !== null && can("profit.view") ? `Margin ${margin}%` : null}><input type="number" step="0.01" {...bind("sale_rate")} /></Field>}
           <Field label="Tax"><select {...bind("tax_rate")}>{(settings.data?.taxes || [{ name: "None", rate: 0 }]).map((t) => <option key={t.name} value={t.rate}>{t.name} ({t.rate}%)</option>)}</select></Field>
         </div>
         <div className="row-3">
@@ -48,18 +49,18 @@ export default function Items() {
     <>
       <PageHead title="Items" sub="Products, rates and stock on hand.">
         <Search value={q} onChange={setQ} placeholder="Search items…" />
-        {can("items:write") && <button className="btn primary" onClick={() => setAdding(true)}>+ New Item</button>}
+        {can("items.write") && <button className="btn primary" onClick={() => setAdding(true)}>+ New Item</button>}
       </PageHead>
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No items yet.</div> : (
         <div className="card flush"><table className="table">
-          <thead><tr><th>Item</th><th>Category</th><th className="r">Buy</th><th className="r">Sell</th><th className="r">Margin</th><th className="r">In stock</th></tr></thead>
+          <thead><tr><th>Item</th><th>Category</th>{can("cost.view") && <th className="r">Buy</th>}{can("price.view") && <th className="r">Sell</th>}{can("profit.view") && <th className="r">Margin</th>}<th className="r">In stock</th></tr></thead>
           <tbody>{rows.map((i) => {
             const low = i.track_stock && i.stock_qty <= i.reorder_level;
             return (
               <tr key={i.id} className="click" onClick={() => nav(`/items/${i.id}`)}>
                 <td><b>{i.name}</b><div className="muted small">{i.sku}</div></td><td className="muted">{i.category}</td>
-                <td className="r">{money(i.purchase_rate)}</td><td className="r">{money(i.sale_rate)}</td>
-                <td className="r">{i.sale_rate ? (((i.sale_rate - i.purchase_rate) / i.sale_rate) * 100).toFixed(1) + "%" : "—"}</td>
+                {can("cost.view") && <td className="r">{money(i.purchase_rate)}</td>}{can("price.view") && <td className="r">{money(i.sale_rate)}</td>}
+                {can("profit.view") && <td className="r">{i.sale_rate ? (((i.sale_rate - i.purchase_rate) / i.sale_rate) * 100).toFixed(1) + "%" : "—"}</td>}
                 <td className={`r ${low ? "neg" : ""}`}>{i.track_stock ? `${num(i.stock_qty)} ${i.unit}` : "—"}{low && <span className="badge red sm">low</span>}</td>
               </tr>
             );
@@ -87,7 +88,7 @@ export function ItemView() {
     <Loading state={state}>{(i) => (
       <>
         <PageHead title={i.name} sub={[i.sku, i.category].filter(Boolean).join(" · ")}>
-          {can("items:write") && <>
+          {can("items.write") && <>
             <button className="btn" onClick={() => setAdj({ qty: "", reason: "" })}>Adjust stock</button>
             <button className="btn" onClick={() => setEditing(true)}>Edit</button>
             <button className="btn ghost danger" onClick={async () => { if (confirm("Hide this item from lists? History is kept.")) { await api(`/items/${id}`, { method: "DELETE" }); nav("/items"); } }}>Delete</button>
@@ -95,9 +96,9 @@ export function ItemView() {
         </PageHead>
         <div className="stats">
           <div className="stat"><small>In stock</small><b>{num(i.stock_qty)} {i.unit}</b></div>
-          <div className="stat"><small>Stock value (at cost)</small><b>{money(i.stock_qty * i.purchase_rate)}</b></div>
-          <div className="stat"><small>Purchase rate</small><b>{money(i.purchase_rate)}</b></div>
-          <div className="stat"><small>Selling rate</small><b>{money(i.sale_rate)}</b><span className="muted">{i.tax_rate}% tax</span></div>
+          {i.purchase_rate !== undefined && <div className="stat"><small>Stock value (at cost)</small><b>{money(i.stock_qty * i.purchase_rate)}</b></div>}
+          {i.purchase_rate !== undefined && <div className="stat"><small>Purchase rate</small><b>{money(i.purchase_rate)}</b></div>}
+          {i.sale_rate !== undefined && <div className="stat"><small>Selling rate</small><b>{money(i.sale_rate)}</b><span className="muted">{i.tax_rate}% tax</span></div>}
         </div>
         <section className="card flush">
           <h3 className="pad">Stock history</h3>

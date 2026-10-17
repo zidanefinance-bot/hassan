@@ -1,5 +1,6 @@
 // Reports. P&L is document-based: sales (ex-tax) − cost of goods sold (cost captured on each invoice line) − expenses.
 import { round2, today, displayStatus } from "./books.js";
+import { jobEconomics, jobList, OPS_STATUSES, procurementList } from "./jobs.js";
 
 const ISSUED = "status = 'open'";
 
@@ -79,16 +80,75 @@ export function cashFlow(db, months = 6) {
   return out;
 }
 
-export function dashboard(db) {
-  const t = today(), monthStart = t.slice(0, 8) + "01";
-  const rec = receivables(db), pay = payables(db);
-  return {
-    receivables: { total: rec.total, overdue: round2(rec.total - rec.buckets.current) },
-    payables: { total: pay.total, overdue: round2(pay.total - pay.buckets.current) },
-    month: profitAndLoss(db, monthStart, t),
-    cash_flow: cashFlow(db, 6),
-    inventory: (({ total_value, low_stock }) => ({ total_value, low_stock }))(inventory(db)),
-    top_customers: salesByCustomer(db, monthStart.slice(0, 5) + "01-01", t).slice(0, 5),
-    recent: db.prepare("SELECT a.*, u.name AS user_name FROM activity a LEFT JOIN users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 12").all(),
-  };
+// Job profitability (Director / Accounts): revenue from Sales + costs from Operations, per Job
+export function jobProfit(db, from, to) {
+  return db.prepare("SELECT j.id, j.number, j.ops_status, j.closed, c.name AS customer_name FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE date(j.created_at) BETWEEN ? AND ? ORDER BY j.id DESC").all(from, to)
+    .map((j) => ({ ...j, ...jobEconomics(db, j.id) }));
+}
+
+// Role home: "what needs your attention today?" Every record that is stuck becomes an action in its owner's queue.
+export function home(db, user, can) {
+  const t = today();
+  const soon = (n) => new Date(Date.parse(t) + n * 864e5).toISOString().slice(0, 10);
+  const docs = (sql, ...args) => db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, COALESCE((SELECT SUM(amount) FROM payments p WHERE p.document_id = d.id), 0) AS paid
+    FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id WHERE ${sql} ORDER BY COALESCE(d.due_date, d.date), d.id`).all(...args)
+    .map((d) => ({ ...d, balance: round2(d.total - d.paid) }));
+  const jobs = jobList(db, { scope: "active" });
+  const step = (s) => OPS_STATUSES.indexOf(s);
+  const P = { quote: "quotes", invoice: "invoices", dc: "delivery-challans", po: "purchase-orders", bill: "bills" };
+  const docItem = (d, sub) => ({ label: `${d.number} · ${d.contact_name}`, sub, link: `/${P[d.kind]}/${d.id}`, due: d.due_date });
+  const jobItem = (j, sub) => ({ label: `${j.number} · ${j.customer_name}`, sub, link: `/jobs/${j.id}`, due: j.required_date });
+  const q = (dept, key, title, items, tone = "amber") => ({ dept, key, title, tone, count: items.length, items: items.slice(0, 8) });
+  const queues = [];
+
+  if (can("sales.write")) {
+    queues.push(
+      q("Sales", "rate", "Enquiries waiting for rates", docs("d.kind = 'quote' AND d.status = 'enquiry'").map((d) => docItem(d, "Add selling rates and send the quote"))),
+      q("Sales", "quote", "Quotes sent, waiting for customer", docs("d.kind = 'quote' AND d.status = 'sent'").map((d) => docItem(d, "Follow up for confirmation / PO")), "blue"),
+      q("Sales", "nojob", "Confirmed, Job not created", docs("d.kind = 'quote' AND d.status = 'accepted'").map((d) => docItem(d, "Create the Internal Job")), "red"),
+      q("Sales", "dc", "Material ready, DC needed", jobs.filter((j) => step(j.ops_status) >= step("material_ready") && j.dc_count === 0).map((j) => jobItem(j, "Create the customer DC")), "red"),
+      q("Sales", "signed", "Delivered, signed DC missing", docs("d.kind = 'dc' AND d.status = 'issued'").map((d) => docItem(d, "Upload / mark signed receiving"))),
+      q("Sales", "inv", "Signed DC, invoice not made", jobs.filter((j) => j.signed_dc_count > 0 && j.invoice_count === 0).map((j) => jobItem(j, "Create the customer invoice")), "red"),
+      q("Sales", "draftinv", "Draft invoices", docs("d.kind = 'invoice' AND d.status = 'draft'").map((d) => docItem(d, "Review and issue"))),
+      q("Sales", "submit", "Invoices not submitted to customer", docs("d.kind = 'invoice' AND d.status = 'open' AND d.submitted_date IS NULL").map((d) => docItem(d, "Submit and mark the date"))),
+      q("Sales", "follow", "Overdue: follow up with customer", docs("d.kind = 'invoice' AND d.status = 'open' AND d.due_date < ?", t).filter((d) => d.balance > 0).map((d) => docItem(d, `Rs ${d.balance.toLocaleString("en-PK")} outstanding`)), "red"),
+    );
+  }
+  if (can("buy")) {
+    const plist = procurementList(db);
+    queues.push(
+      q("Operations", "newjob", "New Jobs to start", jobs.filter((j) => j.ops_status === "new").map((j) => jobItem(j, `${j.item_count} items · start procurement`)), "red"),
+      q("Operations", "buy", "Items to buy", plist.map((g) => ({ label: `${g.name} · ${g.total_qty} ${g.unit}`, sub: `${g.jobs.length} job(s)${g.earliest ? ` · needed by ${g.earliest}` : ""}`, link: "/procurement", due: g.earliest }))),
+      q("Operations", "late", "Deadline in 2 days, material not ready", jobs.filter((j) => j.required_date && j.required_date <= soon(2) && step(j.ops_status) < step("material_ready")).map((j) => jobItem(j, j.ops_status.replace(/_/g, " "))), "red"),
+      q("Operations", "nobill", "Purchased but no supplier bill", jobs.filter((j) => ["partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"].includes(j.ops_status) && j.bill_count === 0).map((j) => jobItem(j, "Add the supplier bill"))),
+      q("Operations", "ready", "Bought, mark material ready", jobs.filter((j) => j.ops_status === "purchase_complete").map((j) => jobItem(j, "Tell Sales it's ready")), "blue"),
+    );
+  }
+  if (can("verify") || can("money")) {
+    queues.push(
+      q("Accounts", "vbill", "Supplier bills to verify", docs("d.kind = 'bill' AND d.status = 'open' AND d.verified_at IS NULL").map((d) => docItem(d, `Rs ${d.total.toLocaleString("en-PK")}`))),
+      q("Accounts", "vinv", "Invoices to verify", docs("d.kind = 'invoice' AND d.status = 'open' AND d.verified_at IS NULL").map((d) => docItem(d, `Rs ${d.total.toLocaleString("en-PK")}`))),
+      q("Accounts", "collect", "Collections due (next 7 days or overdue)", docs("d.kind = 'invoice' AND d.status = 'open' AND d.due_date <= ?", soon(7)).filter((d) => d.balance > 0).map((d) => docItem(d, `Rs ${d.balance.toLocaleString("en-PK")} · due ${d.due_date}`)), "blue"),
+      q("Accounts", "pay", "Supplier payments due (next 7 days or overdue)", docs("d.kind = 'bill' AND d.status = 'open' AND d.due_date <= ?", soon(7)).filter((d) => d.balance > 0).map((d) => docItem(d, `Rs ${d.balance.toLocaleString("en-PK")} · due ${d.due_date}`)), "red"),
+    );
+  }
+
+  const kpis = {};
+  if (can("sales.read")) {
+    kpis.open_quotes = round2(db.prepare("SELECT COALESCE(SUM(total), 0) AS v FROM documents WHERE kind = 'quote' AND status IN ('enquiry','draft','sent','accepted')").get().v);
+    kpis.receivables = receivables(db).total;
+  }
+  if (can("ops.read")) {
+    kpis.active_jobs = jobs.length;
+    kpis.blocked_jobs = jobs.filter((j) => j.required_date && j.required_date < t && step(j.ops_status) < step("material_ready")).length;
+  }
+  if (can("reports.finance")) {
+    kpis.payables = payables(db).total;
+    kpis.month = profitAndLoss(db, t.slice(0, 8) + "01", t);
+    kpis.stock_value = inventory(db).total_value;
+    kpis.cash_flow = cashFlow(db, 6);
+  }
+  const recent = can("admin") ? db.prepare("SELECT a.*, u.name AS user_name FROM activity a LEFT JOIN users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 12").all()
+    : db.prepare("SELECT a.*, u.name AS user_name FROM activity a LEFT JOIN users u ON u.id = a.user_id WHERE a.user_id = ? ORDER BY a.id DESC LIMIT 8").all(user.id);
+  return { queues, kpis, recent };
 }

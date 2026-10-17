@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { fmtDate, KIND, Loading, money, num, PageHead, today, useLoad } from "../lib.jsx";
+import { Badge, fmtDate, KIND, Loading, money, num, PageHead, today, useAuth, useLoad } from "../lib.jsx";
 
-const TABS = [["pnl", "Profit & Loss"], ["receivables", "Receivables"], ["payables", "Payables"], ["inventory", "Inventory"], ["sales-by-customer", "Sales by customer"], ["sales-by-item", "Sales by item"], ["tax", "Sales tax"]];
-const RANGED = ["pnl", "sales-by-customer", "sales-by-item", "tax"];
+const TABS = [["pnl", "Profit & Loss", "reports.finance"], ["job-profit", "Job profit", "profit.view"], ["receivables", "Receivables", "*"], ["payables", "Payables", "reports.finance"], ["inventory", "Inventory", "reports.finance"], ["sales-by-customer", "Sales by customer", "*"], ["sales-by-item", "Sales by item", "reports.finance"], ["tax", "Sales tax", "reports.finance"]];
+const RANGED = ["pnl", "job-profit", "sales-by-customer", "sales-by-item", "tax"];
 
 function csv(name, header, rows) {
   const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -47,6 +47,15 @@ function Report({ tab, data: d }) {
       <p className="muted small">Cost of goods sold uses each item's purchase rate at the time it was invoiced. Sales tax collected ({money(d.tax_collected)}) is not income.</p>
     </div>
   );
+  if (tab === "job-profit") return d.length === 0 ? <div className="empty">No Jobs created in this period.</div> : (
+    <div className="card flush"><table className="table">
+      <thead><tr><th>Job</th><th>Customer</th><th>Status</th><th className="r">Revenue</th><th className="r">Purchases</th><th className="r">Direct costs</th><th className="r">Gross profit</th><th className="r">Margin</th></tr></thead>
+      <tbody>{d.map((j) => <tr key={j.id}><td><Link to={`/jobs/${j.id}`}>{j.number}</Link></td><td>{j.customer_name}</td><td><Badge status={j.ops_status} /></td>
+        <td className="r">{money(j.revenue_basis === "invoiced" ? j.invoiced_revenue : j.expected_revenue)}{j.revenue_basis === "expected" && <div className="muted small">expected</div>}</td>
+        <td className="r">{money(j.purchases + j.stock_cost)}{j.cost_pending && <div className="neg small">cost pending</div>}</td><td className="r">{money(j.direct_costs)}</td>
+        <td className={`r ${j.gross_profit < 0 ? "neg" : "pos"}`}><b>{money(j.gross_profit)}</b></td><td className="r">{j.margin_pct}%</td></tr>)}</tbody>
+    </table></div>
+  );
   if (tab === "receivables") return <Aging d={d} kind="invoice" />;
   if (tab === "payables") return <Aging d={d} kind="bill" />;
   if (tab === "inventory") return (
@@ -86,11 +95,14 @@ function toCsv(tab, d) {
   if (tab === "inventory") return [["Item", "SKU", "Stock", "Unit", "Cost", "Value", "Sale rate"], d.items.map((i) => [i.name, i.sku, i.stock_qty, i.unit, i.purchase_rate, i.stock_value, i.sale_rate])];
   if (tab === "sales-by-customer") return [["Customer", "Invoices", "Sales", "Total"], d.map((r) => [r.name, r.invoices, r.sales, r.total])];
   if (tab === "sales-by-item") return [["Item", "Qty", "Sales", "Cost", "Profit"], d.map((r) => [r.name, r.qty, r.sales, r.cost, r.profit])];
+  if (tab === "job-profit") return [["Job", "Customer", "Status", "Revenue", "Purchases", "Direct costs", "Gross profit", "Margin %"], d.map((j) => [j.number, j.customer_name, j.ops_status, j.revenue_basis === "invoiced" ? j.invoiced_revenue : j.expected_revenue, j.purchases + j.stock_cost, j.direct_costs, j.gross_profit, j.margin_pct])];
   return [["Line", "Amount"], [["Output tax", d.output_tax], ["Input tax", d.input_tax], ["Net payable", d.net_payable]]];
 }
 
 export default function Reports() {
-  const [tab, setTab] = useState("pnl");
+  const { can } = useAuth();
+  const tabs = TABS.filter(([, , p]) => p === "*" || can(p));
+  const [tab, setTab] = useState(tabs[0][0]);
   const [from, setFrom] = useState(today().slice(0, 8) + "01");
   const [to, setTo] = useState(today());
   const path = `/reports/${tab}${RANGED.includes(tab) ? `?from=${from}&to=${to}` : ""}`;
@@ -103,7 +115,7 @@ export default function Reports() {
         <button className="btn" disabled={!state.data} onClick={() => csv(`zidane-${tab}-${today()}`, ...toCsv(tab, state.data))}>Export CSV</button>
         <button className="btn" onClick={() => window.print()}>Print</button>
       </PageHead>
-      <div className="tabs">{TABS.map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>
+      <div className="tabs">{tabs.map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>
       <Loading state={state}>{(d) => <Report tab={tab} data={d} />}</Loading>
     </>
   );
