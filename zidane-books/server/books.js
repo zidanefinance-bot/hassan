@@ -198,10 +198,11 @@ export function recordPayment(db, userId, p) {
   });
 }
 
-export function adjustStock(db, userId, itemId, qty, reason) {
+// own = false when the caller already holds a transaction (e.g. CSV import)
+export function adjustStock(db, userId, itemId, qty, reason, own = true) {
   qty = Number(qty);
   if (!qty) throw httpError(400, "Quantity cannot be zero");
-  tx(db, () => {
+  (own ? (fn) => tx(db, fn) : (fn) => fn())(() => {
     db.prepare("INSERT INTO stock_moves (item_id, qty, reason) VALUES (?, ?, ?)").run(itemId, qty, reason || "manual adjustment");
     db.prepare("UPDATE items SET stock_qty = stock_qty + ? WHERE id = ?").run(qty, itemId);
     log(db, userId, "adjusted stock", "item", itemId, `${qty > 0 ? "+" : ""}${qty} · ${reason || "manual"}`);

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { addDays, api, Field, KIND, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
 import { ContactForm } from "./Contacts.jsx";
+import { ItemForm } from "./Items.jsx";
 
 const ISSUE_STATUS = { quote: "sent", invoice: "open", po: "issued", bill: "open", dc: "issued" };
 const blankLine = () => ({ key: Math.random(), item_id: "", description: "", qty: 1, rate: 0, discount_pct: 0, tax_rate: 0 });
@@ -22,6 +23,7 @@ export default function DocumentForm({ kind }) {
   const existing = useLoad(id ? `/documents/${id}` : null);
   const [doc, setDoc] = useState(null);
   const [addingContact, setAddingContact] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -53,13 +55,18 @@ export default function DocumentForm({ kind }) {
   if (!doc) return <div className="empty">Loading…</div>;
   const set = (k, v) => setDoc((d) => ({ ...d, [k]: v }));
   const setLine = (i, patch) => setDoc((d) => ({ ...d, lines: d.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
-  const pickItem = (i, itemId) => {
-    const it = items.data?.find((x) => String(x.id) === String(itemId));
-    setLine(i, it ? { item_id: it.id, rate: (isSale ? it.sale_rate : it.purchase_rate) ?? 0, tax_rate: it.tax_rate, description: "" } : { item_id: "" });
+  const pickItem = (i, itemId, list = items.data) => {
+    const it = list?.find((x) => String(x.id) === String(itemId));
+    setLine(i, it ? { item_id: it.id, rate: (isSale ? it.sale_rate : it.purchase_rate) ?? 0, tax_rate: it.tax_rate, description: "", hint: null } : { item_id: "", hint: null });
+    // what we last charged this customer / paid this supplier for it
+    if (it && doc.contact_id && !isDc) {
+      api(`/items/last-rate?item_id=${it.id}&contact_id=${doc.contact_id}&side=${isSale ? "sale" : "purchase"}`)
+        .then((r) => r && setDoc((d) => ({ ...d, lines: d.lines.map((l, j) => (j === i && String(l.item_id) === String(it.id) ? { ...l, hint: r } : l)) }))).catch(() => {});
+    }
   };
   const save = async (issue, asEnquiry = false) => {
     setErr("");
-    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, ...l }) => ({ ...l, item_id: l.item_id || null }));
+    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ...l }) => ({ ...l, item_id: l.item_id || null }));
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
@@ -119,7 +126,8 @@ export default function DocumentForm({ kind }) {
                   </td>
                   <td><input type="number" step="0.01" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>
                   {!isDc && <>
-                    <td><input type="number" step="0.01" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} /></td>
+                    <td><input type="number" step="0.01" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} />
+                      {l.hint && <button type="button" className="rate-hint" title={`${l.hint.number} · ${l.hint.date}`} onClick={() => setLine(i, { rate: l.hint.rate })}>Last: {money(l.hint.rate)}</button>}</td>
                     <td><input type="number" step="0.01" value={l.discount_pct} onChange={(e) => setLine(i, { discount_pct: e.target.value })} /></td>
                     <td><select value={l.tax_rate} onChange={(e) => setLine(i, { tax_rate: e.target.value })}>{taxes.map((t) => <option key={t.name} value={t.rate}>{t.rate}%</option>)}</select></td>
                     <td className="r">{money(amt)}</td>
@@ -130,6 +138,7 @@ export default function DocumentForm({ kind }) {
             })}</tbody>
           </table>
           <button type="button" className="btn ghost" onClick={() => setDoc((d) => ({ ...d, lines: [...d.lines, blankLine()] }))}>+ Add line</button>
+          <button type="button" className="btn ghost" onClick={() => setAddingItem(true)}>+ New item (not in list)</button>
         </div>
 
         <div className="doc-bottom">
@@ -152,6 +161,15 @@ export default function DocumentForm({ kind }) {
           <button className="btn primary" disabled={busy} onClick={() => save(!id || ["draft", "enquiry"].includes(doc.status))}>{id && !["draft", "enquiry"].includes(doc.status) ? "Save" : kind === "quote" ? "Save & mark sent" : kind === "dc" ? "Save & issue DC" : kind === "po" ? "Save & issue" : `Save & ${kind === "invoice" ? "issue" : "record"}`}</button>
         </div>
       </div>
+      {addingItem && <ItemForm onClose={() => setAddingItem(false)} onSaved={async (newId) => {
+        setAddingItem(false);
+        const list = await api("/items");
+        items.reload();
+        const empty = doc.lines.findIndex((l) => !l.item_id && !l.description);
+        if (empty < 0) setDoc((d) => ({ ...d, lines: [...d.lines, blankLine()] }));
+        const at = empty < 0 ? doc.lines.length : empty;
+        setTimeout(() => pickItem(at, newId, list), 0);
+      }} />}
       {addingContact && <ContactForm type={K.contact} onClose={() => setAddingContact(false)} onSaved={(cid) => { setAddingContact(false); contacts.reload(); set("contact_id", String(cid)); }} />}
     </>
   );

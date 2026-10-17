@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { authMiddleware, can, checkPassword, createSession, hashPassword, requirePerm, requireUser, ROLE_LABELS, ROLES } from "./auth.js";
 import * as B from "./books.js";
 import * as J from "./jobs.js";
+import * as I from "./items.js";
 import * as R from "./reports.js";
 
 const { httpError, round2, today } = B;
@@ -151,18 +152,31 @@ export function createApp(db) {
     const q = `%${req.query.q || ""}%`;
     res.json(db.prepare("SELECT * FROM items WHERE active = 1 AND (name LIKE ? OR IFNULL(sku,'') LIKE ? OR IFNULL(category,'') LIKE ?) ORDER BY name").all(q, q, q).map((i) => shapeItem(req, i)));
   });
+  api.get("/items/last-rate", (req, res) => {
+    res.json(I.lastRate(db, Number(req.query.item_id), Number(req.query.contact_id), req.query.side === "purchase" ? "purchase" : "sale", cans(req)));
+  });
   api.get("/items/:id", (req, res) => {
     const i = db.prepare("SELECT * FROM items WHERE id = ?").get(id(req));
     if (!i) throw httpError(404, "Not found");
-    res.json({ ...shapeItem(req, i), moves: db.prepare("SELECT * FROM stock_moves WHERE item_id = ? ORDER BY id DESC LIMIT 100").all(i.id) });
+    res.json({
+      ...shapeItem(req, i),
+      moves: I.shapeMoves(db.prepare("SELECT m.*, d.kind AS document_kind FROM stock_moves m LEFT JOIN documents d ON d.id = m.document_id WHERE item_id = ? ORDER BY m.id DESC LIMIT 200").all(i.id), cans(req)),
+      transactions: I.itemTransactions(db, i.id, cans(req)),
+      rates: I.itemRates(db, i.id, cans(req)),
+      history: I.itemHistory(db, i.id, cans(req)),
+    });
   });
   const itemFields = (b) => [b.name, b.sku || null, b.unit || "pcs", b.category || null, Number(b.purchase_rate) || 0, Number(b.sale_rate) || 0, Number(b.tax_rate) || 0, Number(b.reorder_level) || 0, b.track_stock === false ? 0 : 1];
-  api.post("/items", requirePerm("items.write"), (req, res) => {
-    const b = req.body;
+  // anyone who writes documents can add a new item on the spot (like Zoho); they only set the rate they're allowed to see
+  api.post("/items", (req, res) => {
+    need(req.user, ["items.write", "sales.write", "buy"]);
+    const b = { ...req.body };
+    if (!can(req.user, "cost.view")) delete b.purchase_rate;
+    if (!can(req.user, "price.view")) delete b.sale_rate;
     if (!b.name?.trim()) throw httpError(400, "Name is required");
     const r = db.prepare("INSERT INTO items (name, sku, unit, category, purchase_rate, sale_rate, tax_rate, reorder_level, track_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...itemFields(b));
     const newId = Number(r.lastInsertRowid);
-    if (Number(b.opening_stock)) B.adjustStock(db, req.user.id, newId, b.opening_stock, "opening stock");
+    if (Number(b.opening_stock) && can(req.user, "items.write")) B.adjustStock(db, req.user.id, newId, b.opening_stock, "opening stock");
     B.log(db, req.user.id, "added", "item", newId, b.name);
     res.json({ id: newId });
   });
@@ -171,9 +185,13 @@ export function createApp(db) {
     if (!i) throw httpError(404, "Not found");
     const body = { ...req.body };
     if (!can(req.user, "price.view")) delete body.sale_rate; // operations can't change selling rates
-    db.prepare("UPDATE items SET name=?, sku=?, unit=?, category=?, purchase_rate=?, sale_rate=?, tax_rate=?, reorder_level=?, track_stock=? WHERE id=?").run(...itemFields({ ...i, track_stock: !!i.track_stock, ...body }), i.id);
+    if (!can(req.user, "cost.view")) delete body.purchase_rate;
+    const next = { ...i, track_stock: !!i.track_stock, ...body };
+    db.prepare("UPDATE items SET name=?, sku=?, unit=?, category=?, purchase_rate=?, sale_rate=?, tax_rate=?, reorder_level=?, track_stock=? WHERE id=?").run(...itemFields(next), i.id);
+    I.logItemChanges(db, req.user.id, i, next, cans(req));
     res.json({ ok: true });
   });
+  api.post("/items/import", requirePerm("items.write"), (req, res) => res.json(I.importItems(db, req.user.id, req.body.rows, cans(req))));
   api.post("/items/:id/adjust", requirePerm("items.write"), (req, res) => { B.adjustStock(db, req.user.id, id(req), req.body.qty, req.body.reason); res.json({ ok: true }); });
   api.delete("/items/:id", requirePerm("items.write"), (req, res) => {
     db.prepare("UPDATE items SET active = 0 WHERE id = ?").run(id(req)); // keep history, hide from lists

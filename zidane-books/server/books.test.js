@@ -156,3 +156,34 @@ test("API: role boundaries are enforced on the server", async () => {
     server.close();
   }
 });
+
+test("item 360: transactions, rate history, last rate, change log and CSV import", async () => {
+  const I = await import("./items.js");
+  const { db, c, s: sup, i } = fresh();
+  const all = () => true;
+  B.saveDocument(db, 1, { kind: "bill", contact_id: sup, status: "open", lines: [{ item_id: i, qty: 10, rate: 90 }] });
+  B.saveDocument(db, 1, { kind: "bill", contact_id: sup, status: "open", lines: [{ item_id: i, qty: 10, rate: 100 }] });
+  B.saveDocument(db, 1, { kind: "invoice", contact_id: c, status: "open", lines: [{ item_id: i, qty: 5, rate: 130, discount_pct: 10 }] });
+  assert.equal(I.itemTransactions(db, i, all).length, 3);
+  const salesOnly = (p) => ["sales.read", "price.view"].includes(p);
+  const tSales = I.itemTransactions(db, i, salesOnly);
+  assert.ok(tSales.every((t) => t.kind === "invoice"), "sales sees only customer-side documents");
+  const r = I.itemRates(db, i, all);
+  assert.equal(r.purchase.last.rate, 100);
+  assert.equal(r.purchase.avg_90, 95);
+  assert.equal(r.sales.last.rate, 117);
+  assert.equal(I.itemRates(db, i, salesOnly).purchase, undefined, "no purchase rates for sales");
+  assert.equal(I.lastRate(db, i, c, "sale", all).rate, 117);
+  const before = db.prepare("SELECT * FROM items WHERE id = ?").get(i);
+  I.logItemChanges(db, 1, before, { ...before, sale_rate: 125 }, all);
+  assert.match(I.itemHistory(db, i)[0].summary, /selling rate: 120 → 125/);
+  I.logItemChanges(db, 1, before, { ...before, purchase_rate: 99 }, all);
+  assert.equal(I.itemHistory(db, i, salesOnly).filter((a) => /purchase rate/.test(a.summary)).length, 0, "sales never sees cost changes");
+  const moves = I.shapeMoves([{ reason: "bill BILL-00001", document_kind: "bill", document_id: 1 }], salesOnly);
+  assert.equal(moves[0].reason, "purchase received");
+  const res = I.importItems(db, 1, [{ "Item Name": "Atta", Rate: "125", "Purchase Rate": "101" }, { "Item Name": "Sugar 1kg", SKU: "SUG-1", Rate: "Rs 155", "Opening Stock": "40", Unit: "kg" }, { Rate: "1" }], all);
+  assert.deepEqual(res, { created: 1, updated: 1, skipped: 1 });
+  const sugar = db.prepare("SELECT * FROM items WHERE sku = 'SUG-1'").get();
+  assert.equal(sugar.sale_rate, 155);
+  assert.equal(sugar.stock_qty, 40);
+});

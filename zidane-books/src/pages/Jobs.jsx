@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OPS_STEPS, PageHead, Search, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import { ContactForm } from "./Contacts.jsx";
+import { ItemForm } from "./Items.jsx";
 
 const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey" };
 
@@ -50,6 +51,7 @@ export function JobForm() {
   const settings = useLoad("/settings");
   const [f, setF] = useState({ customer_id: params.get("customer") || "", order_source: "call", customer_po_number: "", customer_po_date: "", required_date: "", delivery_location: "", priority: "normal", fulfilment_type: "stock", instructions: "", items: [blank()] });
   const [adding, setAdding] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
   const [err, setErr] = useState("");
   const set = (k) => ({ value: f[k], onChange: (e) => setF({ ...f, [k]: e.target.value }) });
   const setItem = (i, patch) => setF((s) => ({ ...s, items: s.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) }));
@@ -97,11 +99,22 @@ export function JobForm() {
             </tr>
           ))}</tbody>
         </table>
-        <button type="button" className="btn ghost" onClick={() => setF((s) => ({ ...s, items: [...s.items, blank()] }))}>+ Add item</button>
+        <div><button type="button" className="btn ghost" onClick={() => setF((s) => ({ ...s, items: [...s.items, blank()] }))}>+ Add item</button>
+          <button type="button" className="btn ghost" onClick={() => setAddingItem(true)}>+ New item (not in list)</button></div>
         <Field label="Instructions for Operations"><textarea rows={2} {...set("instructions")} placeholder="Packing, delivery timing, gate pass…" /></Field>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button className="btn ghost" onClick={() => nav(-1)}>Cancel</button><button className="btn primary" onClick={save}>Create Job</button></div>
       </div>
+      {addingItem && <ItemForm onClose={() => setAddingItem(false)} onSaved={async (newId) => {
+        setAddingItem(false);
+        const it = await api(`/items/${newId}`);
+        items.reload();
+        setF((s) => {
+          const empty = s.items.findIndex((x) => !x.item_id && !x.description);
+          const line = { ...blank(), item_id: it.id, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate };
+          return { ...s, items: empty < 0 ? [...s.items, line] : s.items.map((x, j) => (j === empty ? line : x)) };
+        });
+      }} />}
       {adding && <ContactForm type="customer" onClose={() => setAdding(false)} onSaved={(id) => { setAdding(false); customers.reload(); setF((s) => ({ ...s, customer_id: String(id) })); }} />}
     </>
   );
