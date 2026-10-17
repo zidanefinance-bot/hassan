@@ -1,0 +1,232 @@
+<title>Zidane Product Catalogue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: wholesale order sheet — sticky search bar, category rail, product shelf grid, order list docked right (bottom sheet on phones). */
+:root {
+  --bg: #F4F2EF;
+  --shelf: #FFFFFF;
+  --tile: #F7F5F2;
+  --ink: #1A1516;
+  --muted: #6E6668;
+  --line: #E3DDD8;
+  --red: #C22A2F;
+  --red-ink: #FFFFFF;
+  --red-soft: #FBEDEC;
+  --display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111213; --shelf: #1A1B1D; --tile: #222326; --ink: #F1EDEA; --muted: #A29B99; --line: #2C2D31;
+    --red: #E0464B; --red-ink: #FFFFFF; --red-soft: #3A1D1F; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111213; --shelf: #1A1B1D; --tile: #222326; --ink: #F1EDEA; --muted: #A29B99; --line: #2C2D31;
+  --red: #E0464B; --red-ink: #FFFFFF; --red-soft: #3A1D1F; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1320px; margin: 0 auto; padding-inline: 20px; padding-block: 14px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand b { font: 800 22px/1 var(--display); letter-spacing: -0.03em; color: var(--red); }
+.brand span { font-size: 13px; color: var(--muted); }
+.search { flex: 1 1 260px; max-width: 460px; position: relative; }
+.search input { width: 100%; padding: 11px 14px 11px 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--shelf); }
+.search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); }
+.cartbtn { display: none; border: 0; background: var(--red); color: var(--red-ink); padding: 11px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+.wrap { max-width: 1320px; margin: 0 auto; padding-inline: 20px; padding-block: 26px 80px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
+.intro h1 { font: 800 clamp(28px, 4.2vw, 44px)/1.05 var(--display); letter-spacing: -0.035em; margin: 0; text-wrap: balance; }
+.intro h1 em { font-style: normal; color: var(--red); }
+.intro p { color: var(--muted); max-width: 60ch; margin: 10px 0 0; }
+.cats { display: flex; gap: 8px; flex-wrap: wrap; margin: 22px 0 6px; }
+.cats button { border: 1px solid var(--line); background: var(--shelf); padding: 7px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.cats button small { color: var(--muted); font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.cats button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.cats button[aria-pressed="true"] small { color: inherit; opacity: .7; }
+.count { font-size: 13px; color: var(--muted); margin: 10px 0 14px; }
+
+.section-h { display: flex; align-items: baseline; gap: 10px; margin: 26px 0 12px; }
+.section-h h2 { font: 700 20px var(--display); letter-spacing: -0.02em; margin: 0; }
+.section-h span { font-size: 13px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.card { background: var(--shelf); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 12px; display: flex; flex-direction: column; min-width: 0; }
+.card.in { border-color: var(--red); box-shadow: 0 0 0 1px var(--red) inset; }
+.ph { background: var(--tile); border-radius: 10px; aspect-ratio: 1 / 1; display: grid; place-items: center; padding: 12px; }
+.ph img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0,0,0,.12)); }
+.bn { margin-top: 10px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--red); }
+.nm { font-size: 14px; font-weight: 600; line-height: 1.3; margin-top: 2px; flex: 1; }
+.qty { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+.qty button { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); font-weight: 700; font-size: 18px; line-height: 1; cursor: pointer; }
+.qty input { width: 100%; min-width: 0; text-align: center; padding: 6px 4px; border-radius: 9px; border: 1px solid var(--line); background: var(--shelf); font-weight: 700; font-variant-numeric: tabular-nums; }
+.add { margin-top: 10px; border: 1px solid var(--ink); background: transparent; border-radius: 9px; padding: 7px; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.add:hover { background: var(--ink); color: var(--bg); }
+
+.order { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); background: var(--shelf); border: 1px solid var(--line); border-radius: 16px; padding: 18px; max-height: calc(100vh - 110px); display: flex; flex-direction: column; }
+.order h2 { font: 700 19px var(--display); margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
+.order h2 small { font: 600 13px var(--body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lines { overflow: auto; margin: 12px -4px 0; padding: 0 4px; flex: 1; min-height: 60px; }
+.line { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.line img { width: 40px; height: 40px; object-fit: contain; }
+.line .t { font-size: 13px; font-weight: 600; line-height: 1.25; }
+.line .q { font: 700 14px var(--body); font-variant-numeric: tabular-nums; }
+.line button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0; }
+.empty { color: var(--muted); font-size: 14px; padding: 16px 4px; }
+.empty b { color: var(--ink); }
+.fields { display: grid; gap: 8px; margin-top: 12px; }
+.fields label { font-size: 12px; font-weight: 600; color: var(--muted); display: grid; gap: 4px; }
+.fields input, .fields textarea { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
+.fields textarea { resize: vertical; min-height: 56px; }
+.send { margin-top: 14px; display: grid; gap: 8px; }
+.primary { border: 0; background: var(--red); color: var(--red-ink); padding: 12px; border-radius: 11px; font-weight: 700; cursor: pointer; }
+.primary:disabled { opacity: .45; cursor: default; }
+.mail { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; background: var(--red-soft); border-radius: 10px; padding: 9px 12px; }
+.mail code { font: 700 14px var(--body); user-select: all; }
+.mail button { border: 1px solid var(--line); background: var(--shelf); border-radius: 8px; padding: 4px 9px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.status { font-size: 12.5px; color: var(--muted); min-height: 18px; }
+.clear { border: 0; background: none; color: var(--muted); font-size: 12.5px; cursor: pointer; text-decoration: underline; justify-self: start; padding: 0; }
+.foot { max-width: 1320px; margin: 0 auto; padding-inline: 20px; padding-block: 0 40px; font-size: 12.5px; color: var(--muted); }
+#fallback { width: 100%; min-height: 120px; font: 12.5px/1.4 ui-monospace, Menlo, monospace; }
+
+@media (max-width: 920px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  .cartbtn { display: inline-block; }
+  .order { position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 82vh; border-radius: 18px 18px 0 0; z-index: 30; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateY(105%); transition: transform .25s; box-shadow: 0 -10px 40px rgba(0,0,0,.2); }
+  .order.open { transform: none; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .order { transition: none; } }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><b>Zidane</b><span>Wholesale Solutions · Karachi</span></div>
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input id="q" type="search" placeholder="Search Dalda, basmati, karahi…" aria-label="Search products">
+    </div>
+    <button class="cartbtn" id="openOrder" type="button">Order list · <span id="cnt2">0</span></button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div>
+    <section class="intro">
+      <h1>Build your grocery order. <em>We'll quote it.</em></h1>
+      <p>Pick the brands and pack sizes your organization buys, set quantities, then copy the list and email it to us. We reply with a structured quote and delivery schedule.</p>
+    </section>
+    <div class="cats" id="cats" role="group" aria-label="Categories"></div>
+    <div class="count" id="count"></div>
+    <div id="shelf"></div>
+  </div>
+
+  <aside class="order" id="order" aria-label="Your order list">
+    <h2>Your order list <small id="cnt">0 items</small></h2>
+    <div class="lines" id="lines"></div>
+    <div class="fields">
+      <label for="co">Company / organization<input id="co" autocomplete="organization" placeholder="e.g. ABC Textiles"></label>
+      <label for="cp">Contact person & phone<input id="cp" autocomplete="name" placeholder="Name, 03xx xxxxxxx"></label>
+      <label for="nt">Delivery area, dates, notes<textarea id="nt" placeholder="e.g. Korangi, monthly, first week"></textarea></label>
+    </div>
+    <div class="send">
+      <button class="primary" id="copy" type="button" disabled>Copy order list</button>
+      <div class="mail"><span>Email it to <code id="addr">sales@zidane.com.pk</code></span><button id="copyAddr" type="button">Copy</button></div>
+      <div class="status" id="status" role="status"></div>
+      <textarea id="fallback" hidden aria-label="Order text to copy"></textarea>
+      <button class="clear" id="clear" type="button">Clear list</button>
+    </div>
+  </aside>
+</main>
+<p class="foot">Product images are for reference. Brands, pack sizes and availability are confirmed in your quote. Prices are not shown because they depend on volume and delivery schedule.</p>
+
+<script>
+/*DATA*/
+const ORDER_ORDER = ["Oil & Ghee", "Rice", "Atta & Flour", "Sugar", "Pulses & Chickpeas", "Masala & Spices", "Tea & Coffee", "Milk & Dairy", "Essentials"];
+const P = window.PRODUCTS;
+const byId = Object.fromEntries(P.map((p) => [p.id, p]));
+let cat = "All", query = "", cart = {};
+try { cart = JSON.parse(localStorage.getItem("zidane-order") || "{}") || {}; } catch (e) { cart = {}; }
+const save = () => { try { localStorage.setItem("zidane-order", JSON.stringify(cart)); } catch (e) {} };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const $ = (id) => document.getElementById(id);
+
+function renderCats() {
+  const counts = { All: P.length };
+  P.forEach((p) => (counts[p.c] = (counts[p.c] || 0) + 1));
+  $("cats").innerHTML = ["All", ...ORDER_ORDER].map((c) =>
+    `<button type="button" data-c="${esc(c)}" aria-pressed="${c === cat}">${esc(c)}<small>${counts[c] || 0}</small></button>`).join("");
+}
+function card(p) {
+  const q = cart[p.id] || 0;
+  return `<article class="card${q ? " in" : ""}" data-id="${p.id}">
+    <div class="ph"><img src="img/${p.id}.webp" alt="${esc(p.n)}" loading="lazy"></div>
+    <div class="bn">${esc(p.b)}</div>
+    <div class="nm">${esc(p.n)}</div>
+    ${q ? `<div class="qty"><button type="button" data-act="dec" aria-label="Less ${esc(p.n)}">−</button><input type="number" min="0" inputmode="numeric" id="q-${p.id}" value="${q}" aria-label="Quantity of ${esc(p.n)}"><button type="button" data-act="inc" aria-label="More ${esc(p.n)}">+</button></div>`
+        : `<button class="add" type="button" data-act="inc">Add to list</button>`}
+  </article>`;
+}
+function renderShelf() {
+  const qq = query.trim().toLowerCase();
+  const list = P.filter((p) => (cat === "All" || p.c === cat) && (!qq || (p.n + " " + p.b + " " + p.c).toLowerCase().includes(qq)));
+  $("count").textContent = `${list.length} product${list.length === 1 ? "" : "s"}${qq ? ` matching “${query.trim()}”` : ""}`;
+  const groups = ORDER_ORDER.map((c) => [c, list.filter((p) => p.c === c)]).filter(([, l]) => l.length);
+  $("shelf").innerHTML = groups.length ? groups.map(([c, l]) =>
+    `<div class="section-h"><h2>${esc(c)}</h2><span>${l.length}</span></div><div class="grid">${l.map(card).join("")}</div>`).join("")
+    : `<p class="empty">Nothing matches that search. Try a brand like <b>Shan</b> or a word like <b>daal</b>. If it isn't listed, add it in the notes and we'll source it.</p>`;
+}
+function orderText() {
+  const ids = Object.keys(cart).filter((id) => cart[id] > 0);
+  const byCat = ORDER_ORDER.map((c) => [c, ids.filter((id) => byId[id].c === c)]).filter(([, l]) => l.length);
+  let t = "Quote request — Zidane Wholesale Solutions\n";
+  if ($("co").value.trim()) t += `Company: ${$("co").value.trim()}\n`;
+  if ($("cp").value.trim()) t += `Contact: ${$("cp").value.trim()}\n`;
+  t += "\n";
+  byCat.forEach(([c, l]) => { t += `${c}\n`; l.forEach((id) => (t += `  • ${byId[id].n} — qty ${cart[id]}\n`)); t += "\n"; });
+  if ($("nt").value.trim()) t += `Notes: ${$("nt").value.trim()}\n`;
+  t += `\nTotal lines: ${ids.length}`;
+  return t;
+}
+function renderOrder() {
+  const ids = Object.keys(cart).filter((id) => cart[id] > 0);
+  $("cnt").textContent = `${ids.length} item${ids.length === 1 ? "" : "s"}`;
+  $("cnt2").textContent = ids.length;
+  $("copy").disabled = !ids.length;
+  $("lines").innerHTML = ids.length ? ids.map((id) => `<div class="line"><img src="img/${id}.webp" alt=""><div><div class="t">${esc(byId[id].n)}</div><button type="button" data-rm="${id}">Remove</button></div><div class="q">× ${cart[id]}</div></div>`).join("")
+    : `<p class="empty"><b>Your list is empty.</b> Tap “Add to list” on any product, set the quantity, then copy the list into an email to us.</p>`;
+}
+function setQty(id, v) {
+  v = Math.max(0, Math.min(99999, Math.round(Number(v) || 0)));
+  if (v) cart[id] = v; else delete cart[id];
+  save();
+  const el = document.querySelector(`.card[data-id="${id}"]`);
+  if (el) el.outerHTML = card(byId[id]);
+  renderOrder();
+}
+$("cats").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; cat = b.dataset.c; renderCats(); renderShelf(); });
+$("q").addEventListener("input", (e) => { query = e.target.value; renderShelf(); });
+$("shelf").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const id = b.closest(".card").dataset.id;
+  setQty(id, (cart[id] || 0) + (b.dataset.act === "inc" ? 1 : -1));
+  if (b.dataset.act === "inc" && cart[id] === 1) { const inp = document.getElementById("q-" + id); if (inp) { inp.focus(); inp.select(); } }
+});
+$("shelf").addEventListener("change", (e) => { if (e.target.matches(".qty input")) setQty(e.target.closest(".card").dataset.id, e.target.value); });
+$("lines").addEventListener("click", (e) => { const b = e.target.closest("button[data-rm]"); if (b) setQty(b.dataset.rm, 0); });
+function copyText(text, okMsg) {
+  const fb = () => { const f = $("fallback"); f.hidden = false; f.value = text; f.focus(); f.select(); $("status").textContent = "Copy didn't work here. The text is selected below: press Ctrl+C or long-press to copy."; };
+  try { navigator.clipboard.writeText(text).then(() => { $("fallback").hidden = true; $("status").textContent = okMsg; }, fb); } catch (e) { fb(); }
+}
+$("copy").addEventListener("click", () => copyText(orderText(), "Order list copied. Paste it into an email to sales@zidane.com.pk."));
+$("copyAddr").addEventListener("click", () => copyText("sales@zidane.com.pk", "Email address copied."));
+$("clear").addEventListener("click", () => { cart = {}; save(); renderShelf(); renderOrder(); $("status").textContent = "List cleared."; });
+$("openOrder").addEventListener("click", () => $("order").classList.toggle("open"));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("order").classList.remove("open"); });
+renderCats(); renderShelf(); renderOrder();
+</script>

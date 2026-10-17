@@ -1,0 +1,243 @@
+<title>Zidane October Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: a posting log — one row per publish day, grouped by week; date column, asset thumb, then the copy. */
+:root {
+  --bg: #F6F4F1;
+  --surface: #FFFFFF;
+  --ink: #1B1718;
+  --muted: #6D6568;
+  --line: #E4DEDA;
+  --red: #C22A2F;
+  --red-soft: #F7E3E3;
+  --chip: #EFEAE6;
+  --display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111214; --surface: #191B1E; --ink: #F2EEEA; --muted: #A09A98; --line: #2A2C30;
+    --red: #E2474C; --red-soft: #3A1C1E; --chip: #24262A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111214; --surface: #191B1E; --ink: #F2EEEA; --muted: #A09A98; --line: #2A2C30;
+  --red: #E2474C; --red-soft: #3A1C1E; --chip: #24262A; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; }
+h1, h2, h3 { font-family: var(--display); letter-spacing: -0.02em; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.05; }
+h1 span { color: var(--red); }
+.lede { color: var(--muted); max-width: 62ch; margin: 14px 0 0; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.stats { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); }
+.stat b { display: block; font-family: var(--display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+.stat.red b { color: var(--red); }
+
+.setup { margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; min-width: 0; }
+.box h3 { font-size: 17px; margin-bottom: 10px; }
+.box ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
+.box li::marker { color: var(--red); }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 44px 0 8px; }
+.filters button { font: 600 13px var(--body); padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.filters button:focus-visible, .copy:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+.week { margin-top: 34px; }
+.week h2 { font-size: 20px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+.week h2 small { font: 500 14px var(--body); color: var(--muted); }
+
+.row { display: grid; grid-template-columns: 76px 120px minmax(0, 1fr); gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+.date b { display: block; font-family: var(--display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.date span { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.thumb { width: 120px; border-radius: 10px; overflow: hidden; background: #0D0F12; align-self: start; }
+.thumb img { display: block; width: 100%; }
+.thumb.reel img { aspect-ratio: 9 / 16; object-fit: cover; }
+.thumb.post img { aspect-ratio: 4 / 5; object-fit: cover; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--chip); color: var(--ink); }
+.chip.reel { background: var(--red); color: #fff; }
+.file { font: 500 12.5px ui-monospace, "SFMono-Regular", Menlo, monospace; color: var(--muted); word-break: break-all; }
+.title { font-family: var(--display); font-size: 21px; font-weight: 700; margin: 8px 0 4px; }
+.when { font-size: 14px; color: var(--muted); }
+.when strong { color: var(--ink); font-weight: 600; }
+.cap { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; position: relative; }
+.cap pre { margin: 0; white-space: pre-wrap; font: 14px/1.55 var(--body); color: var(--ink); padding-right: 76px; }
+.copy { position: absolute; top: 10px; right: 10px; font: 600 12.5px var(--body); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.copy.done { background: var(--red); color: #fff; border-color: var(--red); }
+.tip { margin-top: 8px; font-size: 13.5px; color: var(--muted); }
+.tip b { color: var(--red); }
+@media (max-width: 640px) {
+  .row { grid-template-columns: 56px minmax(0, 1fr); }
+  .thumb { grid-column: 2; width: 110px; }
+  .body { grid-column: 1 / -1; }
+  .date b { font-size: 28px; }
+  .cap pre { padding-right: 0; padding-top: 30px; }
+}
+@media (prefers-reduced-motion: no-preference) { .copy { transition: background .15s, color .15s; } }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Zidane Wholesale Solutions · Social media</div>
+  <h1>October 2026 <span>posting plan</span></h1>
+  <p class="lede">Every publish day for the month, with the file to upload, the time to post it and a ready caption. Reels and posts alternate so the feed stays varied. Sundays are off.</p>
+  <div class="stats">
+    <div class="stat red"><b>22</b><span>publish days</span></div>
+    <div class="stat"><b>9</b><span>reels</span></div>
+    <div class="stat"><b>13</b><span>static posts</span></div>
+    <div class="stat"><b>8 PM</b><span>Instagram / Facebook</span></div>
+    <div class="stat"><b>10 AM</b><span>LinkedIn, Tue–Thu best</span></div>
+  </div>
+
+  <div class="setup">
+    <div class="box">
+      <h3>Before 1 October</h3>
+      <ul>
+        <li>Profile photo: Zidane red icon. Same on Instagram, Facebook and LinkedIn.</li>
+        <li>Bio: “B2B grocery supply & ration programs · Karachi. Send your list: sales@zidane.com.pk”</li>
+        <li>Link in bio: zidane.com.pk/request-quote</li>
+        <li>After posting, pin Intro, Process reel and Brands reel to the top of Instagram.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>Every posting day</h3>
+      <ul>
+        <li>Share the post to your Story with a poll or a “Send list” sticker.</li>
+        <li>Reply to every comment and DM within the first hour.</li>
+        <li>LinkedIn: repost from your personal profile with one line of your own.</li>
+        <li>Put links in the first comment on LinkedIn, not in the post.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>Every Friday, 15 minutes</h3>
+      <ul>
+        <li>Note reach, saves and profile visits for the week’s posts.</li>
+        <li>Note which one brought a DM or email enquiry.</li>
+        <li>Send me the numbers and I’ll plan November around what worked.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="filters" role="group" aria-label="Filter">
+    <button id="f-all" aria-pressed="true" data-f="all">All</button>
+    <button id="f-reel" aria-pressed="false" data-f="reel">Reels</button>
+    <button id="f-post" aria-pressed="false" data-f="post">Posts</button>
+    <button id="f-li" aria-pressed="false" data-f="li">LinkedIn picks</button>
+  </div>
+  <div id="plan"></div>
+</div>
+
+<script>
+const TAGS = "#Zidane #B2BKarachi #BulkGrocery #Procurement #Karachi";
+const plan = [
+  { d: 1, type: "post", file: "Post01-Intro", title: "Brand intro", li: true,
+    cap: `Groceries for business.\n\nZidane Wholesale Solutions supplies bulk staples and custom ration programs to factories, offices, hospitals, schools and NGOs across Karachi.\n\nSend your buying list to sales@zidane.com.pk and get a structured quote.\n\n${TAGS} #Wholesale`,
+    tip: "First post. Pin it after the Process reel goes up." },
+  { d: 2, type: "reel", file: "CorpProcess", title: "How it works: 4 steps", li: true,
+    cap: `Procurement, without the chaos.\n\n01 Share your requirement\n02 We structure & source\n03 Packed to spec\n04 Delivered on schedule\n\nOne supplier for 8 grocery categories.\n📩 sales@zidane.com.pk\n\n${TAGS} #SupplyChain` },
+  { d: 3, type: "post", file: "Post08-HowItWorks", title: "How it works (static)",
+    cap: `From list to delivery, in four steps.\n\nSave this for your next procurement cycle. 📌\n📩 sales@zidane.com.pk\n\n${TAGS}` },
+  { d: 5, type: "reel", file: "CorpOldWay", title: "Old way vs the Zidane way", li: true,
+    cap: `Still buying groceries the old way?\n\n❌ Chasing 5+ vendors\n❌ Rates change every call\n❌ Lists lost in chats\n❌ Deliveries whenever\n\n✅ One point of contact\n✅ Clear, structured quotes\n✅ Your list, organized for you\n✅ Scheduled deliveries\n\nLess chasing. More running your business.\n📩 sales@zidane.com.pk\n\n${TAGS} #Operations` },
+  { d: 6, type: "post", file: "Post02-oil-ghee", title: "Category: Oil & Ghee",
+    cap: `Oil & Ghee, in bulk.\n\nDalda · Mezan · Soya Supreme · Nurpur · Olper's. Your brands, your pack sizes.\n\nNeed cartons for the canteen? 📩 sales@zidane.com.pk\n\n${TAGS} #CookingOil` },
+  { d: 7, type: "reel", file: "CorpBrands", title: "Brands we supply", li: true,
+    cap: `The brands your kitchen already trusts, supplied in bulk.\n\nOil & Ghee · Atta · Rice · Masala · Tea · Milk. All quoted in one place.\n\n📩 sales@zidane.com.pk\n\n${TAGS} #FMCG`,
+    tip: "Strong one to <b>pin</b> on Instagram." },
+  { d: 8, type: "post", file: "Post11-Quote", title: "Quote: procurement shouldn't slow you down", li: true,
+    cap: `Procurement shouldn't slow your operations down.\n\nThat's the whole idea behind Zidane.\n\n${TAGS} #Operations` },
+  { d: 9, type: "reel", file: "CorpListQuote", title: "Your list → structured quote", li: true,
+    cap: `Your list, as it comes. Structured, as it should be.\n\nSend it on WhatsApp, Excel, PDF or as a photo. We turn it into a clean quote with brands, pack sizes and quantities.\n\n📩 sales@zidane.com.pk\n\n${TAGS}` },
+  { d: 12, type: "post", file: "Post10-Formats", title: "Send your list in any format",
+    cap: `Your buying list can be messy. Our quote won't be.\n\nExcel · PDF RFQ · WhatsApp list · Photo of a handwritten list\n\n📩 sales@zidane.com.pk\n\n${TAGS}` },
+  { d: 13, type: "post", file: "Post03-atta", title: "Category: Atta & Flour",
+    cap: `Atta & Flour, in bulk.\n\nSunridge · Ashrafi · Bake Parlor. 5 kg to 10 kg packs for canteens, hostels and kitchens.\n\n📩 sales@zidane.com.pk\n\n${TAGS} #Atta` },
+  { d: 14, type: "reel", file: "CorpIndustries", title: "One supplier, seven industries", li: true,
+    cap: `One supplier. Seven industries.\n\nTextile & Manufacturing · Corporate Offices · Hospitals · Schools & Hostels · NGOs · HoReCa · Project Sites\n\nDifferent requirements. One sourcing backbone.\n📩 sales@zidane.com.pk\n\n${TAGS}` },
+  { d: 15, type: "post", file: "Post09-Industries", title: "Industries (static)", li: true,
+    cap: `Which one are you?\n\nTell us your industry and headcount. We'll build the supply plan.\n📩 sales@zidane.com.pk\n\n${TAGS}` },
+  { d: 16, type: "reel", file: "CorpBiryani", title: "Biryani day for 500 workers",
+    cap: `Biryani day for 500 workers? Here's roughly what goes in:\n\n🍚 ~75 kg basmati rice\n🛢️ ~20 L cooking oil\n🌶️ ~50 packs biryani masala\n🧈 ~5 kg desi ghee\n\nOne list. One supplier. On schedule.\nPlanning a canteen menu? 📩 sales@zidane.com.pk\n\n${TAGS} #FactoryCanteen`,
+    tip: "Ask in the caption or Story: “What's your canteen's favourite day?” It gets comments." },
+  { d: 19, type: "post", file: "Post04-rice", title: "Category: Rice",
+    cap: `Rice, in bulk.\n\nBasmati and institutional grades for canteens, hostels and events.\n\n📩 sales@zidane.com.pk\n\n${TAGS} #Rice` },
+  { d: 20, type: "post", file: "Post13-MonthEnd", title: "Month-end: send November list by 25 Oct", li: true,
+    cap: `Planning November?\n\nSend next month's grocery list by 25 October and get a structured quote and delivery schedule before the month begins.\n\n📩 sales@zidane.com.pk\n\n${TAGS}`,
+    tip: "Share it to <b>Stories again on 23 and 24 Oct</b> as a reminder." },
+  { d: 21, type: "reel", file: "CorpChai", title: "Chai math: 100-person office", li: true,
+    cap: `How much chai do 100 people drink in a month?\n\n100 people × 2 cups × 26 days = 5,200 cups ☕\nThat's roughly 13 kg tea, 520 L milk and 52 kg sugar.\n\nNever run out. Set up a monthly pantry supply.\n📩 sales@zidane.com.pk\n\n${TAGS} #OfficeLife` },
+  { d: 22, type: "post", file: "Post12-ChaiMath", title: "Chai math (static)", li: true,
+    cap: `5,200 cups a month. 📊\n\nSave this for your next pantry budget.\n📩 sales@zidane.com.pk\n\n${TAGS} #OfficeManagement` },
+  { d: 23, type: "post", file: "Post05-masala", title: "Category: Masala & Spices",
+    cap: `Masala & Spices, in bulk.\n\nShan · National · Mehran. Biryani, karahi, garam masala and more.\n\n📩 sales@zidane.com.pk\n\n${TAGS} #Spices` },
+  { d: 26, type: "reel", file: "CorpQuestions", title: "5 questions to ask your supplier", li: true,
+    cap: `5 questions to ask before choosing a grocery supplier:\n\n1. Can you quote from my messy list?\n2. Which brands and pack sizes do you carry?\n3. Can you deliver on a fixed schedule?\n4. Will I get proper documentation?\n5. Who is my single point of contact?\n\nAsk us all five. 📩 sales@zidane.com.pk\n\n${TAGS} #ProcurementTips` },
+  { d: 27, type: "post", file: "Post06-tea", title: "Category: Tea",
+    cap: `Tea, in bulk.\n\nTapal · Lipton. For offices, factories and hostels that run on chai.\n\n📩 sales@zidane.com.pk\n\n${TAGS} #Chai` },
+  { d: 28, type: "reel", file: "CorpCategories", title: "Eight categories", li: true,
+    cap: `Everything your organization buys in volume.\n\nSugar · Flour · Rice · Pulses · Oil & Ghee · Spices · Tea & Coffee · Milk & Dairy\n\nSend the list. We structure the quote.\n📩 sales@zidane.com.pk\n\n${TAGS}` },
+  { d: 29, type: "post", file: "Post07-milk", title: "Category: Milk & Dairy",
+    cap: `Milk & Dairy, in bulk.\n\nOlper's · Haleeb. Cartons for pantries, canteens and hostels.\n\n📩 sales@zidane.com.pk\n\n${TAGS} #Dairy`,
+    tip: "Last post of the month. Send me your numbers and I'll build November's plan." },
+];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const weeks = [
+  { n: 1, label: "1–3 Oct", note: "Introduce Zidane", from: 1, to: 4 },
+  { n: 2, label: "5–9 Oct", note: "Show the difference", from: 5, to: 11 },
+  { n: 3, label: "12–16 Oct", note: "Who we serve", from: 12, to: 18 },
+  { n: 4, label: "19–23 Oct", note: "Month-end push", from: 19, to: 25 },
+  { n: 5, label: "26–29 Oct", note: "Categories and trust", from: 26, to: 31 },
+];
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+function render(filter) {
+  const root = document.getElementById("plan");
+  root.innerHTML = "";
+  weeks.forEach((w) => {
+    const items = plan.filter((p) => p.d >= w.from && p.d <= w.to &&
+      (filter === "all" || p.type === filter || (filter === "li" && p.li)));
+    if (!items.length) return;
+    const sec = el("section", "week");
+    sec.appendChild(el("h2", "", `Week ${w.n} <small>${w.label} · ${w.note}</small>`));
+    items.forEach((p) => {
+      const day = DAYS[new Date(2026, 9, p.d).getDay()];
+      const where = p.type === "reel" ? "Instagram Reels · Facebook Reels" + (p.li ? " · LinkedIn video" : "") : "Instagram · Facebook" + (p.li ? " · LinkedIn" : "");
+      const row = el("article", "row");
+      row.appendChild(el("div", "date", `<b>${p.d}</b><span>${day}</span>`));
+      row.appendChild(el("div", `thumb ${p.type}`, `<img src="thumbs/${p.file}.jpg" alt="${esc(p.title)}" loading="lazy">`));
+      const body = el("div", "body");
+      body.appendChild(el("div", "meta", `<span class="chip ${p.type}">${p.type === "reel" ? "Reel" : "Post 4:5"}</span>${p.li ? '<span class="chip">LinkedIn pick</span>' : ""}<span class="file">${p.type === "reel" ? "renders/" + p.file + ".mp4" : "renders/posts/" + p.file + ".png"}</span>`));
+      body.appendChild(el("div", "title", esc(p.title)));
+      body.appendChild(el("div", "when", `<strong>${where}</strong> · 8:00 PM${p.li ? " · LinkedIn 10:00 AM" : ""}`));
+      const cap = el("div", "cap");
+      const pre = el("pre", "", esc(p.cap));
+      const btn = el("button", "copy", "Copy");
+      btn.type = "button";
+      btn.setAttribute("aria-label", `Copy caption for ${p.d} October`);
+      btn.addEventListener("click", () => {
+        const done = () => { btn.textContent = "Copied"; btn.classList.add("done"); setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("done"); }, 1600); };
+        const fallback = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Selected"; };
+        try { navigator.clipboard.writeText(p.cap).then(done, fallback); } catch (e) { fallback(); }
+      });
+      cap.append(pre, btn);
+      body.appendChild(cap);
+      if (p.tip) body.appendChild(el("div", "tip", "Tip: " + p.tip));
+      row.appendChild(body);
+      sec.appendChild(row);
+    });
+    root.appendChild(sec);
+  });
+}
+document.querySelectorAll(".filters button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  render(b.dataset.f);
+}));
+render("all");
+</script>
