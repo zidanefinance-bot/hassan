@@ -57,3 +57,14 @@ A 60s vertical reel cut to a synthesized dhol-trap track (128 BPM, 32 bars). Eve
 | 30–41.25s | Drop 2: custom ration bags, footage grid, PKR 2,149 se shuru |
 | 41.25–48.75s | Supply for: textile, factories, corporate, healthcare, schools, NGOs, restaurants, sites |
 | 48.75–60s | Groceries for business. Logo, WhatsApp, UAN, website, CTA |
+
+## Ramadan 2027 reel
+
+A calm 50s vertical reel: night sky, crescent, swinging fanoos lanterns, mosque skyline, the real Zidane
+Ramadan bag, then all four reference packages from zidane.com.pk/ration-packages with their item lists.
+
+- Render: `renders/ramadan/Zidane-Ramadan-2027.mp4`
+- Code: `src/ramadan/RamadanReel.tsx` (package contents and prices live in the `packages` array)
+- Music: `python3 scripts/gen-ramadan-audio.py` → `public/sfx/ramadan-naat.wav`. This is a soft naat-style
+  instrumental: a hummed melody in maqam Hijaz, daf, oud plucks, a drone and chimes, at 72 BPM (25 frames per beat). It needs scipy.
+- Prices are labelled "2026 reference". The website says the 2027 rate is confirmed by quotation.
