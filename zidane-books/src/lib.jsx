@@ -33,10 +33,13 @@ export const KIND = {
 const AuthCtx = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined);
-  useEffect(() => { api("/auth/me").then(setUser).catch(() => setUser(null)); }, []);
+  // no connection is not the same as signed out: show an offline screen instead of the login form
+  const check = useCallback(() => api("/auth/me").then(setUser).catch((e) => setUser(e.status ? null : "offline")), []);
+  useEffect(() => { check(); }, [check]);
+  useEffect(() => { const on = () => user === "offline" && check(); window.addEventListener("online", on); return () => window.removeEventListener("online", on); }, [user, check]);
   const login = async (email, password) => setUser(await api("/auth/login", { method: "POST", body: { email, password } }));
   const logout = async () => { await api("/auth/logout", { method: "POST" }); setUser(null); };
-  return <AuthCtx.Provider value={{ user, login, logout, can: (p) => Boolean(user?.perms?.includes(p)) }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ user, login, logout, retry: check, can: (p) => Boolean(user?.perms?.includes(p)) }}>{children}</AuthCtx.Provider>;
 }
 export const useAuth = () => useContext(AuthCtx);
 

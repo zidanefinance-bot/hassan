@@ -542,3 +542,46 @@ test("Telegram: link with a one-time code; a linked purchaser's bill photo lands
     delete process.env.TELEGRAM_BOT_TOKEN;
   }
 });
+
+test("push alerts: devices subscribe, notifications are pushed, dead subscriptions are dropped, keys stay private", async () => {
+  const PUSH = await import("./push.js");
+  const C = await import("./collab.js");
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const pushed = [];
+  PUSH.usePushSender(async (sub, payload) => {
+    if (sub.endpoint.includes("gone")) throw Object.assign(new Error("Gone"), { statusCode: 410 });
+    pushed.push({ sub, payload: JSON.parse(payload) });
+  });
+  PUSH.startPush(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const ck = (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "sales@zidane.com.pk", password: "demo1234" }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (path, body) => { const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json() }; };
+  try {
+    const key = (await call("/push/key")).body.key;
+    assert.ok(key.length > 60, "public VAPID key is served");
+    assert.equal((await call("/settings")).body.vapid, undefined, "the private key never reaches the browser");
+    const sub = (endpoint) => ({ endpoint, keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" } });
+    assert.equal((await call("/push/subscribe", { subscription: { endpoint: "http://insecure" } })).status, 400);
+    await call("/push/subscribe", { subscription: sub("https://push.example/phone") });
+    await call("/push/subscribe", { subscription: sub("https://push.example/gone") });
+    assert.equal((await call("/push/devices")).body.length, 2);
+    await call("/push/test", {});
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(pushed.length, 1);
+    assert.equal(pushed[0].payload.title, "Alerts are working ✓");
+    assert.equal((await call("/push/devices")).body.length, 1, "a 410 from the push service removes that device");
+    // a real business alert reaches the phone with its link
+    const salesId = db.prepare("SELECT id FROM users WHERE role = 'sales'").get().id;
+    C.notify(db, [salesId], { kind: "job", title: "Material ready: JOB-1", link: "/jobs/1" });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(pushed.at(-1).payload.link, "/jobs/1");
+    await call("/push/unsubscribe", { endpoint: "https://push.example/phone" });
+    assert.equal((await call("/push/devices")).body.length, 0);
+  } finally {
+    server.close();
+    PUSH.usePushSender(null);
+  }
+});

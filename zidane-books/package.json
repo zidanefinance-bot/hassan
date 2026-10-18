@@ -22,6 +22,7 @@
     "mailparser": "^3.9.40",
     "nodemailer": "^10.1.2",
     "pdfkit": "^0.20.2",
+    "web-push": "^3.6.7",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -19,6 +19,7 @@ import Settings from "./pages/Settings.jsx";
 import Inbox from "./pages/Inbox.jsx";
 import Account from "./pages/Account.jsx";
 import Bell from "./components/Notifications.jsx";
+import { registerServiceWorker, useInstall } from "./pwa.js";
 
 const NAV = [
   { to: "/", label: "Home", icon: "⌂", end: true },
@@ -44,12 +45,20 @@ const NAV = [
   { group: "Business", any: ["reports.finance", "sales.read", "admin"] },
   { to: "/reports", label: "Reports", icon: "▲", any: ["reports.finance", "sales.read"] },
   { to: "/settings", label: "Settings", icon: "⚙", any: ["admin"] },
+  { group: "You" },
+  { to: "/account", label: "My account & app", icon: "☻" },
 ];
 
 function Shell() {
-  const { user, logout, can } = useAuth();
+  const { user, logout, can, retry } = useAuth();
+  const install = useInstall();
   const [open, setOpen] = React.useState(false);
   if (user === undefined) return <div className="empty">Loading…</div>;
+  if (user === "offline") return (
+    <div className="offline-screen"><img src="/icons/icon-192.png" alt="" /><h1>No internet connection</h1>
+      <p>Zidane Books needs the internet to show live figures.<br />Internet nahi hai. Connection aate hi khud khul jayegi.</p>
+      <button className="btn primary" onClick={retry}>Try again</button></div>
+  );
   if (!user) return <Login />;
   return (
     <div className={`shell ${open ? "nav-open" : ""}`}>
@@ -65,6 +74,7 @@ function Shell() {
         <header className="topbar">
           <button className="icon-btn menu" onClick={() => setOpen((o) => !o)} aria-label="Menu">☰</button>
           <div className="spacer" />
+          {install.canInstall && <button className="btn sm install-btn" onClick={install.install}>⬇ Install app</button>}
           <Bell />
           <NavLink className="user" to="/account" title="My account"><div className="avatar">{user.name[0]}</div><div><b>{user.name}</b><small>{user.role_label}</small></div></NavLink>
           <button className="btn ghost" onClick={logout}>Sign out</button>
@@ -105,6 +115,7 @@ function Shell() {
 }
 const pathOf = (k) => ({ quote: "quotes", dc: "delivery-challans", invoice: "invoices", credit_note: "credit-notes", po: "purchase-orders", bill: "bills", vendor_credit: "vendor-credits" })[k];
 
+registerServiceWorker();
 createRoot(document.getElementById("root")).render(
   <BrowserRouter><ToastProvider><AuthProvider><Shell /></AuthProvider></ToastProvider></BrowserRouter>,
 );

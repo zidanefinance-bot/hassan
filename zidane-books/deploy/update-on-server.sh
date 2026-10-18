@@ -21,6 +21,12 @@ else
   cd "$SRC/zidane-books"
   npm ci && npm run build && npm prune --omit=dev
 fi
+# AI reading a bill photo can take over a minute: give the proxy room (older installs had nginx's 60s default)
+NG=/etc/nginx/sites-available/zidane-books
+if [ -f "$NG" ] && ! grep -q proxy_read_timeout "$NG"; then
+  sed -i 's#proxy_pass http://127.0.0.1:\([0-9]*\);#proxy_pass http://127.0.0.1:\1;\n        proxy_read_timeout 180s;#' "$NG"
+  nginx -t && systemctl reload nginx
+fi
 systemctl restart zidane-books
 sleep 2
 PORT=$(grep '^PORT=' /etc/zidane-books.env | cut -d= -f2)

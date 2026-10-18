@@ -192,6 +192,11 @@ CREATE TABLE IF NOT EXISTS api_keys (
   id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL,
   prefix TEXT NOT NULL, key_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL DEFAULT (datetime('now')), last_used_at TEXT, revoked_at TEXT
 );
+-- v5: devices that get push alerts from the installed app
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL, auth TEXT NOT NULL, user_agent TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), last_ok_at TEXT
+);
 CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox_messages(status, received_at);
 CREATE INDEX IF NOT EXISTS idx_comments ON comments(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at);

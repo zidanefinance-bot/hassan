@@ -1,9 +1,36 @@
 // My account: password, Telegram alerts, and personal API keys (for an assistant bot, once a director allows them).
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api, Field, Loading, Modal, PageHead, useAuth, useLoad, useToast } from "../lib.jsx";
 import { Password } from "./Settings.jsx";
+import { disablePush, enablePush, isIOS, pushSubscription, pushSupported, useInstall } from "../pwa.js";
 
 const when = (at) => (at ? new Date(at.replace(" ", "T") + "Z").toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "never");
+
+// install the app and get push alerts on this phone / computer
+function ThisDevice() {
+  const install = useInstall();
+  const [push, setPush] = useState(null); // null = checking
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  useEffect(() => { pushSubscription().then((s) => setPush(Boolean(s))).catch(() => setPush(false)); }, []);
+  const turnOn = async () => { setBusy(true); try { await enablePush(); setPush(true); toast("Alerts on for this device"); } catch (x) { toast(x.message, "err"); } finally { setBusy(false); } };
+  const turnOff = async () => { setBusy(true); await disablePush(); setPush(false); setBusy(false); toast("Alerts off for this device"); };
+  const test = async () => { await api("/push/test", { method: "POST" }); toast("Test alert sent. It should pop up in a few seconds."); };
+  return (
+    <section className="card">
+      <h3>App on this phone / computer</h3>
+      {install.installed ? <p className="pos">✓ Installed. You're using Zidane Books as an app.</p>
+        : install.canInstall ? <><p className="muted">Put Zidane Books on your home screen like a normal app: its own icon, full screen, opens fast.</p><button className="btn primary" onClick={install.install}>⬇ Install app</button></>
+        : install.iosHint ? <div className="ios-steps"><p><b>iPhone / iPad:</b> open this page in <b>Safari</b>, tap <b>Share</b> <span aria-hidden>⎙</span>, then <b>Add to Home Screen</b>. Open Zidane Books from the home screen to turn alerts on.</p></div>
+        : <p className="muted small">To install: open the browser menu (⋮) and choose <b>Install app</b> or <b>Add to Home screen</b>.</p>}
+      <h4>Alerts on this device</h4>
+      {!pushSupported() ? <p className="muted small">{isIOS() ? "On iPhone, alerts work after you add the app to the Home Screen and open it from there." : "This browser can't show push alerts."}</p>
+        : push === null ? <p className="muted small">Checking…</p>
+        : push ? <div className="actions"><span className="pos">✓ On</span><button className="btn sm" onClick={test}>Send a test</button><button className="btn sm ghost" disabled={busy} onClick={turnOff}>Turn off</button></div>
+        : <><p className="muted small">Questions for you, new Jobs, approvals and payments pop up on this device even when the app is closed.</p><button className="btn" disabled={busy} onClick={turnOn}>🔔 Turn on alerts</button></>}
+    </section>
+  );
+}
 
 function Telegram() {
   const state = useLoad("/me/telegram");
@@ -68,6 +95,7 @@ export default function Account() {
     <>
       <PageHead title="My account" sub={`${user.name} · ${user.email} · ${user.role_label}`} />
       <div className="grid-2">
+        <ThisDevice />
         <Telegram />
         <Password />
         <ApiKeys />

@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { authMiddleware, can, checkPassword, createApiKey, createSession, hashPassword, requirePerm, requireUser, ROLE_LABELS, ROLES } from "./auth.js";
 import * as TG from "./telegram.js";
+import * as PUSH from "./push.js";
 import * as B from "./books.js";
 import * as J from "./jobs.js";
 import * as I from "./items.js";
@@ -110,9 +111,10 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   });
 
   // ---- settings
+  const PRIVATE_SETTINGS = ["vapid", "lastDailyAlerts"]; // never sent to the browser
   api.get("/settings", (_req, res) => {
     const out = {};
-    for (const r of db.prepare("SELECT key, value FROM settings").all()) out[r.key] = JSON.parse(r.value);
+    for (const r of db.prepare("SELECT key, value FROM settings").all()) if (!PRIVATE_SETTINGS.includes(r.key)) out[r.key] = JSON.parse(r.value);
     res.json(out);
   });
   api.put("/settings", requirePerm("admin"), (req, res) => {
@@ -519,6 +521,13 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     rmSync(join(uploadDir, a.path), { force: true });
     res.json({ ok: true });
   });
+
+  // ---- push alerts on this device (installed app)
+  api.get("/push/key", (_req, res) => res.json({ key: PUSH.vapidKeys(db).publicKey }));
+  api.get("/push/devices", (req, res) => res.json(PUSH.devices(db, req.user.id)));
+  api.post("/push/subscribe", (req, res) => { PUSH.subscribe(db, req.user.id, req.body?.subscription, req.headers["user-agent"]); res.json({ ok: true }); });
+  api.post("/push/unsubscribe", (req, res) => { PUSH.unsubscribe(db, req.user.id, req.body?.endpoint); res.json({ ok: true }); });
+  api.post("/push/test", (req, res) => { C.notify(db, [req.user.id], { kind: "test", title: "Alerts are working ✓", body: "This is how Zidane Books alerts will look on this device.", link: "/" }); res.json({ ok: true }); });
 
   // ---- my Telegram link and API keys
   api.get("/me/telegram", (req, res) => res.json(TG.telegramStatus(db, req.user.id)));
