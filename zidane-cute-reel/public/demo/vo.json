@@ -1,0 +1,103 @@
+{
+ "voice": "af_heart",
+ "lines": [
+  {
+   "i": 0,
+   "id": "intro",
+   "text": "Hi! This is Zidane Books. Think of it like a magic notebook for our business. It remembers everything, so we don't have to.",
+   "caption": "A magic notebook for our business",
+   "dur": 7.416
+  },
+  {
+   "i": 1,
+   "id": "login",
+   "text": "Every person has their own key. Sales, Operations, Accounts, and the Director. Each one only sees their own work.",
+   "caption": "Everyone has their own login",
+   "dur": 7.555
+  },
+  {
+   "i": 2,
+   "id": "home",
+   "text": "When you open it, the first page tells you one thing. What do I need to do today? Red boxes mean, do it now!",
+   "caption": "First page = what to do today",
+   "dur": 6.288
+  },
+  {
+   "i": 3,
+   "id": "enquiry",
+   "text": "A customer calls and asks for rice. Sales writes it down. Who is the customer, what do they want, and how many. Done!",
+   "caption": "Sales writes down the order",
+   "dur": 7.776
+  },
+  {
+   "i": 4,
+   "id": "job",
+   "text": "The customer says yes! So Sales presses, Create Job. A job is like a ticket that goes to the Operations team.",
+   "caption": "Customer said yes \u2192 Create Job",
+   "dur": 7.392
+  },
+  {
+   "i": 5,
+   "id": "ops-start",
+   "text": "Operations opens the new job, and presses Start procurement. That means, let's go and buy the things!",
+   "caption": "Operations starts buying",
+   "dur": 6.493
+  },
+  {
+   "i": 6,
+   "id": "buy",
+   "text": "This page shows everything we need to buy, for all the jobs together. We bought the rice, so we press Bought.",
+   "caption": "What to buy \u2192 Bought",
+   "dur": 6.167
+  },
+  {
+   "i": 7,
+   "id": "bill",
+   "text": "Then Operations adds the supplier's bill, so we know what it cost us. The job's items fill in all by themselves.",
+   "caption": "Add the supplier's bill",
+   "dur": 7.138
+  },
+  {
+   "i": 8,
+   "id": "ready",
+   "text": "Everything is ready! Operations presses Material ready, and Sales finds out straight away.",
+   "caption": "Material ready \u2192 Sales knows",
+   "dur": 5.569
+  },
+  {
+   "i": 9,
+   "id": "dc",
+   "text": "Sales makes a delivery challan. The driver takes the goods, the customer signs it, and we mark it signed.",
+   "caption": "Delivery challan \u2192 customer signs",
+   "dur": 6.232
+  },
+  {
+   "i": 10,
+   "id": "invoice",
+   "text": "Now Sales makes the invoice with one click. It already knows the items and the prices!",
+   "caption": "Invoice in one click",
+   "dur": 5.037
+  },
+  {
+   "i": 11,
+   "id": "accounts",
+   "text": "Accounts checks the invoice, presses Verify, and writes down the money when the customer pays.",
+   "caption": "Accounts checks and gets paid",
+   "dur": 5.307
+  },
+  {
+   "i": 12,
+   "id": "profit",
+   "text": "And the Director can see the whole story. What we sold, what it cost, and how much profit we made.",
+   "caption": "Director sees the profit",
+   "dur": 5.665
+  },
+  {
+   "i": 13,
+   "id": "outro",
+   "text": "That's it! Ask, buy, deliver, and get paid. Zidane Books keeps everything neat and tidy.",
+   "caption": "Ask \u2192 Buy \u2192 Deliver \u2192 Get paid",
+   "dur": 5.53
+  }
+ ]
+}

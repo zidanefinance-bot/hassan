@@ -1,0 +1,100 @@
+[
+ {
+  "id": "intro",
+  "role": "director1",
+  "file": "director1.mp4",
+  "start": 1.92,
+  "end": 10.63
+ },
+ {
+  "id": "login",
+  "role": "director1",
+  "file": "director1.mp4",
+  "start": 10.63,
+  "end": 19.49
+ },
+ {
+  "id": "home",
+  "role": "director1",
+  "file": "director1.mp4",
+  "start": 19.49,
+  "end": 27.08
+ },
+ {
+  "id": "enquiry",
+  "role": "sales1",
+  "file": "sales1.mp4",
+  "start": 1.51,
+  "end": 10.59
+ },
+ {
+  "id": "job",
+  "role": "sales1",
+  "file": "sales1.mp4",
+  "start": 10.59,
+  "end": 19.28
+ },
+ {
+  "id": "ops-start",
+  "role": "ops",
+  "file": "ops.mp4",
+  "start": 2.07,
+  "end": 9.86
+ },
+ {
+  "id": "buy",
+  "role": "ops",
+  "file": "ops.mp4",
+  "start": 9.86,
+  "end": 17.33
+ },
+ {
+  "id": "bill",
+  "role": "ops",
+  "file": "ops.mp4",
+  "start": 17.33,
+  "end": 25.77
+ },
+ {
+  "id": "ready",
+  "role": "ops",
+  "file": "ops.mp4",
+  "start": 25.77,
+  "end": 32.64
+ },
+ {
+  "id": "dc",
+  "role": "sales2",
+  "file": "sales2.mp4",
+  "start": 1.81,
+  "end": 9.34
+ },
+ {
+  "id": "invoice",
+  "role": "sales2",
+  "file": "sales2.mp4",
+  "start": 9.34,
+  "end": 15.68
+ },
+ {
+  "id": "accounts",
+  "role": "accounts",
+  "file": "accounts.mp4",
+  "start": 1.44,
+  "end": 8.92
+ },
+ {
+  "id": "profit",
+  "role": "director2",
+  "file": "director2.mp4",
+  "start": 1.33,
+  "end": 8.29
+ },
+ {
+  "id": "outro",
+  "role": "director2",
+  "file": "director2.mp4",
+  "start": 8.29,
+  "end": 15.12
+ }
+]
