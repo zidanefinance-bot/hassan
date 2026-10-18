@@ -2,18 +2,24 @@
 # Zidane Books: one-time install on an Ubuntu server that already runs nginx (e.g. the zidane.com.pk VPS).
 # It runs next to the existing website and does not touch it. It adds a new nginx site for its own subdomain.
 #
-#   sudo DOMAIN=books.zidane.com.pk ADMIN_EMAIL=you@zidane.com.pk GITHUB_TOKEN=github_pat_xxx bash install-on-server.sh
+# Two ways to get the code onto the server:
+#   A) from the release zip (no GitHub needed): unzip it, then from inside the folder
+#        sudo DOMAIN=books.zidane.com.pk ADMIN_EMAIL=you@zidane.com.pk bash deploy/install-on-server.sh
+#   B) straight from GitHub:
+#        sudo DOMAIN=books.zidane.com.pk ADMIN_EMAIL=you@zidane.com.pk GITHUB_TOKEN=github_pat_xxx bash install-on-server.sh
 #
 # DOMAIN        subdomain for the app; its DNS A record must already point at this server
 # ADMIN_EMAIL   first director login (the script asks for the password)
-# GITHUB_TOKEN  read-only token for the private repo zidanefinance-bot/hassan (fine-grained, Contents: read)
+# GITHUB_TOKEN  only for way B: read-only token for the private repo zidanefinance-bot/hassan
 # BRANCH        optional, default ccr-52506c1f-ufvep1
 # PORT          optional, default 3200 (local port the app listens on; nginx forwards to it)
 set -euo pipefail
 
 DOMAIN="${DOMAIN:?Set DOMAIN, e.g. books.zidane.com.pk}"
 ADMIN_EMAIL="${ADMIN_EMAIL:?Set ADMIN_EMAIL}"
-GITHUB_TOKEN="${GITHUB_TOKEN:?Set GITHUB_TOKEN (read-only access to zidanefinance-bot/hassan)}"
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+PKG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # the unzipped release, when run from inside it
+if [ -z "$GITHUB_TOKEN" ] && [ ! -f "$PKG_DIR/package.json" ]; then echo "Run this from inside the unzipped zidane-books folder, or set GITHUB_TOKEN"; exit 1; fi
 BRANCH="${BRANCH:-ccr-52506c1f-ufvep1}"
 PORT="${PORT:-3200}"
 APP_USER=zidanebooks
@@ -42,16 +48,19 @@ mkdir -p "$DATA/uploads" "$DATA/backups"
 chown -R "$APP_USER:$APP_USER" "$DATA"
 
 echo "==> Code"
-if [ -d "$SRC/.git" ]; then
-  git -C "$SRC" fetch --depth 1 origin "$BRANCH" && git -C "$SRC" checkout -B "$BRANCH" FETCH_HEAD
+if [ -n "$GITHUB_TOKEN" ]; then
+  if [ -d "$SRC/.git" ]; then
+    git -C "$SRC" fetch --depth 1 origin "$BRANCH" && git -C "$SRC" checkout -B "$BRANCH" FETCH_HEAD
+  else
+    git clone --depth 1 --branch "$BRANCH" "https://x-access-token:${GITHUB_TOKEN}@github.com/zidanefinance-bot/hassan.git" "$SRC"
+  fi
+  git -C "$SRC" remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/zidanefinance-bot/hassan.git"
 else
-  git clone --depth 1 --branch "$BRANCH" "https://x-access-token:${GITHUB_TOKEN}@github.com/zidanefinance-bot/hassan.git" "$SRC"
+  mkdir -p "$SRC/zidane-books"
+  [ "$PKG_DIR" = "$SRC/zidane-books" ] || cp -a "$PKG_DIR/." "$SRC/zidane-books/"
 fi
-git -C "$SRC" remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/zidanefinance-bot/hassan.git"
 cd "$SRC/zidane-books"
-npm ci
-npm run build
-npm prune --omit=dev
+if [ -d src ]; then npm ci && npm run build && npm prune --omit=dev; else npm ci --omit=dev; fi   # the release zip already has the built app
 chown -R root:root "$SRC"
 
 echo "==> Settings"
