@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Field, fmtDate, KIND, Loading, Modal, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
 import Attachments from "../components/Attachments.jsx";
+import Comments from "../components/Comments.jsx";
 
 const isIn = (d) => d === "in";
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -185,6 +186,7 @@ export function PaymentView() {
         )}
         {p.notes && <p className="muted">Notes: {p.notes}</p>}
         <Attachments entity="payment" id={p.id} labels={["Payment proof", "Bank screenshot", "Cheque copy"]} />
+        <Comments entity="payment" id={p.id} />
         {refunding && <RefundModal source={{ payment_id: p.id }} number={p.number} unused={p.unused} onClose={() => setRefunding(false)} onSaved={() => { setRefunding(false); toast("Refund recorded"); state.reload(); }} />}
       </>
     )}</Loading>

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
 import Attachments from "../components/Attachments.jsx";
+import Comments from "../components/Comments.jsx";
 
 const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.write"], credit_note: ["sales.write"], po: ["ops.write", "buy"], bill: ["ops.write", "buy"], vendor_credit: ["ops.write"] };
 const ATTACH_LABELS = { quote: ["Customer enquiry", "Customer PO"], invoice: ["Customer PO", "Submission receipt"], dc: ["Signed DC", "Gate pass"], credit_note: ["Return note"], po: ["Supplier quotation"], bill: ["Supplier bill photo", "Delivery note"], vendor_credit: ["Return note"] };
@@ -185,6 +186,7 @@ export default function DocumentView({ kind }) {
             </section>
           )}
           <Attachments entity="document" id={d.id} labels={ATTACH_LABELS[kind] || []} />
+          <Comments entity="document" id={d.id} />
           {modal === "refund" && <RefundModal source={{ credit_id: d.id }} number={d.number} unused={d.balance} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Refund recorded"); state.reload(); }} />}
           {modal === "credits" && <ApplyCreditsModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
           {modal === "sign" && <SignModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Signed DC recorded. Job marked delivered."); state.reload(); }} />}

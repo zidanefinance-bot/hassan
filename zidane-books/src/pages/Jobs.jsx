@@ -5,6 +5,7 @@ import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OP
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import Attachments from "../components/Attachments.jsx";
+import Comments from "../components/Comments.jsx";
 
 const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey" };
 
@@ -230,6 +231,7 @@ export function JobView() {
             </section>
           )}
           <Attachments entity="job" id={j.id} labels={["Customer PO", "Delivery photo", "Supplier quotation", "Other evidence"]} />
+          <Comments entity="job" id={j.id} />
           {cost && <JobCost job={j} settings={settings.data} onClose={() => setCost(false)} onSaved={() => { setCost(false); toast("Cost added to Job"); state.reload(); }} />}
         </>
       );

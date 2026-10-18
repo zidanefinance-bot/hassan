@@ -110,6 +110,21 @@ export default function Settings() {
             <Field label="Company expenses (Accounts), one per line"><textarea rows={8} value={s.expenseCategories.join("\n")} onChange={(e) => setS({ ...s, expenseCategories: e.target.value.split("\n") })} /></Field>
             <Field label="Job direct costs (Operations), one per line"><textarea rows={6} value={(s.jobExpenseCategories || []).join("\n")} onChange={(e) => setS({ ...s, jobExpenseCategories: e.target.value.split("\n") })} /></Field>
           </section>
+          <section className="card form">
+            <h3>Targets & alerts (dashboard)</h3>
+            <div className="row-2">
+              <Field label="Monthly sales target (Rs, excl. tax)" hint="0 = don't show"><input type="number" min={0} value={s.salesTargetMonthly ?? 0} onChange={(e) => setS({ ...s, salesTargetMonthly: Number(e.target.value) })} /></Field>
+              <Field label="Warn when a Job's margin is below (%)"><input type="number" step="0.5" value={s.lowMarginPct ?? 8} onChange={(e) => setS({ ...s, lowMarginPct: Number(e.target.value) })} /></Field>
+            </div>
+            <Field label="Chase an unsigned delivery challan after (days)"><input type="number" min={1} value={s.dcSignDays ?? 3} onChange={(e) => setS({ ...s, dcSignDays: Number(e.target.value) })} /></Field>
+            <h4>Monthly expense budget</h4>
+            <p className="muted small">Leave 0 for no budget. The dashboard turns amber at 80% and red when it goes over.</p>
+            <div className="budget-grid">
+              {s.expenseCategories.filter((c) => c.trim()).map((c) => (
+                <Field key={c} label={c}><input type="number" min={0} value={(s.expenseBudgets || {})[c] ?? 0} onChange={(e) => setS({ ...s, expenseBudgets: { ...(s.expenseBudgets || {}), [c]: Number(e.target.value) } })} /></Field>
+              ))}
+            </div>
+          </section>
           <Users />
           <Password />
           <section className="card">

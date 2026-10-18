@@ -9,9 +9,11 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
   const version = db.prepare("PRAGMA user_version").get().user_version;
   const hasTables = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'").get();
-  if (hasTables && version < SCHEMA_VERSION) {
+  // schema 4 is the first one with real data in it; later versions only add tables, so SCHEMA upgrades it in place
+  if (hasTables && version < 4) {
     throw new Error(`${file} was made by an older version (schema ${version}, need ${SCHEMA_VERSION}). It only holds test data: delete it and start again.`);
   }
+  if (hasTables && version > SCHEMA_VERSION) throw new Error(`${file} was made by a newer version of Zidane Books (schema ${version}). Update the app first.`);
   db.exec(SCHEMA);
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
@@ -51,9 +53,13 @@ export const DEFAULT_SETTINGS = {
   jobExpenseCategories: ["Freight", "Loading / Unloading", "Packing", "Labour", "Vehicle", "Market expense", "Other direct cost"],
   expenseCategories: ["Rent", "Salaries", "Fuel & Transport", "Utilities", "Packaging", "Loading & Labour", "Office", "Marketing", "Bank Charges", "Other"],
   invoiceFooter: "Thank you for your business. Groceries for business.",
+  salesTargetMonthly: 0,
+  expenseBudgets: {},
+  lowMarginPct: 8,
+  dcSignDays: 3,
 };
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -150,6 +156,18 @@ CREATE TABLE IF NOT EXISTS activity (
   id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id), action TEXT NOT NULL, entity TEXT NOT NULL,
   entity_id INTEGER, summary TEXT, at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- v5: a conversation on any record (ask a question, @mention someone) and each user's notification inbox
+CREATE TABLE IF NOT EXISTS comments (
+  id INTEGER PRIMARY KEY, entity TEXT NOT NULL CHECK (entity IN ('document','job','payment','expense','contact','item')), entity_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id), body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL,
+  title TEXT NOT NULL, body TEXT, link TEXT, actor_id INTEGER REFERENCES users(id),
+  read_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_comments ON comments(entity, entity_id);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at);
 CREATE INDEX IF NOT EXISTS idx_docs_kind ON documents(kind, date);
 CREATE INDEX IF NOT EXISTS idx_lines_doc ON document_lines(document_id);
 CREATE INDEX IF NOT EXISTS idx_alloc_doc ON payment_allocations(document_id);

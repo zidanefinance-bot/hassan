@@ -1,5 +1,5 @@
 // Reports. P&L is document-based: sales (ex-tax) − cost of goods sold (cost captured on each invoice line) − expenses.
-import { round2, today, displayStatus, PAID_SQL, UNUSED_SQL, CREDIT_UNUSED_SQL } from "./books.js";
+import { round2, today, displayStatus, getSetting, creditStatus, PAID_SQL, UNUSED_SQL, CREDIT_UNUSED_SQL } from "./books.js";
 import { jobEconomics, jobList, OPS_STATUSES, procurementList } from "./jobs.js";
 
 const ISSUED = "status = 'open'";
@@ -83,6 +83,18 @@ export function cashFlow(db, months = 6) {
   return out;
 }
 
+// invoiced sales (excl. tax) per month for the last n months
+export function salesTrend(db, months = 6) {
+  const d = new Date(today());
+  const out = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`;
+    out.push({ month: key, sales: round2(db.prepare("SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v FROM documents WHERE kind = 'invoice' AND status = 'open' AND substr(date, 1, 7) = ?").get(key).v) });
+  }
+  return out;
+}
+
 // Job profitability (Director / Accounts): revenue from Sales + costs from Operations, per Job
 export function jobProfit(db, from, to) {
   return db.prepare("SELECT j.id, j.number, j.ops_status, j.closed, c.name AS customer_name FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE date(j.created_at) BETWEEN ? AND ? ORDER BY j.id DESC").all(from, to)
@@ -90,8 +102,9 @@ export function jobProfit(db, from, to) {
 }
 
 // Role home: "what needs your attention today?" Every record that is stuck becomes an action in its owner's queue.
-export function home(db, user, can) {
+export function home(db, user, can, { from, to } = {}) {
   const t = today();
+  from ||= t.slice(0, 8) + "01"; to ||= t;
   const soon = (n) => new Date(Date.parse(t) + n * 864e5).toISOString().slice(0, 10);
   const docs = (sql, ...args) => db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, ${PAID_SQL} AS paid
     FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id WHERE ${sql} ORDER BY COALESCE(d.due_date, d.date), d.id`).all(...args)
@@ -103,6 +116,11 @@ export function home(db, user, can) {
   const jobItem = (j, sub) => ({ label: `${j.number} · ${j.customer_name}`, sub, link: `/jobs/${j.id}`, due: j.required_date });
   const q = (dept, key, title, items, tone = "amber") => ({ dept, key, title, tone, count: items.length, items: items.slice(0, 8) });
   const queues = [];
+  const signDays = getSetting(db, "dcSignDays") || 3;
+
+  // questions people asked you in comments, until you answer or open them
+  const asks = db.prepare("SELECT n.*, u.name AS actor_name FROM notifications n LEFT JOIN users u ON u.id = n.actor_id WHERE n.user_id = ? AND n.kind IN ('mention','approval') AND n.read_at IS NULL ORDER BY n.id DESC").all(user.id);
+  queues.push(q("For you", "asks", "Questions & approvals for you", asks.map((n) => ({ label: n.title, sub: n.body || "", link: n.link || "/" })), "red"));
 
   if (can("sales.write")) {
     queues.push(
@@ -110,7 +128,8 @@ export function home(db, user, can) {
       q("Sales", "quote", "Quotes sent, waiting for customer", docs("d.kind = 'quote' AND d.status = 'sent'").map((d) => docItem(d, "Follow up for confirmation / PO")), "blue"),
       q("Sales", "nojob", "Confirmed, Job not created", docs("d.kind = 'quote' AND d.status = 'accepted'").map((d) => docItem(d, "Create the Internal Job")), "red"),
       q("Sales", "dc", "Material ready, DC needed", jobs.filter((j) => step(j.ops_status) >= step("material_ready") && j.dc_count === 0).map((j) => jobItem(j, "Create the customer DC")), "red"),
-      q("Sales", "signed", "Delivered, signed DC missing", docs("d.kind = 'dc' AND d.status = 'issued'").map((d) => docItem(d, "Upload / mark signed receiving"))),
+      q("Sales", "signed", "Delivered, signed DC missing", docs("d.kind = 'dc' AND d.status = 'issued' AND d.date > ?", soon(-signDays)).map((d) => docItem(d, "Upload / mark signed receiving"))),
+      q("Sales", "signedold", `DC unsigned for ${signDays}+ days`, docs("d.kind = 'dc' AND d.status = 'issued' AND d.date <= ?", soon(-signDays)).map((d) => docItem(d, `Issued ${d.date}. Get the signed copy`)), "red"),
       q("Sales", "inv", "Signed DC, invoice not made", jobs.filter((j) => j.signed_dc_count > 0 && j.invoice_count === 0).map((j) => jobItem(j, "Create the customer invoice")), "red"),
       q("Sales", "draftinv", "Draft invoices", docs("d.kind = 'invoice' AND d.status = 'draft'").map((d) => docItem(d, "Review and issue"))),
       q("Sales", "submit", "Invoices not submitted to customer", docs("d.kind = 'invoice' AND d.status = 'open' AND d.submitted_date IS NULL").map((d) => docItem(d, "Submit and mark the date"))),
@@ -126,6 +145,28 @@ export function home(db, user, can) {
       q("Operations", "nobill", "Purchased but no supplier bill", jobs.filter((j) => ["partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"].includes(j.ops_status) && j.bill_count === 0).map((j) => jobItem(j, "Add the supplier bill"))),
       q("Operations", "ready", "Bought, mark material ready", jobs.filter((j) => j.ops_status === "purchase_complete").map((j) => jobItem(j, "Tell Sales it's ready")), "blue"),
     );
+  }
+  if (can("buy") || can("admin")) {
+    const low = db.prepare("SELECT id, name, unit, stock_qty, reorder_level FROM items WHERE active = 1 AND track_stock = 1 AND reorder_level > 0 AND stock_qty <= reorder_level ORDER BY stock_qty / reorder_level, name").all();
+    queues.push(
+      q("Operations", "lowstock", "Low stock: reorder", low.map((i) => ({ label: i.name, sub: `${i.stock_qty} ${i.unit} left · reorder at ${i.reorder_level}`, link: `/items/${i.id}` })), "red"),
+      q("Operations", "pobill", "PO issued, supplier bill not received", docs("d.kind = 'po' AND d.status = 'issued'").map((d) => docItem(d, `Issued ${d.date}. Convert to bill when goods arrive`)), "blue"),
+    );
+  }
+  if (can("sales.read") || can("money")) {
+    const over = db.prepare("SELECT id, name FROM contacts WHERE type = 'customer' AND credit_limit > 0").all()
+      .map((c) => ({ ...c, st: creditStatus(db, c.id, 0) })).filter((c) => c.st && c.st.owed > c.st.limit);
+    queues.push(q("Sales", "overlimit", "Customers over credit limit", over.map((c) => ({ label: c.name, sub: `Owes Rs ${c.st.owed.toLocaleString("en-PK")} · limit Rs ${c.st.limit.toLocaleString("en-PK")}`, link: `/contacts/${c.id}` })), "red"));
+  }
+  if (can("admin")) {
+    const waiting = docs("d.kind = 'invoice' AND d.status = 'draft'").filter((d) => creditStatus(db, d.contact_id, d.total)?.over);
+    queues.push(q("Director", "approve", "Invoices over credit limit, waiting for you", waiting.map((d) => docItem(d, `Rs ${d.total.toLocaleString("en-PK")} · open it and issue, or reject`)), "red"));
+  }
+  if (can("profit.view")) {
+    const minPct = getSetting(db, "lowMarginPct") ?? 8;
+    const recent = db.prepare("SELECT j.id, j.number, c.name AS customer_name, j.required_date FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE j.closed = 0 OR date(j.created_at) >= date(?, '-60 days')").all(t)
+      .map((j) => ({ ...j, e: jobEconomics(db, j.id) })).filter((j) => !j.e.cost_pending && j.e.margin_pct < minPct);
+    queues.push(q("Director", "margin", `Jobs below ${minPct}% margin`, recent.map((j) => ({ label: `${j.number} · ${j.customer_name}`, sub: `${j.e.gross_profit < 0 ? "Loss" : "Margin"} ${j.e.margin_pct}% · profit Rs ${j.e.gross_profit.toLocaleString("en-PK")}`, link: `/jobs/${j.id}` })), "red"));
   }
   if (can("verify") || can("money")) {
     queues.push(
@@ -148,11 +189,40 @@ export function home(db, user, can) {
     kpis.active_jobs = jobs.length;
     kpis.blocked_jobs = jobs.filter((j) => j.required_date && j.required_date < t && step(j.ops_status) < step("material_ready")).length;
   }
+  const sum = (sql, ...a) => round2(db.prepare(sql).get(...a).v);
+  if (can("sales.read")) {
+    const r = receivables(db);
+    kpis.aging = { buckets: r.buckets, top: r.contacts.slice(0, 5) };
+    kpis.today = { sales: sum("SELECT COALESCE(SUM(total), 0) AS v FROM documents WHERE kind = 'invoice' AND status = 'open' AND date = ?", t) };
+    kpis.top_customers = salesByCustomer(db, from, to).slice(0, 5);
+    kpis.sales_trend = salesTrend(db, 6);
+    const target = Number(getSetting(db, "salesTargetMonthly")) || 0;
+    if (target) kpis.target = { target, achieved: sum("SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v FROM documents WHERE kind = 'invoice' AND status = 'open' AND date BETWEEN ? AND ?", t.slice(0, 8) + "01", t) };
+  }
+  if (can("money")) {
+    kpis.today = { ...kpis.today, money_in: sum("SELECT COALESCE(SUM(amount), 0) AS v FROM payments WHERE direction = 'in' AND date = ?", t),
+      money_out: round2(sum("SELECT COALESCE(SUM(amount), 0) AS v FROM payments WHERE direction = 'out' AND date = ?", t) + sum("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE date = ?", t)) };
+  }
   if (can("reports.finance")) {
-    kpis.payables = payables(db).total;
-    kpis.month = profitAndLoss(db, t.slice(0, 8) + "01", t);
-    kpis.stock_value = inventory(db).total_value;
+    const p = payables(db);
+    kpis.payables = p.total;
+    kpis.payables_aging = p.buckets;
+    kpis.period = { from, to, ...profitAndLoss(db, from, to) };
+    const days = Math.round((Date.parse(to) - Date.parse(from)) / 864e5) + 1;
+    const pTo = new Date(Date.parse(from) - 864e5).toISOString().slice(0, 10), pFrom = new Date(Date.parse(from) - days * 864e5).toISOString().slice(0, 10);
+    kpis.previous = { from: pFrom, to: pTo, ...profitAndLoss(db, pFrom, pTo) };
+    const inv = inventory(db);
+    kpis.stock_value = inv.total_value;
+    kpis.low_stock = inv.low_stock;
     kpis.cash_flow = cashFlow(db, 6);
+    kpis.top_items = salesByItem(db, from, to).slice(0, 5).map((i) => (can("profit.view") ? i : { ...i, cost: undefined, profit: undefined }));
+  }
+  if (can("expenses")) {
+    const budgets = getSetting(db, "expenseBudgets") || {};
+    const m0 = t.slice(0, 8) + "01";
+    kpis.budgets = Object.entries(budgets).filter(([, v]) => Number(v) > 0).map(([category, budget]) => ({
+      category, budget: Number(budget), spent: sum("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE category = ? AND date BETWEEN ? AND ?", category, m0, t),
+    }));
   }
   const recent = can("admin") ? db.prepare("SELECT a.*, u.name AS user_name FROM activity a LEFT JOIN users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 12").all()
     : db.prepare("SELECT a.*, u.name AS user_name FROM activity a LEFT JOIN users u ON u.id = a.user_id WHERE a.user_id = ? ORDER BY a.id DESC LIMIT 8").all(user.id);

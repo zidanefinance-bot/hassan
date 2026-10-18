@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
+import Comments from "../components/Comments.jsx";
 
 export function ItemForm({ initial, onClose, onSaved, presetName = "" }) {
   const settings = useLoad("/settings");
@@ -97,6 +98,7 @@ function ImportItems({ onClose, onDone }) {
 
 export default function Items() {
   const [q, setQ] = useState("");
+  const [lowOnly, setLowOnly] = useState(() => new URLSearchParams(window.location.search).has("low"));
   const [modal, setModal] = useState(null);
   const { can } = useAuth();
   const state = useLoad(`/items?q=${encodeURIComponent(q)}`);
@@ -108,11 +110,12 @@ export default function Items() {
     <>
       <PageHead title="Items" sub="Products, rates and stock on hand. Open an item for its full history.">
         <Search value={q} onChange={setQ} placeholder="Search items…" />
+        <label className="check"><input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} /> Low stock only</label>
         {can("items.write") && <button className="btn" onClick={() => setModal("import")}>Import CSV</button>}
         <button className="btn" disabled={!state.data?.length} onClick={exportCsv}>Export CSV</button>
         {["items.write", "sales.write", "buy"].some(can) && <button className="btn primary" onClick={() => setModal("new")}>+ New Item</button>}
       </PageHead>
-      <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No items yet. Add one, or import your list from Zoho / Excel.</div> : (
+      <Loading state={state}>{(all) => { const rows = lowOnly ? all.filter((i) => i.track_stock && i.stock_qty <= i.reorder_level) : all; return rows.length === 0 ? (lowOnly ? <div className="empty">No item is at or below its reorder level. ✓</div> : <div className="empty">No items yet. Add one, or import your list from Zoho / Excel.</div>) : (
         <div className="card flush"><table className="table">
           <thead><tr><th>Item</th><th>Category</th>{can("cost.view") && <th className="r">Buy</th>}{can("price.view") && <th className="r">Sell</th>}{can("profit.view") && <th className="r">Margin</th>}<th className="r">In stock</th></tr></thead>
           <tbody>{rows.map((i) => {
@@ -127,7 +130,7 @@ export default function Items() {
             );
           })}</tbody>
         </table></div>
-      )}</Loading>
+      ); }}</Loading>
       {modal === "new" && <ItemForm onClose={() => setModal(null)} onSaved={(id) => nav(`/items/${id}`)} />}
       {modal === "import" && <ImportItems onClose={() => setModal(null)} onDone={() => { setModal(null); state.reload(); }} />}
     </>
@@ -232,6 +235,7 @@ export function ItemView() {
             </section>
           )}
 
+          <Comments entity="item" id={i.id} />
           {editing && <ItemForm initial={i} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); state.reload(); }} />}
           {adj && (
             <Modal title="Adjust stock" onClose={() => setAdj(null)}>

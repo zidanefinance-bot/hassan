@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Badge, fmtDate, KIND, Loading, money, num, PageHead, today, useAuth, useLoad } from "../lib.jsx";
 
 const TABS = [["pnl", "Profit & Loss", "reports.finance"], ["job-profit", "Job profit", "profit.view"], ["receivables", "Receivables", "*"], ["payables", "Payables", "reports.finance"], ["inventory", "Inventory", "reports.finance"], ["sales-by-customer", "Sales by customer", "*"], ["sales-by-item", "Sales by item", "reports.finance"], ["tax", "Sales tax", "reports.finance"]];
@@ -102,9 +102,11 @@ function toCsv(tab, d) {
 export default function Reports() {
   const { can } = useAuth();
   const tabs = TABS.filter(([, , p]) => p === "*" || can(p));
-  const [tab, setTab] = useState(tabs[0][0]);
-  const [from, setFrom] = useState(today().slice(0, 8) + "01");
-  const [to, setTo] = useState(today());
+  // the dashboard links here with ?tab=…&from=…&to=…
+  const qs = new URLSearchParams(useLocation().search);
+  const [tab, setTab] = useState(tabs.some(([k]) => k === qs.get("tab")) ? qs.get("tab") : tabs[0][0]);
+  const [from, setFrom] = useState(qs.get("from") || today().slice(0, 8) + "01");
+  const [to, setTo] = useState(qs.get("to") || today());
   const path = `/reports/${tab}${RANGED.includes(tab) ? `?from=${from}&to=${to}` : ""}`;
   const loaded = useLoad(path);
   const state = loaded.path === path ? loaded : { ...loaded, data: null, loading: true }; // don't render one tab's data with another tab's view

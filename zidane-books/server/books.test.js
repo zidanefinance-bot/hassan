@@ -310,3 +310,88 @@ test("API: attachments, credit-limit approval, backup and health", async () => {
     server.close();
   }
 });
+
+test("v4 databases upgrade in place to v5 and keep their data", async () => {
+  const { DatabaseSync } = await import("node:sqlite");
+  const { mkdtempSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const file = join(mkdtempSync(join(tmpdir(), "zb-")), "old.db");
+  const first = openDb(file);
+  first.prepare("INSERT INTO contacts (type, name) VALUES ('customer', 'Kept')").run();
+  first.exec("DROP TABLE comments; DROP TABLE notifications; PRAGMA user_version = 4");
+  first.close();
+  const db = openDb(file);
+  assert.equal(db.prepare("PRAGMA user_version").get().user_version, 5);
+  assert.equal(db.prepare("SELECT name FROM contacts").get().name, "Kept");
+  assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'comments'").get());
+  db.close();
+  const raw = new DatabaseSync(file); raw.exec("PRAGMA user_version = 3"); raw.close();
+  assert.throws(() => openDb(file), /older version/);
+});
+
+test("API: comments, @mentions and notifications respect who can see a record", async () => {
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (ck, path, body) => {
+    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, body: await r.json() };
+  };
+  try {
+    const [dir, sales, ops, acc] = [await login(director.email, director.password), await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk"), await login("accounts@zidane.com.pk")];
+    const uid = (role) => db.prepare("SELECT id FROM users WHERE role = ?").get(role).id;
+    const inv = db.prepare("SELECT id FROM documents WHERE kind = 'invoice'").get().id;
+    const bill = db.prepare("SELECT id FROM documents WHERE kind = 'bill'").get().id;
+
+    // only people who can open the invoice can be tagged on it
+    const people = (await call(dir, `/comments/people?entity=document&entity_id=${inv}`)).body.map((p) => p.role).sort();
+    assert.deepEqual(people, ["accounts", "sales"]);
+    assert.equal((await call(sales, `/comments?entity=document&entity_id=${bill}`)).status, 403, "Sales can't read comments on a supplier bill");
+
+    // a director asks Sales (and tries to tag Operations, who can't see invoices)
+    await call(dir, "/comments", { entity: "document", entity_id: inv, body: "@Sana why this discount?", mentions: [uid("sales"), uid("operations")] });
+    const sN = (await call(sales, "/notifications")).body;
+    assert.ok(sN.items.some((n) => n.kind === "mention" && n.link === `/invoices/${inv}`));
+    assert.equal((await call(ops, "/notifications")).body.items.filter((n) => n.kind === "mention").length, 0);
+    assert.equal((await call(sales, "/reports/home")).body.queues.find((q) => q.key === "asks").count, 1);
+
+    // Sales answers: the question leaves her queue and the director hears back
+    await call(sales, "/comments", { entity: "document", entity_id: inv, body: "Old customer" });
+    assert.equal((await call(sales, "/reports/home")).body.queues.find((q) => q.key === "asks").count, 0);
+    assert.ok((await call(dir, "/notifications")).body.items.some((n) => n.kind === "comment"));
+    assert.equal((await call(dir, `/comments?entity=document&entity_id=${inv}`)).body.length, 2);
+
+    // business events: a new Job reaches Operations, an issued bill reaches Accounts
+    const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer'").get().id;
+    await call(sales, "/jobs", { customer_id: cust, items: [{ item_id: 1, qty: 2, sale_rate: 100 }] });
+    assert.ok((await call(ops, "/notifications")).body.items.some((n) => n.kind === "job"));
+    const sup = db.prepare("SELECT id FROM contacts WHERE type = 'supplier'").get().id;
+    const nb = (await call(ops, "/documents", { kind: "bill", contact_id: sup, status: "open", lines: [{ item_id: 1, qty: 1, rate: 10 }] })).body.id;
+    assert.ok((await call(acc, "/notifications")).body.items.some((n) => n.kind === "verify" && n.link === `/bills/${nb}`));
+
+    // over the credit limit: Sales is blocked and the director gets an approval request
+    db.prepare("UPDATE contacts SET credit_limit = 1 WHERE id = ?").run(cust);
+    const draft = (await call(sales, "/documents", { kind: "invoice", contact_id: cust, status: "draft", lines: [{ item_id: 1, qty: 1, rate: 500 }] })).body.id;
+    assert.equal((await call(sales, `/documents/${draft}/status`, { status: "open" })).status, 403);
+    assert.ok((await call(dir, "/notifications")).body.items.some((n) => n.kind === "approval" && n.link === `/invoices/${draft}`));
+    const dh = (await call(dir, "/reports/home")).body;
+    assert.ok(dh.queues.find((q) => q.key === "approve").count >= 1);
+    assert.ok(dh.queues.find((q) => q.key === "overlimit").count >= 1);
+    assert.ok(dh.kpis.period && dh.kpis.previous && dh.kpis.sales_trend.length === 6);
+
+    // Operations' home never carries money figures
+    const oh = (await call(ops, "/reports/home")).body;
+    assert.equal(oh.kpis.receivables, undefined);
+    assert.equal(oh.kpis.period, undefined);
+
+    // mark all read
+    await call(sales, "/notifications/read", { ids: "all" });
+    assert.equal((await call(sales, "/notifications")).body.unread, 0);
+  } finally {
+    server.close();
+  }
+});

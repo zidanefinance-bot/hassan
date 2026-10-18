@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import Comments from "../components/Comments.jsx";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 
 export function ContactForm({ type, initial, onClose, onSaved }) {
@@ -165,6 +166,7 @@ export function ContactView() {
                 ))}</tbody></table>
             )}
           </section>}
+          <Comments entity="contact" id={c.id} />
           {editing && <ContactForm type={c.type} initial={c} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); state.reload(); }} />}
         </>
       );

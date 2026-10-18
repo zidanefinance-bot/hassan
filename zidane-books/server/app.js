@@ -10,13 +10,13 @@ import * as B from "./books.js";
 import * as J from "./jobs.js";
 import * as I from "./items.js";
 import * as R from "./reports.js";
+import * as C from "./collab.js";
 
 const { httpError, round2, today } = B;
-const DOC_READ = { quote: ["sales.read"], invoice: ["sales.read"], dc: ["sales.read"], credit_note: ["sales.read"], po: ["ops.read"], bill: ["ops.read"], vendor_credit: ["ops.read"] };
+const { DOC_READ, CONTACT_READ } = C;
 const DOC_WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.write"], credit_note: ["sales.write"], po: ["ops.write", "buy"], bill: ["ops.write", "buy"], vendor_credit: ["ops.write"] };
 const MAX_UPLOAD = 10 * 1024 * 1024;
 const UPLOAD_TYPES = /^(image\/(png|jpe?g|webp|gif|heic)|application\/pdf|text\/csv|application\/vnd\.(ms-excel|openxmlformats-officedocument\.(spreadsheetml\.sheet|wordprocessingml\.document)))$/;
-const CONTACT_READ = { customer: ["sales.read"], supplier: ["ops.read"] };
 const CONTACT_WRITE = { customer: ["sales.write"], supplier: ["ops.write"] };
 
 export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirname(process.env.DB_FILE || "data/zidane-books.db"), "uploads") } = {}) {
@@ -100,7 +100,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json(out);
   });
   api.put("/settings", requirePerm("admin"), (req, res) => {
-    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "invoiceFooter"];
+    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "invoiceFooter", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
     for (const [k, v] of Object.entries(req.body || {})) if (allowed.includes(k)) B.setSetting(db, k, v);
     B.log(db, req.user.id, "updated settings", "settings", null, Object.keys(req.body || {}).join(", "));
     res.json({ ok: true });
@@ -227,13 +227,29 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   const needJobs = (req) => need(req.user, ["sales.read", "ops.read"]);
   api.get("/jobs", (req, res) => { needJobs(req); res.json(J.jobList(db, req.query)); });
   api.get("/jobs/:id", (req, res) => { needJobs(req); res.json(J.jobDetail(db, id(req), cans(req))); });
-  api.post("/jobs", requirePerm("sales.write"), (req, res) => res.json({ id: J.createJob(db, req.user.id, req.body) }));
+  api.post("/jobs", requirePerm("sales.write"), (req, res) => {
+    const jobId = J.createJob(db, req.user.id, req.body);
+    C.notifyEvent(db, req.user.id, "job.created", { jobId });
+    res.json({ id: jobId });
+  });
   api.put("/jobs/:id", requirePerm("sales.write"), (req, res) => { J.updateJob(db, req.user.id, id(req), req.body); res.json({ ok: true }); });
-  api.post("/jobs/:id/ops-status", requirePerm("ops.write"), (req, res) => { J.setOpsStatus(db, req.user.id, id(req), req.body.status); res.json({ ok: true }); });
+  api.post("/jobs/:id/ops-status", requirePerm("ops.write"), (req, res) => {
+    const before = db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(id(req))?.ops_status;
+    J.setOpsStatus(db, req.user.id, id(req), req.body.status);
+    if (req.body.status === "material_ready" && before !== "material_ready") C.notifyEvent(db, req.user.id, "job.ready", { jobId: id(req) });
+    res.json({ ok: true });
+  });
   api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req)) }));
   api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req)) }));
   api.post("/jobs/:id/close", requirePerm("admin"), (req, res) => { J.closeJob(db, req.user.id, id(req), req.body.closed !== false); res.json({ ok: true }); });
-  api.post("/job-items/:id/procurement", requirePerm("buy"), (req, res) => { J.setItemProcurement(db, req.user.id, id(req), req.body.status); res.json({ ok: true }); });
+  api.post("/job-items/:id/procurement", requirePerm("buy"), (req, res) => {
+    const ji = db.prepare("SELECT ji.job_id, ji.procurement_status, COALESCE(i.name, ji.description) AS name FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.id = ?").get(id(req));
+    const before = ji && db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(ji.job_id)?.ops_status;
+    J.setItemProcurement(db, req.user.id, id(req), req.body.status);
+    if (ji && req.body.status === "not_available" && ji.procurement_status !== "not_available") C.notifyEvent(db, req.user.id, "job.not_available", { jobId: ji.job_id, itemName: ji.name });
+    if (ji && before !== "material_ready" && db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(ji.job_id)?.ops_status === "material_ready") C.notifyEvent(db, req.user.id, "job.ready", { jobId: ji.job_id });
+    res.json({ ok: true });
+  });
   api.get("/procurement", (req, res) => { need(req.user, ["buy", "ops.read"]); res.json(J.procurementList(db)); });
 
   // ---- documents (quotes/enquiries, invoices, customer DCs, purchase orders, supplier bills)
@@ -281,15 +297,18 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.post("/documents", (req, res) => {
     need(req.user, DOC_WRITE[req.body.kind] || "admin");
     if (req.body.kind === "invoice" && req.body.status === "open") checkCreditLimit(req, req.body.contact_id, B.computeTotals(req.body.lines || [], req.body).total);
-    res.json({ id: B.saveDocument(db, req.user.id, req.body) });
+    const docId = B.saveDocument(db, req.user.id, req.body);
+    afterSave(req, docId, null);
+    res.json({ id: docId });
   });
   api.put("/documents/:id", (req, res) => {
     const d = loadDoc(req, DOC_WRITE);
     if (d.verified_at && !can(req.user, "admin")) throw httpError(400, "This document is verified by Accounts. Ask a director to change it.");
     const paid = B.paidAmount(db, d.id);
     if (paid > 0 && B.computeTotals(req.body.lines || [], req.body).total < paid) throw httpError(400, "Total can't go below what's already paid");
-    if (d.kind === "invoice" && d.status === "draft" && req.body.status === "open") checkCreditLimit(req, d.contact_id, B.computeTotals(req.body.lines || [], req.body).total);
+    if (d.kind === "invoice" && d.status === "draft" && req.body.status === "open") limitGuard(req, d.id, () => checkCreditLimit(req, d.contact_id, B.computeTotals(req.body.lines || [], req.body).total));
     B.saveDocument(db, req.user.id, { ...req.body, kind: d.kind }, d.id);
+    afterSave(req, d.id, d.status);
     if (d.verified_at) db.prepare("UPDATE documents SET verified_at = NULL, verified_by = NULL WHERE id = ?").run(d.id); // changed after verification → verify again
     res.json({ id: d.id });
   });
@@ -299,15 +318,29 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const st = B.creditStatus(db, contactId, addTotal);
     if (st?.over && !can(req.user, "admin")) throw httpError(403, `Over credit limit: customer owes Rs ${st.owed.toLocaleString("en-PK")}, limit Rs ${st.limit.toLocaleString("en-PK")}. Save as draft and ask a director to issue it.`);
   };
+  // a draft invoice blocked by the credit limit goes to the directors' approval queue
+  const limitGuard = (req, docId, fn) => {
+    try { fn(); } catch (e) {
+      if (docId && e.status === 403 && /credit limit/.test(e.message)) C.notifyEvent(db, req.user.id, "doc.over_limit", { docId, message: e.message.split(".")[0] });
+      throw e;
+    }
+  };
+  const afterSave = (req, docId, beforeStatus) => {
+    const d = db.prepare("SELECT status FROM documents WHERE id = ?").get(docId);
+    if (d?.status === "open" && beforeStatus !== "open") C.notifyEvent(db, req.user.id, "doc.issued", { docId });
+  };
   api.post("/documents/:id/status", docAction(DOC_WRITE, (req, d) => {
-    if (d.kind === "invoice" && d.status === "draft" && req.body.status === "open") checkCreditLimit(req, d.contact_id, d.total);
+    if (d.kind === "invoice" && d.status === "draft" && req.body.status === "open") limitGuard(req, d.id, () => checkCreditLimit(req, d.contact_id, d.total));
     B.setStatus(db, req.user.id, id(req), req.body.status);
+    afterSave(req, d.id, d.status);
   }));
   api.post("/documents/:id/clone", docAction(DOC_WRITE, (req) => ({ id: B.cloneDocument(db, req.user.id, id(req)) })));
   api.post("/documents/:id/convert", docAction(DOC_WRITE, (req) => ({ id: B.convertDocument(db, req.user.id, id(req)) })));
   api.post("/documents/:id/job", docAction(DOC_WRITE, (req, d) => {
     if (d.kind !== "quote") throw httpError(400, "Only quotes become Jobs");
-    return { id: J.jobFromQuote(db, req.user.id, d.id, req.body || {}) };
+    const jobId = J.jobFromQuote(db, req.user.id, d.id, req.body || {});
+    C.notifyEvent(db, req.user.id, "job.created", { jobId });
+    return { id: jobId };
   }));
   api.post("/documents/:id/sign", docAction(DOC_WRITE, (req) => { J.signDc(db, req.user.id, id(req), req.body || {}); }));
   api.post("/documents/:id/submit", docAction(DOC_WRITE, (req, d) => {
@@ -343,8 +376,17 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const refunds = db.prepare("SELECT * FROM refunds WHERE payment_id = ? ORDER BY id").all(p.id);
     res.json({ ...p, unused: round2(p.unused), allocations, refunds, created_by_name: db.prepare("SELECT name FROM users WHERE id = ?").get(p.created_by)?.name });
   });
-  api.post("/payments", requirePerm("money"), (req, res) => res.json({ id: B.recordPayment(db, req.user.id, req.body) }));
-  api.post("/payments/:id/allocate", requirePerm("money"), (req, res) => { B.allocatePayment(db, req.user.id, id(req), req.body.allocations); res.json({ ok: true }); });
+  api.post("/payments", requirePerm("money"), (req, res) => {
+    const pid = B.recordPayment(db, req.user.id, req.body);
+    C.notifyEvent(db, req.user.id, "payment.received", { paymentId: pid });
+    res.json({ id: pid });
+  });
+  api.post("/payments/:id/allocate", requirePerm("money"), (req, res) => {
+    const after = db.prepare("SELECT COALESCE(MAX(id), 0) AS m FROM payment_allocations").get().m;
+    B.allocatePayment(db, req.user.id, id(req), req.body.allocations);
+    C.notifyEvent(db, req.user.id, "payment.received", { paymentId: id(req), after });
+    res.json({ ok: true });
+  });
   api.post("/documents/:id/allocate", requirePerm("money"), (req, res) => { B.allocateCredit(db, req.user.id, id(req), req.body.allocations); res.json({ ok: true }); });
   api.post("/refunds", requirePerm("money"), (req, res) => res.json({ id: B.recordRefund(db, req.user.id, req.body) }));
   api.delete("/refunds/:id", requirePerm("money"), (req, res) => { B.deleteRefund(db, req.user.id, id(req)); res.json({ ok: true }); });
@@ -389,14 +431,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.delete("/expenses/:id", (req, res) => { const e = loadExp(req); db.prepare("DELETE FROM expenses WHERE id = ?").run(e.id); res.json({ ok: true }); });
 
   // ---- attachments (evidence): anyone who can see a record can attach to it; uploader or a director can remove
-  const canSeeEntity = (user, entity, entityId) => {
-    if (entity === "document") { const d = db.prepare("SELECT kind FROM documents WHERE id = ?").get(entityId); return d && canAny(user, DOC_READ[d.kind]); }
-    if (entity === "job") return canAny(user, ["sales.read", "ops.read"]);
-    if (entity === "payment") return can(user, "money");
-    if (entity === "expense") { const e = db.prepare("SELECT job_id FROM expenses WHERE id = ?").get(entityId); return e && (can(user, "expenses") || (e.job_id && can(user, "buy"))); }
-    if (entity === "contact") { const c = db.prepare("SELECT type FROM contacts WHERE id = ?").get(entityId); return c && canAny(user, CONTACT_READ[c.type]); }
-    return false;
-  };
+  const canSeeEntity = (user, entity, entityId) => entity !== "item" && C.canSeeEntity(db, user, entity, entityId);
   api.get("/attachments", (req, res) => {
     const { entity, entity_id } = req.query;
     if (!canSeeEntity(req.user, entity, Number(entity_id))) throw httpError(403, "You don't have access to this");
@@ -434,6 +469,14 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json({ ok: true });
   });
 
+  // ---- comments and notifications
+  api.get("/comments", (req, res) => res.json(C.listComments(db, req.user, req.query.entity, Number(req.query.entity_id))));
+  api.get("/comments/people", (req, res) => res.json(C.mentionable(db, req.user, req.query.entity, Number(req.query.entity_id))));
+  api.post("/comments", (req, res) => res.json({ id: C.addComment(db, req.user, req.body || {}) }));
+  api.delete("/comments/:id", (req, res) => { C.deleteComment(db, req.user, id(req)); res.json({ ok: true }); });
+  api.get("/notifications", (req, res) => { C.dailyAlerts(db); res.json(C.inbox(db, req.user.id)); });
+  api.post("/notifications/read", (req, res) => { C.markRead(db, req.user.id, req.body?.ids === "all" ? "all" : req.body?.ids); res.json({ ok: true }); });
+
   // ---- backup (director): a consistent copy of the whole database
   api.get("/admin/backup", requirePerm("admin"), (_req, res) => {
     const file = join(uploadDir, "..", `backup-${Date.now()}.db`);
@@ -448,7 +491,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
 
   // ---- reports
   const range = (req) => [req.query.from || today().slice(0, 8) + "01", req.query.to || today()];
-  api.get("/reports/home", (req, res) => res.json(R.home(db, req.user, cans(req))));
+  api.get("/reports/home", (req, res) => { const [from, to] = range(req); res.json(R.home(db, req.user, cans(req), { from, to })); });
   api.get("/reports/pnl", requirePerm("reports.finance"), (req, res) => res.json(R.profitAndLoss(db, ...range(req))));
   api.get("/reports/tax", requirePerm("reports.finance"), (req, res) => res.json(R.taxSummary(db, ...range(req))));
   api.get("/reports/receivables", (req, res) => { need(req.user, ["reports.finance", "sales.read"]); res.json(R.receivables(db)); });

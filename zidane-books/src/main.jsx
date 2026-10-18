@@ -16,6 +16,7 @@ import Payments, { PaymentView, RecordPayment } from "./pages/Payments.jsx";
 import Expenses from "./pages/Expenses.jsx";
 import Reports from "./pages/Reports.jsx";
 import Settings from "./pages/Settings.jsx";
+import Bell from "./components/Notifications.jsx";
 
 const NAV = [
   { to: "/", label: "Home", icon: "⌂", end: true },
@@ -61,6 +62,7 @@ function Shell() {
         <header className="topbar">
           <button className="icon-btn menu" onClick={() => setOpen((o) => !o)} aria-label="Menu">☰</button>
           <div className="spacer" />
+          <Bell />
           <div className="user"><div className="avatar">{user.name[0]}</div><div><b>{user.name}</b><small>{user.role_label}</small></div></div>
           <button className="btn ghost" onClick={logout}>Sign out</button>
         </header>
