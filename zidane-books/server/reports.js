@@ -1,5 +1,5 @@
 // Reports. P&L is document-based: sales (ex-tax) − cost of goods sold (cost captured on each invoice line) − expenses.
-import { round2, today, displayStatus, PAID_SQL, UNUSED_SQL } from "./books.js";
+import { round2, today, displayStatus, PAID_SQL, UNUSED_SQL, CREDIT_UNUSED_SQL } from "./books.js";
 import { jobEconomics, jobList, OPS_STATUSES, procurementList } from "./jobs.js";
 
 const ISSUED = "status = 'open'";
@@ -25,7 +25,9 @@ function aging(rows, on = today()) {
   return { buckets, total: round2(Object.values(buckets).reduce((a, b) => a + b, 0)), contacts: Object.values(byContact).sort((a, b) => b.total - a.total), documents: rows };
 }
 
-const advances = (db, dir) => round2(db.prepare(`SELECT COALESCE(SUM(${UNUSED_SQL}), 0) AS v FROM payments p WHERE p.direction = ?`).get(dir).v);
+// unused advances plus unused credit notes / vendor credits
+const advances = (db, dir) => round2(db.prepare(`SELECT COALESCE(SUM(${UNUSED_SQL}), 0) AS v FROM payments p WHERE p.direction = ?`).get(dir).v
+  + db.prepare(`SELECT COALESCE(SUM(${CREDIT_UNUSED_SQL}), 0) AS v FROM documents d WHERE d.kind = ? AND d.status = 'open'`).get(dir === "in" ? "credit_note" : "vendor_credit").v);
 export const receivables = (db) => ({ ...aging(balances(db, "invoice")), advances: advances(db, "in") });
 export const payables = (db) => ({ ...aging(balances(db, "bill")), advances: advances(db, "out") });
 

@@ -40,6 +40,12 @@ API (`server/auth.js` caps, `server/app.js`), and the tests check them over HTTP
 - **Items, like Zoho:** anyone writing a document can add a new item on the spot. Each item page shows every transaction it appears in (quotes, DCs, invoices, POs, bills), buying rates by supplier (last, 30/90-day average, cheapest), selling rates by customer, stock history, and a change log with before → after values. Line editors show the last rate charged to that customer or paid to that supplier. Items import from CSV (a Zoho Books export works) and export to CSV. Every view is filtered by role.
 - **Payments like Zoho:** one receipt or supplier payment can be split across several invoices or bills. Whatever isn't applied stays as the contact's **advance / unused credit**. Use "Apply credits" on any invoice or bill, or "Apply to invoices" on the payment, to adjust it later, and "Unapply" to undo. Overpaying an invoice keeps the extra as an advance. Accounts' home lists advances that are waiting to be applied.
 - **Ledger / statement of account** for every customer and supplier. It has an opening balance for any date range, invoices or bills against payments, a running balance, and print.
+- **Credit notes and vendor credits:** for goods returned or a discount after the invoice/bill. Ticking "goods came back" puts the stock back (a vendor credit takes it out). Apply them to invoices/bills or refund them. Invoices and bills have a **Credit note** / **Vendor credit** button that starts one from their lines.
+- **Refunds:** give back an unused advance or credit note. They show on the ledger.
+- **Attachments:** photos or PDFs (signed DC, customer PO, supplier bill photo, payment proof) on any document, Job or payment, 10 MB max.
+- **Copy** any document as a new draft. Invoices and bills take a flat discount, delivery/other charges and a round-off.
+- **Customer and supplier terms:** payment terms set due dates. A credit limit means an invoice that goes over it needs a director to issue. Opening balances show in outstanding and on the ledger.
+- **Backup:** Settings → Download backup gives a consistent copy of the whole database (director only).
 - **Stock:** bills bring stock in. On Jobs the DC takes it out, and the invoice doesn't take it out again. Direct-delivery Jobs never touch the warehouse. Manual adjustments and stock history are kept.
 - **Master procurement list:** the same item is totalled across all active Jobs, e.g. 500 + 250 = 750, with a per-Job breakdown.
 - **Reports:** P&L, Job profit, receivables and payables ageing, inventory, sales by customer and by item, sales tax. CSV export and print.
@@ -48,6 +54,10 @@ API (`server/auth.js` caps, `server/app.js`), and the tests check them over HTTP
 
 Not yet (later phases): ration-bag kits, double-entry ledger with chart of accounts, banks and reconciliation, WHT,
 cheques, credit notes, approvals for low margin, purchaser wallet, investors/loans, AI command box, WhatsApp/Telegram.
+
+## Put it online
+
+See **[DEPLOY.md](DEPLOY.md)** for step-by-step Railway hosting in Roman Urdu. It uses the `Dockerfile`, a `/data` volume and `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 
 ## Run it
 

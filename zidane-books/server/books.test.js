@@ -218,3 +218,95 @@ test("advances: receive ahead, apply later; split one payment across invoices; u
   const jan = B.statement(db, c, "2030-01-06");
   assert.equal(jan.opening, 200, "opening balance carries entries before the period");
 });
+
+test("credit notes and vendor credits: return stock, apply, refund, void rules; clone; extras; credit limit", () => {
+  const { db, c, s: sup, i } = fresh();
+  db.prepare("UPDATE items SET stock_qty = 50 WHERE id = ?").run(i);
+  // invoice with delivery charges, flat discount and round-off
+  const inv = B.saveDocument(db, 1, { kind: "invoice", contact_id: c, status: "open", charges: 500, charges_label: "Delivery", doc_discount: 100, adjustment: -0.5, lines: [{ item_id: i, qty: 10, rate: 100 }] });
+  assert.equal(db.prepare("SELECT total FROM documents WHERE id = ?").get(inv).total, 1399.5);
+  assert.equal(db.prepare("SELECT stock_qty FROM items WHERE id = ?").get(i).stock_qty, 40);
+  // customer returns 2 → credit note brings stock back and can be applied to the invoice
+  const cn = B.saveDocument(db, 1, { kind: "credit_note", contact_id: c, status: "open", lines: [{ item_id: i, qty: 2, rate: 100 }] });
+  assert.equal(db.prepare("SELECT number FROM documents WHERE id = ?").get(cn).number, "CN-00001");
+  assert.equal(db.prepare("SELECT stock_qty FROM items WHERE id = ?").get(i).stock_qty, 42);
+  assert.equal(B.contactCredits(db, c).find((x) => x.source === "credit").unused, 200);
+  B.applyCredits(db, 1, inv, [{ credit_id: cn, amount: 150 }]);
+  assert.equal(B.paidAmount(db, inv), 150);
+  assert.equal(B.creditUnused(db, cn), 50);
+  assert.throws(() => B.setStatus(db, 1, cn, "void"), /Unapply or reverse/);
+  // refund the rest of the credit note to the customer
+  B.recordRefund(db, 1, { credit_id: cn, amount: 50, mode: "cash" });
+  assert.equal(B.creditUnused(db, cn), 0);
+  assert.throws(() => B.recordRefund(db, 1, { credit_id: cn, amount: 1 }), /only has 0 unused/);
+  // refund an advance
+  const adv = B.recordPayment(db, 1, { direction: "in", contact_id: c, amount: 300 });
+  B.recordRefund(db, 1, { payment_id: adv, amount: 100 });
+  assert.equal(B.unusedAmount(db, adv), 200);
+  // statement: invoice 1399.5 − credit note 200 + refund 50 − advance 300 + refund 100 = 1049.5
+  assert.equal(B.statement(db, c).closing, 1049.5);
+  // vendor credit takes stock back out and applies to a bill
+  const bill = B.saveDocument(db, 1, { kind: "bill", contact_id: sup, status: "open", lines: [{ item_id: i, qty: 10, rate: 90 }] });
+  const vc = B.saveDocument(db, 1, { kind: "vendor_credit", contact_id: sup, status: "open", lines: [{ item_id: i, qty: 1, rate: 90 }] });
+  assert.equal(db.prepare("SELECT stock_qty FROM items WHERE id = ?").get(i).stock_qty, 51);
+  assert.throws(() => B.applyCredits(db, 1, inv, [{ credit_id: vc, amount: 10 }]), /different contact|Customer receipts/);
+  B.applyCredits(db, 1, bill, [{ credit_id: vc, amount: 90 }]);
+  assert.equal(B.paidAmount(db, bill), 90);
+  // a credit note for a discount only (no goods back) doesn't touch stock
+  B.saveDocument(db, 1, { kind: "credit_note", contact_id: c, status: "open", return_stock: false, lines: [{ description: "Rate difference", qty: 1, rate: 75 }] });
+  assert.equal(db.prepare("SELECT stock_qty FROM items WHERE id = ?").get(i).stock_qty, 51);
+  // clone keeps lines and extras as a new draft
+  const copy = B.cloneDocument(db, 1, inv);
+  const cd = db.prepare("SELECT * FROM documents WHERE id = ?").get(copy);
+  assert.equal(cd.status, "draft");
+  assert.equal(cd.total, 1399.5);
+  assert.notEqual(cd.number, db.prepare("SELECT number FROM documents WHERE id = ?").get(inv).number);
+  // credit limit
+  db.prepare("UPDATE contacts SET credit_limit = 1500 WHERE id = ?").run(c);
+  const st = B.creditStatus(db, c, 1000);
+  assert.equal(st.owed, 1249.5);
+  assert.equal(st.over, true);
+});
+
+test("API: attachments, credit-limit approval, backup and health", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db, { uploadDir: join(mkdtempSync(join(tmpdir(), "zb-")), "uploads") }).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password) => {
+    const r = await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+    const cookie = r.headers.get("set-cookie").split(";")[0];
+    return (path, opts = {}) => fetch(`${base}${path}`, { ...opts, headers: { "content-type": "application/json", cookie } });
+  };
+  try {
+    assert.equal((await fetch(`${base}/health`)).status, 200, "health needs no login");
+    const [dir, sales, ops] = [await login(director.email, director.password), await login("sales@zidane.com.pk", "demo1234"), await login("operations@zidane.com.pk", "demo1234")];
+    // attachment on an invoice: sales can, operations can't even see it
+    const png = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
+    const up = await sales("/attachments", { method: "POST", body: JSON.stringify({ entity: "document", entity_id: 6, filename: "signed.png", mime: "image/png", data: png, label: "Signed DC" }) });
+    assert.equal(up.status, 200);
+    const { id: att } = await up.json();
+    assert.equal((await (await sales("/attachments?entity=document&entity_id=6")).json()).length, 1);
+    assert.equal((await ops("/attachments?entity=document&entity_id=6")).status, 403);
+    assert.equal((await sales(`/attachments/${att}/file`)).headers.get("content-type"), "image/png");
+    assert.equal((await sales("/attachments", { method: "POST", body: JSON.stringify({ entity: "document", entity_id: 6, filename: "x.exe", mime: "application/x-msdownload", data: png }) })).status, 400);
+    // credit limit: sales can't issue over the limit, a director can
+    await dir("/contacts/1", { method: "PUT", body: JSON.stringify({ credit_limit: 1000 }) });
+    const body = { kind: "invoice", contact_id: 1, status: "open", lines: [{ qty: 1, rate: 5000 }] };
+    const blocked = await sales("/documents", { method: "POST", body: JSON.stringify(body) });
+    assert.equal(blocked.status, 403);
+    assert.match((await blocked.json()).error, /credit limit/);
+    assert.equal((await dir("/documents", { method: "POST", body: JSON.stringify(body) })).status, 200);
+    // backup: director only, returns a SQLite file
+    const bk = await dir("/admin/backup");
+    assert.equal(bk.status, 200);
+    assert.equal(Buffer.from(await bk.arrayBuffer()).subarray(0, 15).toString(), "SQLite format 3");
+    assert.equal((await sales("/admin/backup")).status, 403);
+  } finally {
+    server.close();
+  }
+});

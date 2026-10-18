@@ -11,7 +11,8 @@ export function ensureAdmin(db) {
   const email = process.env.ADMIN_EMAIL || "admin@zidane.com.pk";
   const password = process.env.ADMIN_PASSWORD || randomBytes(6).toString("base64url");
   db.prepare("INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, 'director', ?)").run("Director", email, hashPassword(password));
-  console.log(`\n  First director account created\n  email:    ${email}\n  password: ${password}\n  (change it after signing in)\n`);
+  // only print a password we generated; one passed in through ADMIN_PASSWORD never goes to the logs
+  console.log(`\n  First director account created\n  email:    ${email}\n  password: ${process.env.ADMIN_PASSWORD ? "(the ADMIN_PASSWORD you set)" : password}\n  (change it after signing in)\n`);
   return { email, password };
 }
 

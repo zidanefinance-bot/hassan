@@ -25,6 +25,8 @@ export const KIND = {
   invoice: { label: "Invoice", plural: "Invoices", path: "invoices", contact: "customer" },
   po: { label: "Purchase Order", plural: "Purchase Orders", path: "purchase-orders", contact: "supplier" },
   bill: { label: "Supplier Bill", plural: "Supplier Bills", path: "bills", contact: "supplier" },
+  credit_note: { label: "Credit Note", plural: "Credit Notes", path: "credit-notes", contact: "customer" },
+  vendor_credit: { label: "Vendor Credit", plural: "Vendor Credits", path: "vendor-credits", contact: "supplier" },
 };
 
 // ---- auth
@@ -69,7 +71,7 @@ export function ToastProvider({ children }) {
 export const useToast = () => useContext(ToastCtx);
 
 // ---- UI bits
-export const STATUS_TONE = { enquiry: "amber", converted: "green", signed: "green", new: "red", procurement_started: "amber", partially_purchased: "amber", purchase_complete: "blue", material_ready: "green", dispatched: "blue", delivered: "green", draft: "grey", sent: "blue", open: "blue", issued: "blue", accepted: "green", paid: "green", invoiced: "green", billed: "green", partial: "amber", overdue: "red", declined: "red", void: "grey", cancelled: "grey" };
+export const STATUS_TONE = { closed: "green", enquiry: "amber", converted: "green", signed: "green", new: "red", procurement_started: "amber", partially_purchased: "amber", purchase_complete: "blue", material_ready: "green", dispatched: "blue", delivered: "green", draft: "grey", sent: "blue", open: "blue", issued: "blue", accepted: "green", paid: "green", invoiced: "green", billed: "green", partial: "amber", overdue: "red", declined: "red", void: "grey", cancelled: "grey" };
 export const Badge = ({ status }) => <span className={`badge ${STATUS_TONE[status] || "grey"}`}>{String(status).replace(/_/g, " ")}</span>;
 export const OPS_STEPS = ["new", "procurement_started", "partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"];
 export const label = (s) => String(s || "").replace(/_/g, " ");

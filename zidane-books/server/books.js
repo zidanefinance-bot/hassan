@@ -31,6 +31,15 @@ export function computeLines(lines) {
   return { lines: out, subtotal, discount_total: discount, tax_total: tax, total: round2(subtotal - discount + tax) };
 }
 
+// document-level extras on top of the lines: a flat discount (after tax), delivery/other charges, and a round-off adjustment
+export function computeTotals(lines, extra = {}) {
+  const c = computeLines(lines);
+  const doc_discount = round2(Math.max(0, Number(extra.doc_discount) || 0));
+  const charges = round2(Math.max(0, Number(extra.charges) || 0));
+  const adjustment = round2(Number(extra.adjustment) || 0);
+  return { ...c, doc_discount, charges, adjustment, total: round2(c.total - doc_discount + charges + adjustment) };
+}
+
 // kind is a document kind or "job"
 export function nextNumber(db, kind) {
   const prefixes = getSetting(db, "prefixes"), next = getSetting(db, "nextNumbers");
@@ -44,12 +53,13 @@ export function nextNumber(db, kind) {
 // Stock rules. A bill brings stock in. For Job orders the delivery challan takes it out (the invoice then
 // doesn't, so nothing is counted twice); a direct sale invoice with no Job takes it out itself.
 // Direct-delivery Jobs (supplier delivers straight to the customer) never touch the warehouse.
-const STOCK_SIGN = { invoice: -1, bill: 1, dc: -1 };
+const STOCK_SIGN = { invoice: -1, bill: 1, dc: -1, credit_note: 1, vendor_credit: -1 }; // returns: goods come back / go back
 function movesStock(db, doc) {
   if (!STOCK_SIGN[doc.kind]) return false;
   const job = doc.job_id ? db.prepare("SELECT fulfilment_type FROM jobs WHERE id = ?").get(doc.job_id) : null;
   if (job?.fulfilment_type === "direct") return false;
   if (doc.kind === "dc") return ["issued", "signed"].includes(doc.status);
+  if (doc.kind === "credit_note" || doc.kind === "vendor_credit") return doc.status === "open" && Boolean(doc.return_stock);
   if (doc.kind === "invoice") return doc.status === "open" && !doc.job_id;
   return doc.status === "open";
 }
@@ -77,6 +87,8 @@ function applyStock(db, doc, lines) {
 export const KIND_STATUSES = {
   quote: ["enquiry", "draft", "sent", "accepted", "declined", "converted"],
   dc: ["draft", "issued", "signed", "void"],
+  credit_note: ["draft", "open", "void"],
+  vendor_credit: ["draft", "open", "void"],
   invoice: ["draft", "open", "void"],
   po: ["draft", "issued", "billed", "cancelled"],
   bill: ["draft", "open", "void"],
@@ -90,8 +102,9 @@ export function saveDocument(db, userId, input, id = null) {
   if (!Array.isArray(input.lines) || input.lines.length === 0) throw httpError(400, "Add at least one line");
   const status = input.status || "draft";
   if (!KIND_STATUSES[kind].includes(status)) throw httpError(400, `Invalid status for ${kind}`);
-  const calc = computeLines(input.lines);
+  const calc = computeTotals(input.lines, input);
   const isUpdate = Boolean(id);
+  const returnStock = input.return_stock === false || input.return_stock === 0 ? 0 : 1;
   return tx(db, () => {
     let doc;
     if (id) {
@@ -99,16 +112,21 @@ export function saveDocument(db, userId, input, id = null) {
       if (!doc) throw httpError(404, "Not found");
       if (doc.kind !== kind) throw httpError(400, "Kind cannot change");
       reverseStock(db, id);
-      db.prepare(`UPDATE documents SET contact_id=?, date=?, due_date=?, status=?, notes=?, terms=?, reference=?, subtotal=?, discount_total=?, tax_total=?, total=?, job_id=? WHERE id=?`)
+      if (["credit_note", "vendor_credit"].includes(kind) && creditUsed(db, id) > calc.total + 0.001) throw httpError(400, "This credit is already applied or refunded for more than the new total");
+      db.prepare(`UPDATE documents SET contact_id=?, date=?, due_date=?, status=?, notes=?, terms=?, reference=?, subtotal=?, discount_total=?, tax_total=?, total=?, job_id=?,
+        doc_discount=?, charges=?, charges_label=?, adjustment=?, return_stock=? WHERE id=?`)
         .run(input.contact_id, input.date || today(), input.due_date || null, status, input.notes || null, input.terms || null, input.reference || null,
-          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.job_id === undefined ? doc.job_id : input.job_id || null, id);
+          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.job_id === undefined ? doc.job_id : input.job_id || null,
+          calc.doc_discount, calc.charges, input.charges_label || null, calc.adjustment, returnStock, id);
       db.prepare("DELETE FROM document_lines WHERE document_id = ?").run(id);
     } else {
       const number = input.number?.trim() || nextNumber(db, kind);
-      const r = db.prepare(`INSERT INTO documents (kind, number, contact_id, date, due_date, status, notes, terms, reference, subtotal, discount_total, tax_total, total, source_id, job_id, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      const r = db.prepare(`INSERT INTO documents (kind, number, contact_id, date, due_date, status, notes, terms, reference, subtotal, discount_total, tax_total, total, source_id, job_id,
+        doc_discount, charges, charges_label, adjustment, return_stock, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(kind, number, input.contact_id, input.date || today(), input.due_date || null, status, input.notes || null, input.terms || null, input.reference || null,
-          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.source_id || null, input.job_id || null, userId ?? null);
+          calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.source_id || null, input.job_id || null,
+          calc.doc_discount, calc.charges, input.charges_label || null, calc.adjustment, returnStock, userId ?? null);
       id = Number(r.lastInsertRowid);
     }
     for (const l of calc.lines) {
@@ -128,6 +146,7 @@ export function setStatus(db, userId, id, status) {
   if (!doc) throw httpError(404, "Not found");
   if (!KIND_STATUSES[doc.kind].includes(status)) throw httpError(400, `Invalid status for ${doc.kind}`);
   if (status === "void" && paidAmount(db, id) > 0) throw httpError(400, "Unapply the payments before voiding");
+  if (status === "void" && creditUsed(db, id) > 0) throw httpError(400, "Unapply or reverse the uses of this credit before voiding");
   return tx(db, () => {
     reverseStock(db, id);
     db.prepare("UPDATE documents SET status = ? WHERE id = ?").run(status, id);
@@ -141,6 +160,7 @@ export function deleteDocument(db, userId, id) {
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
   if (!doc) throw httpError(404, "Not found");
   if (paidAmount(db, id) > 0) throw httpError(400, "This document has payments applied. Unapply them first.");
+  if (creditUsed(db, id) > 0) throw httpError(400, "This credit has been applied or refunded. Undo that first.");
   tx(db, () => {
     reverseStock(db, id);
     db.prepare("UPDATE documents SET source_id = NULL WHERE source_id = ?").run(id);
@@ -164,8 +184,11 @@ export function convertDocument(db, userId, id) {
 
 // SQL for "how much has been applied to document d" (use with a documents alias d)
 export const PAID_SQL = "COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.document_id = d.id), 0)";
-// SQL for "how much of payment p is still unused" (alias p)
-export const UNUSED_SQL = "(p.amount - COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.payment_id = p.id), 0))";
+// SQL for "how much of payment p is still unused" (alias p): not applied and not refunded
+export const UNUSED_SQL = "(p.amount - COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.payment_id = p.id), 0) - COALESCE((SELECT SUM(r.amount) FROM refunds r WHERE r.payment_id = p.id), 0))";
+// SQL for "how much of credit note / vendor credit d is still unused" (alias d)
+export const CREDIT_UNUSED_SQL = "(d.total - COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.credit_id = d.id), 0) - COALESCE((SELECT SUM(r.amount) FROM refunds r WHERE r.credit_id = d.id), 0))";
+export const CREDIT_KINDS = { credit_note: "in", vendor_credit: "out" }; // which side of the business each credit belongs to
 
 export function paidAmount(db, docId) {
   return round2(db.prepare("SELECT COALESCE(SUM(amount), 0) AS s FROM payment_allocations WHERE document_id = ?").get(docId).s);
@@ -173,30 +196,40 @@ export function paidAmount(db, docId) {
 export function unusedAmount(db, paymentId) {
   return round2(db.prepare(`SELECT ${UNUSED_SQL} AS v FROM payments p WHERE p.id = ?`).get(paymentId)?.v ?? 0);
 }
+export function creditUsed(db, creditId) {
+  return round2(db.prepare("SELECT COALESCE((SELECT SUM(amount) FROM payment_allocations WHERE credit_id = ?), 0) + COALESCE((SELECT SUM(amount) FROM refunds WHERE credit_id = ?), 0) AS v").get(creditId, creditId).v);
+}
+export function creditUnused(db, creditId) {
+  return round2(db.prepare(`SELECT ${CREDIT_UNUSED_SQL} AS v FROM documents d WHERE d.id = ?`).get(creditId)?.v ?? 0);
+}
 
-// what the user sees: invoices/bills get paid / partial / overdue derived from payments and due date
-export function displayStatus(doc, paid, on = today()) {
-  if (!["invoice", "bill"].includes(doc.kind) || doc.status !== "open") return doc.status;
-  const balance = round2(doc.total - paid);
-  if (balance <= 0) return "paid";
-  if (doc.due_date && doc.due_date < on) return "overdue";
-  return paid > 0 ? "partial" : "open";
+// a credit source is a payment (advance) or an issued credit note / vendor credit
+function loadSource(db, src) {
+  if (src.payment_id) {
+    const p = db.prepare("SELECT * FROM payments WHERE id = ?").get(src.payment_id);
+    if (!p) throw httpError(404, "Payment not found");
+    return { type: "payment", id: p.id, number: p.number, contact_id: p.contact_id, direction: p.direction, unused: () => unusedAmount(db, p.id), col: "payment_id" };
+  }
+  const d = db.prepare("SELECT * FROM documents WHERE id = ?").get(src.credit_id);
+  if (!d || !CREDIT_KINDS[d.kind]) throw httpError(404, "Credit not found");
+  if (d.status !== "open") throw httpError(400, `${d.number} isn't issued`);
+  return { type: "credit", id: d.id, number: d.number, contact_id: d.contact_id, direction: CREDIT_KINDS[d.kind], unused: () => creditUnused(db, d.id), col: "credit_id" };
 }
 
 // checks one allocation and writes it; caller holds the transaction
-function allocate(db, userId, payment, documentId, amount, date) {
+function allocate(db, userId, source, documentId, amount, date) {
   amount = round2(amount);
   if (!(amount > 0)) return;
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(documentId);
-  if (!doc || !["invoice", "bill"].includes(doc.kind)) throw httpError(400, "Payments go against invoices or bills");
+  if (!doc || !["invoice", "bill"].includes(doc.kind)) throw httpError(400, "Payments and credits go against invoices or bills");
   if (doc.status !== "open") throw httpError(400, `${doc.number} isn't issued yet`);
-  if (doc.contact_id !== payment.contact_id) throw httpError(400, `${doc.number} belongs to a different contact`);
-  if ((doc.kind === "invoice") !== (payment.direction === "in")) throw httpError(400, "Customer receipts go against invoices, supplier payments against bills");
+  if (doc.contact_id !== source.contact_id) throw httpError(400, `${doc.number} belongs to a different contact`);
+  if ((doc.kind === "invoice") !== (source.direction === "in")) throw httpError(400, "Customer receipts and credit notes go against invoices; supplier payments and vendor credits against bills");
   const balance = round2(doc.total - paidAmount(db, doc.id));
   if (amount > balance + 0.001) throw httpError(400, `${doc.number} only has ${balance} due`);
-  if (amount > unusedAmount(db, payment.id) + 0.001) throw httpError(400, `${payment.number} doesn't have that much left`);
-  db.prepare("INSERT INTO payment_allocations (payment_id, document_id, amount, date, created_by) VALUES (?, ?, ?, ?, ?)").run(payment.id, doc.id, amount, date || today(), userId ?? null);
-  log(db, userId, "applied payment", doc.kind, doc.id, `${payment.number} → ${doc.number} · ${amount}`);
+  if (amount > source.unused() + 0.001) throw httpError(400, `${source.number} doesn't have that much left`);
+  db.prepare(`INSERT INTO payment_allocations (${source.col}, document_id, amount, date, created_by) VALUES (?, ?, ?, ?, ?)`).run(source.id, doc.id, amount, date || today(), userId ?? null);
+  log(db, userId, source.type === "credit" ? "applied credit" : "applied payment", doc.kind, doc.id, `${source.number} → ${doc.number} · ${amount}`);
 }
 
 // Record a receipt/payment. Allocate it with `allocations` [{document_id, amount}], or `document_id` (applies up to that
@@ -220,64 +253,121 @@ export function recordPayment(db, userId, p) {
     const number = nextNumber(db, p.direction === "in" ? "receipt" : "payment");
     const r = db.prepare("INSERT INTO payments (number, direction, contact_id, date, amount, mode, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .run(number, p.direction, contactId, p.date || today(), amount, p.mode || "cash", p.reference || null, p.notes || null, userId ?? null);
-    const payment = db.prepare("SELECT * FROM payments WHERE id = ?").get(Number(r.lastInsertRowid));
-    for (const a of allocations) allocate(db, userId, payment, a.document_id, a.amount, payment.date);
+    const id = Number(r.lastInsertRowid);
+    const source = loadSource(db, { payment_id: id });
+    for (const a of allocations) allocate(db, userId, source, a.document_id, a.amount, p.date || today());
     const left = round2(amount - totalAlloc);
-    log(db, userId, p.direction === "in" ? "received payment" : "paid supplier", "payment", payment.id, `${number} · ${amount}${left > 0 ? ` (${left} kept as advance)` : ""}`);
-    return payment.id;
+    log(db, userId, p.direction === "in" ? "received payment" : "paid supplier", "payment", id, `${number} · ${amount}${left > 0 ? ` (${left} kept as advance)` : ""}`);
+    return id;
   });
 }
 
-// apply unused credits (advances) to one invoice/bill: credits = [{payment_id, amount}]
+// apply unused advances and credit notes to one invoice/bill: credits = [{payment_id | credit_id, amount}]
 export function applyCredits(db, userId, documentId, credits) {
   if (!Array.isArray(credits) || credits.length === 0) throw httpError(400, "Choose at least one credit to apply");
-  tx(db, () => {
-    for (const c of credits) {
-      const payment = db.prepare("SELECT * FROM payments WHERE id = ?").get(c.payment_id);
-      if (!payment) throw httpError(404, "Payment not found");
-      allocate(db, userId, payment, documentId, c.amount, today());
-    }
-  });
+  tx(db, () => { for (const c of credits) allocate(db, userId, loadSource(db, c), documentId, c.amount, today()); });
 }
 
-// apply one payment's unused amount across documents: allocations = [{document_id, amount}]
+// spread one payment's or credit's unused amount across documents: allocations = [{document_id, amount}]
 export function allocatePayment(db, userId, paymentId, allocations) {
-  const payment = db.prepare("SELECT * FROM payments WHERE id = ?").get(paymentId);
-  if (!payment) throw httpError(404, "Payment not found");
-  tx(db, () => { for (const a of allocations || []) allocate(db, userId, payment, a.document_id, a.amount, today()); });
+  const source = loadSource(db, { payment_id: paymentId });
+  tx(db, () => { for (const a of allocations || []) allocate(db, userId, source, a.document_id, a.amount, today()); });
+}
+export function allocateCredit(db, userId, creditId, allocations) {
+  const source = loadSource(db, { credit_id: creditId });
+  tx(db, () => { for (const a of allocations || []) allocate(db, userId, source, a.document_id, a.amount, today()); });
 }
 
 export function removeAllocation(db, userId, allocationId) {
-  const a = db.prepare("SELECT a.*, p.number AS payment_number, d.number AS document_number, d.kind FROM payment_allocations a JOIN payments p ON p.id = a.payment_id JOIN documents d ON d.id = a.document_id WHERE a.id = ?").get(allocationId);
+  const a = db.prepare(`SELECT a.*, COALESCE(p.number, c.number) AS source_number, d.number AS document_number, d.kind FROM payment_allocations a
+    LEFT JOIN payments p ON p.id = a.payment_id LEFT JOIN documents c ON c.id = a.credit_id JOIN documents d ON d.id = a.document_id WHERE a.id = ?`).get(allocationId);
   if (!a) throw httpError(404, "Not found");
   db.prepare("DELETE FROM payment_allocations WHERE id = ?").run(allocationId);
-  log(db, userId, "unapplied payment", a.kind, a.document_id, `${a.payment_number} ✕ ${a.document_number} · ${a.amount} back to credit`);
+  log(db, userId, "unapplied", a.kind, a.document_id, `${a.source_number} ✕ ${a.document_number} · ${a.amount} back to credit`);
 }
 
-// a contact's unused payments (customer advances / supplier advances)
+// give back an unused advance or credit: {payment_id | credit_id, amount, date, mode, reference}
+export function recordRefund(db, userId, input) {
+  const amount = round2(input.amount);
+  if (!(amount > 0)) throw httpError(400, "Amount must be more than zero");
+  return tx(db, () => {
+    const source = loadSource(db, input);
+    if (amount > source.unused() + 0.001) throw httpError(400, `${source.number} only has ${source.unused()} unused`);
+    const number = nextNumber(db, "refund");
+    const r = db.prepare(`INSERT INTO refunds (number, contact_id, ${source.col}, date, amount, mode, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(number, source.contact_id, source.id, input.date || today(), amount, input.mode || "bank", input.reference || null, input.notes || null, userId ?? null);
+    log(db, userId, "refunded", "refund", Number(r.lastInsertRowid), `${number} · ${amount} from ${source.number}`);
+    return Number(r.lastInsertRowid);
+  });
+}
+export function deleteRefund(db, userId, id) {
+  const r = db.prepare("SELECT * FROM refunds WHERE id = ?").get(id);
+  if (!r) throw httpError(404, "Not found");
+  db.prepare("DELETE FROM refunds WHERE id = ?").run(id);
+  log(db, userId, "deleted refund", "refund", id, `${r.number} · ${r.amount}`);
+}
+
+// a contact's unused advances and credit notes, as one list
 export function contactCredits(db, contactId) {
-  return db.prepare(`SELECT p.*, ${UNUSED_SQL} AS unused FROM payments p WHERE p.contact_id = ? ORDER BY p.date, p.id`).all(contactId)
-    .map((p) => ({ ...p, unused: round2(p.unused) })).filter((p) => p.unused > 0.001);
+  const pays = db.prepare(`SELECT p.id, p.number, p.date, p.direction, p.mode, p.reference, ${UNUSED_SQL} AS unused FROM payments p WHERE p.contact_id = ?`).all(contactId)
+    .map((p) => ({ ...p, source: "payment", label: "Advance" }));
+  const credits = db.prepare(`SELECT d.id, d.number, d.date, d.kind, d.reference, ${CREDIT_UNUSED_SQL} AS unused FROM documents d WHERE d.contact_id = ? AND d.kind IN ('credit_note','vendor_credit') AND d.status = 'open'`).all(contactId)
+    .map((d) => ({ ...d, source: "credit", direction: CREDIT_KINDS[d.kind], label: d.kind === "credit_note" ? "Credit note" : "Vendor credit" }));
+  return [...pays, ...credits].map((c) => ({ ...c, unused: round2(c.unused) })).filter((c) => c.unused > 0.001).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // Statement of account: running balance of what the customer owes us (or what we owe the supplier)
 export function statement(db, contactId, from = "0000-01-01", to = "9999-12-31") {
   const c = db.prepare("SELECT * FROM contacts WHERE id = ?").get(contactId);
   if (!c) throw httpError(404, "Not found");
-  const docKind = c.type === "customer" ? "invoice" : "bill";
-  const dir = c.type === "customer" ? "in" : "out";
-  const docs = db.prepare("SELECT id, kind, number, date, due_date, total, reference FROM documents WHERE contact_id = ? AND kind = ? AND status = 'open'").all(contactId, docKind);
+  const cust = c.type === "customer";
+  const docKind = cust ? "invoice" : "bill", creditKind = cust ? "credit_note" : "vendor_credit", dir = cust ? "in" : "out";
+  const docs = db.prepare("SELECT id, kind, number, date, due_date, total, reference FROM documents WHERE contact_id = ? AND kind IN (?, ?) AND status = 'open'").all(contactId, docKind, creditKind);
   const pays = db.prepare("SELECT id, number, date, amount, mode, reference FROM payments WHERE contact_id = ? AND direction = ?").all(contactId, dir);
+  const refunds = db.prepare("SELECT id, number, date, amount, mode, reference, payment_id, credit_id FROM refunds WHERE contact_id = ?").all(contactId);
   const entries = [
-    ...docs.map((d) => ({ date: d.date, type: docKind, id: d.id, number: d.number, details: d.reference ? `Ref ${d.reference}` : d.due_date ? `Due ${d.due_date}` : "", charge: round2(d.total), payment: 0 })),
+    ...docs.map((d) => d.kind === creditKind
+      ? { date: d.date, type: d.kind, id: d.id, number: d.number, details: cust ? "Credit note" : "Vendor credit", charge: 0, payment: round2(d.total) }
+      : { date: d.date, type: d.kind, id: d.id, number: d.number, details: d.reference ? `Ref ${d.reference}` : d.due_date ? `Due ${d.due_date}` : "", charge: round2(d.total), payment: 0 }),
     ...pays.map((p) => ({ date: p.date, type: "payment", id: p.id, number: p.number, details: [p.mode, p.reference].filter(Boolean).join(" · "), charge: 0, payment: round2(p.amount) })),
-  ].sort((a, b) => a.date.localeCompare(b.date) || (a.type === "payment") - (b.type === "payment"));
+    ...refunds.map((r) => ({ date: r.date, type: "refund", id: r.payment_id || r.credit_id, source: r.payment_id ? "payment" : "credit", number: r.number, details: `Refund · ${r.mode}${r.reference ? ` · ${r.reference}` : ""}`, charge: round2(r.amount), payment: 0 })),
+  ].sort((a, b) => a.date.localeCompare(b.date) || (a.payment > 0) - (b.payment > 0));
   let opening = round2(c.opening_balance || 0);
   for (const e of entries) if (e.date < from) opening = round2(opening + e.charge - e.payment);
   let bal = opening;
   const rows = entries.filter((e) => e.date >= from && e.date <= to).map((e) => ({ ...e, balance: (bal = round2(bal + e.charge - e.payment)) }));
   return { contact: { id: c.id, name: c.name, type: c.type, phone: c.phone, address: c.address }, from, to, opening, rows,
     charges: round2(rows.reduce((a, r) => a + r.charge, 0)), payments: round2(rows.reduce((a, r) => a + r.payment, 0)), closing: bal };
+}
+
+// copy a document as a new draft (same contact, lines, notes and extras), dated today
+export function cloneDocument(db, userId, id) {
+  const d = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
+  if (!d) throw httpError(404, "Not found");
+  const lines = db.prepare("SELECT item_id, description, qty, rate, discount_pct, tax_rate FROM document_lines WHERE document_id = ?").all(id);
+  const c = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(d.contact_id);
+  const days = c?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
+  return saveDocument(db, userId, { kind: d.kind, contact_id: d.contact_id, status: d.kind === "quote" ? "draft" : "draft", date: today(),
+    due_date: ["invoice", "bill"].includes(d.kind) ? new Date(Date.now() + days * 864e5).toISOString().slice(0, 10) : null,
+    notes: d.notes, terms: d.terms, doc_discount: d.doc_discount, charges: d.charges, charges_label: d.charges_label, adjustment: d.adjustment, return_stock: d.return_stock, lines });
+}
+
+// credit limit check for a customer: what they owe now against their limit
+export function creditStatus(db, contactId, extra = 0) {
+  const c = db.prepare("SELECT credit_limit, opening_balance FROM contacts WHERE id = ?").get(contactId);
+  if (!c || !c.credit_limit) return null;
+  const owed = round2((c.opening_balance || 0) + db.prepare(`SELECT COALESCE(SUM(d.total - ${PAID_SQL}), 0) AS v FROM documents d WHERE d.contact_id = ? AND d.kind = 'invoice' AND d.status = 'open'`).get(contactId).v);
+  return { limit: c.credit_limit, owed, after: round2(owed + extra), over: round2(owed + extra) > c.credit_limit };
+}
+
+// what the user sees: invoices/bills get paid / partial / overdue derived from payments and due date
+export function displayStatus(doc, paid, on = today(), creditLeft = null) {
+  if (CREDIT_KINDS[doc.kind] && doc.status === "open" && creditLeft !== null) return creditLeft <= 0.001 ? "closed" : creditLeft < doc.total ? "partial" : "open";
+  if (!["invoice", "bill"].includes(doc.kind) || doc.status !== "open") return doc.status;
+  const balance = round2(doc.total - paid);
+  if (balance <= 0) return "paid";
+  if (doc.due_date && doc.due_date < on) return "overdue";
+  return paid > 0 ? "partial" : "open";
 }
 
 // own = false when the caller already holds a transaction (e.g. CSV import)

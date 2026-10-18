@@ -86,9 +86,9 @@ export default function Settings() {
           </section>
           <section className="card form">
             <h3>Numbering & terms</h3>
-            {["job", "quote", "dc", "invoice", "po", "bill"].map((k) => (
+            {["job", "quote", "dc", "invoice", "credit_note", "po", "bill", "vendor_credit", "receipt", "payment", "refund"].map((k) => (
               <div className="row-2" key={k}>
-                <Field label={`${{ job: "Job", quote: "Quote", dc: "Delivery challan", invoice: "Invoice", po: "Purchase order", bill: "Supplier bill" }[k]} prefix`}><input value={s.prefixes[k] ?? ""} onChange={(e) => setS({ ...s, prefixes: { ...s.prefixes, [k]: e.target.value } })} /></Field>
+                <Field label={`${{ job: "Job", quote: "Quote", dc: "Delivery challan", invoice: "Invoice", credit_note: "Credit note", po: "Purchase order", bill: "Supplier bill", vendor_credit: "Vendor credit", receipt: "Customer receipt", payment: "Supplier payment", refund: "Refund" }[k]} prefix`}><input value={s.prefixes[k] ?? ""} onChange={(e) => setS({ ...s, prefixes: { ...s.prefixes, [k]: e.target.value } })} /></Field>
                 <Field label="Next number"><input type="number" min={1} value={s.nextNumbers[k] ?? 1} onChange={(e) => setS({ ...s, nextNumbers: { ...s.nextNumbers, [k]: Number(e.target.value) } })} /></Field>
               </div>
             ))}
@@ -112,6 +112,11 @@ export default function Settings() {
           </section>
           <Users />
           <Password />
+          <section className="card">
+            <h3>Backup</h3>
+            <p className="muted">Download a full copy of all your data (one file). Keep it somewhere safe, for example Google Drive, at least once a week.</p>
+            <a className="btn" href="/api/admin/backup">Download backup</a>
+          </section>
         </div>
       )}
     </>

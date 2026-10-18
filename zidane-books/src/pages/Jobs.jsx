@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OPS_STEPS, PageHead, Search, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
+import Attachments from "../components/Attachments.jsx";
 
 const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey" };
 
@@ -228,6 +229,7 @@ export function JobView() {
                 <tbody>{j.expenses.map((e) => <tr key={e.id}><td>{fmtDate(e.date)}</td><td>{e.category}</td><td>{e.paid_through}</td><td className="muted">{e.notes}</td><td className="r">{money(e.amount)}</td></tr>)}</tbody></table>
             </section>
           )}
+          <Attachments entity="job" id={j.id} labels={["Customer PO", "Delivery photo", "Supplier quotation", "Other evidence"]} />
           {cost && <JobCost job={j} settings={settings.data} onClose={() => setCost(false)} onSaved={() => { setCost(false); toast("Cost added to Job"); state.reload(); }} />}
         </>
       );

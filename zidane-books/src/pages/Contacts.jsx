@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 
 export function ContactForm({ type, initial, onClose, onSaved }) {
-  const [f, bind] = useForm(initial || { type, name: "", company: "", phone: "", email: "", address: "", ntn: "", notes: "" });
+  const [f, bind] = useForm(initial ? { ...initial, payment_terms_days: initial.payment_terms_days ?? "", credit_limit: initial.credit_limit ?? "" } : { type, name: "", company: "", phone: "", email: "", address: "", ntn: "", notes: "", opening_balance: "", payment_terms_days: "", credit_limit: "" });
   const [err, setErr] = useState("");
   const toast = useToast();
   const save = async (e) => {
@@ -21,6 +21,11 @@ export function ContactForm({ type, initial, onClose, onSaved }) {
         <div className="row-2"><Field label="Phone / WhatsApp"><input {...bind("phone")} placeholder="03xx xxxxxxx" /></Field><Field label="Email"><input type="email" {...bind("email")} /></Field></div>
         <Field label="Address"><textarea rows={2} {...bind("address")} /></Field>
         <div className="row-2"><Field label="NTN / STRN"><input {...bind("ntn")} /></Field><Field label="Notes"><input {...bind("notes")} /></Field></div>
+        <div className="row-3">
+          <Field label="Payment terms (days)" hint="Due date on new invoices/bills. Empty = company default"><input type="number" min="0" {...bind("payment_terms_days")} /></Field>
+          {type === "customer" && <Field label="Credit limit (Rs)" hint="Above this, only a director can issue invoices"><input type="number" min="0" step="0.01" {...bind("credit_limit")} /></Field>}
+          <Field label="Opening balance (Rs)" hint={type === "customer" ? "What they owed when you started" : "What you owed when you started"}><input type="number" step="0.01" {...bind("opening_balance")} /></Field>
+        </div>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Save</button></div>
       </form>
@@ -84,7 +89,7 @@ function Statement({ contactId, isCust }) {
             <tbody>
               <tr><td>{st.from && st.from !== "0000-01-01" ? fmtDate(st.from) : ""}</td><td colSpan={4}><i>Opening balance</i></td><td className="r">{money(st.opening)}</td></tr>
               {st.rows.map((r, i) => (
-                <tr key={i}><td>{fmtDate(r.date)}</td><td>{r.type === "payment" ? <Link to={`/payments/${r.id}`}>{r.number}</Link> : <Link to={`/${KIND[r.type].path}/${r.id}`}>{r.number}</Link>}</td><td className="muted">{r.details}</td>
+                <tr key={i}><td>{fmtDate(r.date)}</td><td>{r.type === "payment" || (r.type === "refund" && r.source === "payment") ? <Link to={`/payments/${r.id}`}>{r.number}</Link> : r.type === "refund" ? r.number : <Link to={`/${KIND[r.type].path}/${r.id}`}>{r.number}</Link>}</td><td className="muted">{r.details}</td>
                   <td className="r">{r.charge ? money(r.charge) : ""}</td><td className="r">{r.payment ? money(r.payment) : ""}</td><td className="r"><b>{money(r.balance)}</b></td></tr>
               ))}
             </tbody>
@@ -131,7 +136,9 @@ export function ContactView() {
             </section>
             <section className="card stat big"><small>{isCust ? "They owe you" : "You owe them"}</small><b className={outstanding > 0 ? "neg" : ""}>{money(outstanding)}</b>
               {c.credits > 0 && <span className="pos">{isCust ? "Customer advance (unused):" : "Our advance with them (unused):"} <b>{money(c.credits)}</b></span>}
-              {c.credits > 0 && outstanding > 0 && <span className="muted small">Open an {isCust ? "invoice" : "bill"} and use "Apply credits" to adjust it.</span>}</section>
+              {c.credits > 0 && outstanding > 0 && <span className="muted small">Open an {isCust ? "invoice" : "bill"} and use "Apply credits" to adjust it.</span>}
+              {c.credit && <span className={c.credit.over ? "neg small" : "muted small"}>Credit limit {money(c.credit.limit)} · used {money(c.credit.owed)}</span>}
+              {(c.payment_terms_days ?? null) !== null && <span className="muted small">Terms: {c.payment_terms_days} days</span>}</section>
           </div>
           <div className="tabs">{[["transactions", "Transactions"], ["statement", "Statement / ledger"], ...(c.payments.length ? [["payments", `Payments (${c.payments.length})`]] : [])].map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>
           {tab === "statement" && <Statement contactId={c.id} isCust={isCust} />}

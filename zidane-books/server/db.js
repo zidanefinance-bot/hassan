@@ -45,15 +45,15 @@ export const DEFAULT_SETTINGS = {
   },
   currency: "PKR",
   taxes: [{ name: "GST", rate: 18 }, { name: "Reduced GST", rate: 10 }, { name: "Exempt", rate: 0 }],
-  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-", receipt: "RCPT-", payment: "PMT-" },
-  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1, receipt: 1, payment: 1 },
+  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-", receipt: "RCPT-", payment: "PMT-", credit_note: "CN-", vendor_credit: "VC-", refund: "RF-" },
+  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1, receipt: 1, payment: 1, credit_note: 1, vendor_credit: 1, refund: 1 },
   paymentTermsDays: 15,
   jobExpenseCategories: ["Freight", "Loading / Unloading", "Packing", "Labour", "Vehicle", "Market expense", "Other direct cost"],
   expenseCategories: ["Rent", "Salaries", "Fuel & Transport", "Utilities", "Packaging", "Loading & Labour", "Office", "Marketing", "Bank Charges", "Other"],
   invoiceFooter: "Thank you for your business. Groceries for business.",
 };
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS contacts (
   id INTEGER PRIMARY KEY, type TEXT NOT NULL CHECK (type IN ('customer','supplier')), name TEXT NOT NULL,
   company TEXT, phone TEXT, email TEXT, address TEXT, ntn TEXT, opening_balance REAL NOT NULL DEFAULT 0,
+  payment_terms_days INTEGER, credit_limit REAL,
   notes TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS items (
@@ -90,10 +91,12 @@ CREATE TABLE IF NOT EXISTS job_items (
   procurement_status TEXT NOT NULL DEFAULT 'to_buy' CHECK (procurement_status IN ('to_buy','partial','bought','not_available','from_stock'))
 );
 CREATE TABLE IF NOT EXISTS documents (
-  id INTEGER PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('quote','invoice','po','bill','dc')), number TEXT NOT NULL,
+  id INTEGER PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('quote','invoice','po','bill','dc','credit_note','vendor_credit')), number TEXT NOT NULL,
   contact_id INTEGER NOT NULL REFERENCES contacts(id), date TEXT NOT NULL, due_date TEXT,
   status TEXT NOT NULL, notes TEXT, terms TEXT, reference TEXT,
   subtotal REAL NOT NULL DEFAULT 0, discount_total REAL NOT NULL DEFAULT 0, tax_total REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0,
+  doc_discount REAL NOT NULL DEFAULT 0, charges REAL NOT NULL DEFAULT 0, charges_label TEXT, adjustment REAL NOT NULL DEFAULT 0,
+  return_stock INTEGER NOT NULL DEFAULT 1,
   source_id INTEGER REFERENCES documents(id), job_id INTEGER REFERENCES jobs(id),
   submitted_date TEXT, verified_by INTEGER REFERENCES users(id), verified_at TEXT,
   signed_at TEXT, signed_by_name TEXT, created_by INTEGER REFERENCES users(id),
@@ -112,10 +115,27 @@ CREATE TABLE IF NOT EXISTS payments (
   date TEXT NOT NULL, amount REAL NOT NULL CHECK (amount > 0), mode TEXT NOT NULL DEFAULT 'cash', reference TEXT, notes TEXT,
   created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Money applied to an invoice/bill comes from a payment or from a credit note / vendor credit (credit_id).
 CREATE TABLE IF NOT EXISTS payment_allocations (
-  id INTEGER PRIMARY KEY, payment_id INTEGER NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  id INTEGER PRIMARY KEY, payment_id INTEGER REFERENCES payments(id) ON DELETE CASCADE,
+  credit_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
   document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE, amount REAL NOT NULL CHECK (amount > 0),
-  date TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  date TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK ((payment_id IS NULL) != (credit_id IS NULL))
+);
+-- Money given back: an unused advance (payment) or an unused credit note / vendor credit
+CREATE TABLE IF NOT EXISTS refunds (
+  id INTEGER PRIMARY KEY, number TEXT NOT NULL UNIQUE, contact_id INTEGER NOT NULL REFERENCES contacts(id),
+  payment_id INTEGER REFERENCES payments(id) ON DELETE CASCADE, credit_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+  date TEXT NOT NULL, amount REAL NOT NULL CHECK (amount > 0), mode TEXT NOT NULL DEFAULT 'bank', reference TEXT, notes TEXT,
+  created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK ((payment_id IS NULL) != (credit_id IS NULL))
+);
+-- Evidence files (signed DC, customer PO, supplier bill photo, payment proof) attached to any record
+CREATE TABLE IF NOT EXISTS attachments (
+  id INTEGER PRIMARY KEY, entity TEXT NOT NULL CHECK (entity IN ('document','job','payment','expense','contact')), entity_id INTEGER NOT NULL,
+  filename TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, path TEXT NOT NULL, label TEXT,
+  uploaded_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS expenses (
   id INTEGER PRIMARY KEY, date TEXT NOT NULL, category TEXT NOT NULL, amount REAL NOT NULL CHECK (amount > 0),
@@ -134,6 +154,8 @@ CREATE INDEX IF NOT EXISTS idx_docs_kind ON documents(kind, date);
 CREATE INDEX IF NOT EXISTS idx_lines_doc ON document_lines(document_id);
 CREATE INDEX IF NOT EXISTS idx_alloc_doc ON payment_allocations(document_id);
 CREATE INDEX IF NOT EXISTS idx_alloc_pay ON payment_allocations(payment_id);
+CREATE INDEX IF NOT EXISTS idx_alloc_credit ON payment_allocations(credit_id);
+CREATE INDEX IF NOT EXISTS idx_attach ON attachments(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_pay_contact ON payments(contact_id);
 CREATE INDEX IF NOT EXISTS idx_docs_job ON documents(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_items ON job_items(job_id);

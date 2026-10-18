@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
-import { ApplyCreditsModal } from "./Payments.jsx";
+import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
+import Attachments from "../components/Attachments.jsx";
 
-const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.write"], po: ["ops.write", "buy"], bill: ["ops.write", "buy"] };
+const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.write"], credit_note: ["sales.write"], po: ["ops.write", "buy"], bill: ["ops.write", "buy"], vendor_credit: ["ops.write"] };
+const ATTACH_LABELS = { quote: ["Customer enquiry", "Customer PO"], invoice: ["Customer PO", "Submission receipt"], dc: ["Signed DC", "Gate pass"], credit_note: ["Return note"], po: ["Supplier quotation"], bill: ["Supplier bill photo", "Delivery note"], vendor_credit: ["Return note"] };
 
 export function PaymentModal({ doc, onClose, onSaved }) {
   const [p, setP] = useState({ amount: doc.balance, date: today(), mode: "bank", reference: "", notes: "" });
@@ -61,6 +63,8 @@ export default function DocumentView({ kind }) {
   const state = useLoad(`/documents/${id}`);
   const settings = useLoad("/settings");
   const [modal, setModal] = useState(null);
+  const [allocDocs, setAllocDocs] = useState(null);
+  const [allocValues, setAllocValues] = useState({});
   const nav = useNavigate();
   const toast = useToast();
   const act = async (fn, msg) => { try { const r = await fn(); if (msg) toast(msg); state.reload(); return r; } catch (x) { toast(x.message, "err"); } };
@@ -71,17 +75,22 @@ export default function DocumentView({ kind }) {
     <Loading state={state}>{(d) => {
       const company = settings.data?.company || {};
       const isMoney = ["invoice", "bill"].includes(kind);
+      const isCredit = ["credit_note", "vendor_credit"].includes(kind);
       const isDc = kind === "dc";
       const editable = writer && !["void", "converted", "billed", "signed"].includes(d.status) && (!d.verified_at || can("admin"));
       const phone = d.contact.phone?.replace(/\D/g, "").replace(/^0/, "92");
       return (
         <>
-          <PageHead title={<>{d.number} <Badge status={d.display_status} />{d.verified_at && <span className="badge green">verified</span>}{d.submitted_date && <span className="badge blue">submitted</span>}</>}
+          <PageHead title={<>{d.number} <Badge status={d.display_status} />{d.verified_at && <span className="badge green">verified</span>}{d.submitted_date && <span className="badge blue">submitted</span>}{isCredit && d.status === "open" && d.balance > 0 && <span className="badge green">{money(d.balance)} unused</span>}</>}
             sub={`${K.label} · ${d.contact.name}${d.job ? ` · ${d.job.number}` : ""}`}>
             {writer && kind === "quote" && d.status === "enquiry" && <button className="btn primary" onClick={() => post("/status", { status: "sent" }, "Marked sent")}>Rates added, mark sent</button>}
             {writer && kind === "quote" && d.status === "sent" && <><button className="btn" onClick={() => post("/status", { status: "accepted" }, "Customer confirmed")}>Customer confirmed</button><button className="btn" onClick={() => post("/status", { status: "declined" }, "Marked declined")}>Declined</button></>}
             {writer && kind === "quote" && ["sent", "accepted", "draft"].includes(d.status) && <button className="btn primary" onClick={async () => { const r = await post("/job", {}, "Job created and sent to Operations"); if (r) nav(`/jobs/${r.id}`); }}>Create Job</button>}
-            {writer && d.status === "draft" && kind !== "quote" && <button className="btn primary" onClick={() => post("/status", { status: { invoice: "open", bill: "open", po: "issued", dc: "issued" }[kind] }, "Issued")}>Issue</button>}
+            {writer && d.status === "draft" && kind !== "quote" && <button className="btn primary" onClick={() => post("/status", { status: { invoice: "open", bill: "open", po: "issued", dc: "issued", credit_note: "open", vendor_credit: "open" }[kind] }, "Issued")}>Issue</button>}
+            {can("money") && isCredit && d.status === "open" && d.balance > 0 && <button className="btn primary" onClick={() => api(`/contacts/${d.contact_id}/open-documents`).then(setAllocDocs)}>Apply to {kind === "credit_note" ? "invoices" : "bills"}</button>}
+            {can("money") && isCredit && d.status === "open" && d.balance > 0 && <button className="btn" onClick={() => setModal("refund")}>Refund</button>}
+            {kind === "invoice" && d.status === "open" && can("sales.write") && <Link className="btn" to={`/credit-notes/new?from=${id}`}>Credit note</Link>}
+            {kind === "bill" && d.status === "open" && can("ops.write") && <Link className="btn" to={`/vendor-credits/new?from=${id}`}>Vendor credit</Link>}
             {writer && isDc && d.status === "issued" && <button className="btn primary" onClick={() => setModal("sign")}>Mark signed / received</button>}
             {writer && kind === "invoice" && d.status === "open" && !d.submitted_date && <button className="btn" onClick={() => post("/submit", { date: today() }, "Marked submitted to customer")}>Mark submitted</button>}
             {can("verify") && isMoney && d.status === "open" && !d.verified_at && <button className="btn primary" onClick={() => post("/verify", {}, "Verified")}>Verify</button>}
@@ -89,11 +98,13 @@ export default function DocumentView({ kind }) {
             {can("money") && isMoney && d.status === "open" && d.balance > 0 && d.credits.length > 0 && <button className="btn" onClick={() => setModal("credits")}>Apply credits ({money(d.credits.reduce((a, c) => a + c.unused, 0))})</button>}
             {writer && kind === "po" && ["issued", "draft"].includes(d.status) && <button className="btn primary" onClick={async () => { const r = await post("/convert", {}, "Bill created"); if (r) nav(`/bills/${r.id}`); }}>Convert to bill</button>}
             {editable && <Link className="btn" to={`/${K.path}/${id}/edit`}>Edit</Link>}
+            {writer && <button className="btn" onClick={async () => { const r = await post("/clone", {}, "Copied as a new draft"); if (r) nav(`/${K.path}/${r.id}/edit`); }}>Copy</button>}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
             {phone && <a className="btn wa-btn" href={`https://wa.me/${phone}?text=${encodeURIComponent(waText(d, company))}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-            {writer && ["open", "issued"].includes(d.status) && d.paid === 0 && ["invoice", "bill", "dc"].includes(kind) && <button className="btn ghost danger" onClick={() => confirm(`Void ${d.number}?${isDc || kind === "bill" ? " Stock will be reversed." : ""}`) && post("/status", { status: "void" }, "Voided")}>Void</button>}
+            {writer && ["open", "issued"].includes(d.status) && d.paid === 0 && ["invoice", "bill", "dc", "credit_note", "vendor_credit"].includes(kind) && (!isCredit || d.balance === d.total) && <button className="btn ghost danger" onClick={() => confirm(`Void ${d.number}?${isDc || kind === "bill" ? " Stock will be reversed." : ""}`) && post("/status", { status: "void" }, "Voided")}>Void</button>}
             {writer && d.paid === 0 && ((!d.verified_at && d.status !== "signed") || can("admin")) && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${d.number}?`)) { await act(() => api(`/documents/${id}`, { method: "DELETE" }), "Deleted"); nav(`/${K.path}`); } }}>Delete</button>}
           </PageHead>
+          {d.credit_status?.over && <div className="form-error no-print">Over credit limit: customer owes {money(d.credit_status.owed)}, limit {money(d.credit_status.limit)}. Only a director can issue this invoice.</div>}
           <p className="muted links">
             {d.job && <>Job <Link to={`/jobs/${d.job.id}`}>{d.job.number}</Link>. </>}
             {d.source && <>Created from <Link to={`/${KIND[d.source.kind].path}/${d.source.id}`}>{d.source.number}</Link>. </>}
@@ -128,9 +139,13 @@ export default function DocumentView({ kind }) {
                 <div className="notes small">{d.notes && <p><b>Notes</b><br />{d.notes}</p>}{d.terms && <p><b>Terms</b><br />{d.terms}</p>}</div>
                 <dl className="totals">
                   <dt>Subtotal</dt><dd>{money(d.subtotal)}</dd>
-                  {d.discount_total > 0 && <><dt>Discount</dt><dd>− {money(d.discount_total)}</dd></>}
+                  {d.discount_total > 0 && <><dt>Line discounts</dt><dd>− {money(d.discount_total)}</dd></>}
                   <dt>Tax</dt><dd>{money(d.tax_total)}</dd>
+                  {d.doc_discount > 0 && <><dt>Discount</dt><dd>− {money(d.doc_discount)}</dd></>}
+                  {d.charges > 0 && <><dt>{d.charges_label || "Charges"}</dt><dd>{money(d.charges)}</dd></>}
+                  {d.adjustment !== 0 && <><dt>Round off</dt><dd>{d.adjustment > 0 ? "" : "− "}{money(Math.abs(d.adjustment))}</dd></>}
                   <dt className="grand">Total</dt><dd className="grand">{money(d.total)}</dd>
+                  {isCredit && <><dt>Unused</dt><dd>{money(d.balance)}</dd></>}
                   {isMoney && d.paid > 0 && <><dt>Paid</dt><dd>− {money(d.paid)}</dd><dt className="grand">Balance due</dt><dd className="grand">{money(d.balance)}</dd></>}
                 </dl>
               </div>
@@ -144,13 +159,34 @@ export default function DocumentView({ kind }) {
               <h3 className="pad">Payments</h3>
               <table className="table"><thead><tr><th>Payment</th><th>Paid on</th><th>Mode</th><th>Reference</th><th className="r">Applied here</th><th /></tr></thead>
                 <tbody>{d.payments.map((p) => (
-                  <tr key={p.allocation_id}><td>{can("money") ? <Link to={`/payments/${p.id}`}>{p.number}</Link> : p.number}</td><td>{fmtDate(p.date)}</td><td>{p.mode}</td><td>{p.reference}</td><td className="r">{money(p.amount)}</td>
+                  <tr key={p.allocation_id}><td>{p.source === "credit" ? <Link to={`/${KIND[p.credit_kind].path}/${p.id}`}>{p.number}</Link> : can("money") ? <Link to={`/payments/${p.id}`}>{p.number}</Link> : p.number}</td><td>{fmtDate(p.date)}</td><td>{p.mode}</td><td>{p.reference}</td><td className="r">{money(p.amount)}</td>
                     <td className="r">{can("money") && <button className="btn sm ghost danger" onClick={async () => { if (confirm("Unapply this payment? The amount goes back to the contact's advance.")) await act(() => api(`/allocations/${p.allocation_id}`, { method: "DELETE" }), "Unapplied"); }}>Unapply</button>}</td></tr>
                 ))}</tbody></table>
             </section>
           )}
           {modal === "pay" && <PaymentModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Payment recorded"); state.reload(); }} />}
-          {modal === "credits" && <ApplyCreditsModal doc={d} Modal={Modal} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
+          {isCredit && (d.applications.length > 0 || d.refunds.length > 0) && (
+            <section className="card flush no-print">
+              <h3 className="pad">Where this credit went</h3>
+              <table className="table"><thead><tr><th>Used for</th><th>Date</th><th className="r">Amount</th><th /></tr></thead>
+                <tbody>
+                  {d.applications.map((a) => <tr key={`a${a.id}`}><td>Applied to <Link to={`/${KIND[a.kind].path}/${a.document_id}`}>{a.number}</Link></td><td>{fmtDate(a.date)}</td><td className="r">{money(a.amount)}</td>
+                    <td className="r">{can("money") && <button className="btn sm ghost danger" onClick={() => act(() => api(`/allocations/${a.id}`, { method: "DELETE" }), "Unapplied")}>Unapply</button>}</td></tr>)}
+                  {d.refunds.map((r) => <tr key={`r${r.id}`}><td>Refund {r.number} · {r.mode}{r.reference ? ` · ${r.reference}` : ""}</td><td>{fmtDate(r.date)}</td><td className="r">{money(r.amount)}</td>
+                    <td className="r">{can("money") && <button className="btn sm ghost danger" onClick={() => confirm(`Delete refund ${r.number}?`) && act(() => api(`/refunds/${r.id}`, { method: "DELETE" }), "Refund deleted")}>Delete</button>}</td></tr>)}
+                </tbody></table>
+            </section>
+          )}
+          {allocDocs && (
+            <section className="card form no-print">
+              <AllocationTable docs={allocDocs} values={allocValues} setValues={setAllocValues} max={d.balance} />
+              <div className="form-actions"><button className="btn ghost" onClick={() => { setAllocDocs(null); setAllocValues({}); }}>Cancel</button>
+                <button className="btn primary" onClick={async () => { await act(() => api(`/documents/${id}/allocate`, { method: "POST", body: { allocations: Object.entries(allocValues).filter(([, v]) => Number(v) > 0).map(([document_id, amount]) => ({ document_id: Number(document_id), amount: Number(amount) })) } }), "Credit applied"); setAllocDocs(null); setAllocValues({}); }}>Apply</button></div>
+            </section>
+          )}
+          <Attachments entity="document" id={d.id} labels={ATTACH_LABELS[kind] || []} />
+          {modal === "refund" && <RefundModal source={{ credit_id: d.id }} number={d.number} unused={d.balance} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Refund recorded"); state.reload(); }} />}
+          {modal === "credits" && <ApplyCreditsModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
           {modal === "sign" && <SignModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Signed DC recorded. Job marked delivered."); state.reload(); }} />}
         </>
       );

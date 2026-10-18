@@ -4,7 +4,8 @@ import { addDays, api, Field, KIND, money, PageHead, today, useLoad, useToast } 
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 
-const ISSUE_STATUS = { quote: "sent", invoice: "open", po: "issued", bill: "open", dc: "issued" };
+const ISSUE_STATUS = { quote: "sent", invoice: "open", po: "issued", bill: "open", dc: "issued", credit_note: "open", vendor_credit: "open" };
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const blankLine = () => ({ key: Math.random(), item_id: "", description: "", qty: 1, rate: 0, discount_pct: 0, tax_rate: 0 });
 
 export default function DocumentForm({ kind }) {
@@ -16,6 +17,7 @@ export default function DocumentForm({ kind }) {
   const isSale = K.contact === "customer";
   const isDc = kind === "dc";
   const isPurchase = ["po", "bill"].includes(kind);
+  const isCredit = ["credit_note", "vendor_credit"].includes(kind);
   const jobs = useLoad(isPurchase ? "/jobs?scope=active" : null);
   const contacts = useLoad(`/contacts?type=${K.contact}`);
   const items = useLoad("/items");
@@ -31,7 +33,12 @@ export default function DocumentForm({ kind }) {
     if (id && existing.data) setDoc({ ...existing.data, lines: existing.data.lines.map((l) => ({ ...l, key: l.id, item_id: l.item_id || "" })) });
     if (!id && settings.data && !doc) {
       const d = today();
-      setDoc({ contact_id: params.get("contact") || "", job_id: params.get("job") || "", date: d, due_date: ["invoice", "bill"].includes(kind) ? addDays(d, settings.data.paymentTermsDays || 0) : "", reference: "", notes: "", terms: "", lines: [blankLine()] });
+      setDoc({ contact_id: params.get("contact") || "", job_id: params.get("job") || "", date: d, due_date: ["invoice", "bill"].includes(kind) ? addDays(d, settings.data.paymentTermsDays || 0) : "", reference: "", notes: "", terms: "",
+        doc_discount: 0, charges: 0, charges_label: "", adjustment: 0, return_stock: 1, lines: [blankLine()] });
+      // credit note from an invoice / vendor credit from a bill: start from its contact and lines
+      const from = params.get("from");
+      if (from) api(`/documents/${from}`).then((src) => setDoc((x) => ({ ...x, contact_id: String(src.contact_id), reference: src.number,
+        lines: src.lines.map((l) => ({ ...blankLine(), item_id: l.item_id || "", description: l.item_id ? "" : l.description, qty: l.qty, rate: l.rate, discount_pct: l.discount_pct, tax_rate: l.tax_rate })) }))).catch(() => {});
     }
   }, [id, existing.data, settings.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -41,7 +48,8 @@ export default function DocumentForm({ kind }) {
       const g = (Number(l.qty) || 0) * (Number(l.rate) || 0), d = g * ((Number(l.discount_pct) || 0) / 100);
       sub += g; disc += d; tax += (g - d) * ((Number(l.tax_rate) || 0) / 100);
     }
-    return { sub, disc, tax, total: sub - disc + tax };
+    const lineTotal = sub - disc + tax;
+    return { sub, disc, tax, lineTotal, total: lineTotal - (Number(doc?.doc_discount) || 0) + (Number(doc?.charges) || 0) + (Number(doc?.adjustment) || 0) };
   }, [doc]);
 
   // purchases for a Job: pull in the Job's items (if the lines are still empty) so Operations only fills supplier, rates and bill #
@@ -70,7 +78,9 @@ export default function DocumentForm({ kind }) {
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
-    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, notes: doc.notes, terms: doc.terms, status, lines, ...(isPurchase ? { job_id: doc.job_id ? Number(doc.job_id) : null } : {}) };
+    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, notes: doc.notes, terms: doc.terms, status, lines,
+      doc_discount: doc.doc_discount, charges: doc.charges, charges_label: doc.charges_label, adjustment: doc.adjustment, return_stock: doc.return_stock ? 1 : 0,
+      ...(isPurchase ? { job_id: doc.job_id ? Number(doc.job_id) : null } : {}) };
     setBusy(true);
     try {
       const r = id ? await api(`/documents/${id}`, { method: "PUT", body }) : await api("/documents", { method: "POST", body });
@@ -80,14 +90,24 @@ export default function DocumentForm({ kind }) {
   };
 
   const taxes = settings.data?.taxes || [];
+  const contact = (contacts.data || []).find((c) => String(c.id) === String(doc.contact_id));
+  // picking a contact applies their payment terms to the due date
+  const pickContact = (cid) => {
+    const c = (contacts.data || []).find((x) => String(x.id) === String(cid));
+    setDoc((d) => ({ ...d, contact_id: cid, ...(["invoice", "bill"].includes(kind) && c?.payment_terms_days != null ? { due_date: addDays(d.date, c.payment_terms_days) } : {}) }));
+  };
+  const overLimit = kind === "invoice" && contact?.credit_limit && (!id || doc.status === "draft") && contact.outstanding + totals.total > contact.credit_limit;
+  const showExtras = !isDc;
   return (
     <>
-      <PageHead title={id ? `Edit ${doc.number}` : params.get("enquiry") ? "New Enquiry" : `New ${K.label}`} sub={kind === "quote" && !id ? "Write down what the customer asked for. Rates can be added later." : null} />
+      <PageHead title={id ? `Edit ${doc.number}` : params.get("enquiry") ? "New Enquiry" : `New ${K.label}`} sub={kind === "quote" && !id ? "Write down what the customer asked for. Rates can be added later."
+        : kind === "credit_note" ? "For goods returned by the customer, or a discount after the invoice. Apply it to invoices or refund it."
+        : kind === "vendor_credit" ? "For goods we sent back, or a discount the supplier gave after the bill. Apply it to bills or take a refund." : null} />
       <div className="card form doc-form">
         <div className="row-4">
           <Field label={`${K.contact === "customer" ? "Customer" : "Supplier"} *`}>
             <div className="with-btn">
-              <select value={doc.contact_id} onChange={(e) => set("contact_id", e.target.value)}>
+              <select value={doc.contact_id} onChange={(e) => pickContact(e.target.value)}>
                 <option value="">Select…</option>
                 {(contacts.data || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -96,8 +116,13 @@ export default function DocumentForm({ kind }) {
           </Field>
           <Field label="Date"><input type="date" value={doc.date} onChange={(e) => set("date", e.target.value)} /></Field>
           {["invoice", "bill"].includes(kind) && <Field label="Due date"><input type="date" value={doc.due_date || ""} onChange={(e) => set("due_date", e.target.value)} /></Field>}
-          <Field label={kind === "bill" ? "Supplier bill #" : "Reference"}><input value={doc.reference || ""} onChange={(e) => set("reference", e.target.value)} /></Field>
+          <Field label={kind === "bill" ? "Supplier bill #" : kind === "credit_note" ? "Against invoice #" : kind === "vendor_credit" ? "Against bill #" : "Reference"}><input value={doc.reference || ""} onChange={(e) => set("reference", e.target.value)} /></Field>
         </div>
+        {isCredit && (
+          <label className="check"><input type="checkbox" checked={!!doc.return_stock} onChange={(e) => set("return_stock", e.target.checked ? 1 : 0)} />
+            {kind === "credit_note" ? "Goods came back. Add them to stock (untick for a discount / rate difference only)" : "Goods sent back to supplier. Take them out of stock"}</label>
+        )}
+        {overLimit && <div className="form-error">Over credit limit: {contact.name} owes {money(contact.outstanding)} and the limit is {money(contact.credit_limit)}. You can save a draft; a director has to issue it.</div>}
         {isPurchase && (
           <div className="row-4">
             <Field label="For Job (optional)" hint="Links the cost to the Job. Leave empty for general stock.">
@@ -146,10 +171,15 @@ export default function DocumentForm({ kind }) {
             <Field label="Notes (shown on the document)"><textarea rows={3} value={doc.notes || ""} onChange={(e) => set("notes", e.target.value)} /></Field>
             <Field label="Terms"><textarea rows={2} value={doc.terms || ""} onChange={(e) => set("terms", e.target.value)} placeholder="e.g. Payment within 15 days. Delivery Karachi." /></Field>
           </div>
-          {!isDc && <dl className="totals">
+          {showExtras && <dl className="totals extras">
             <dt>Subtotal</dt><dd>{money(totals.sub)}</dd>
-            {totals.disc > 0 && <><dt>Discount</dt><dd>− {money(totals.disc)}</dd></>}
+            {totals.disc > 0 && <><dt>Line discounts</dt><dd>− {money(totals.disc)}</dd></>}
             <dt>Tax</dt><dd>{money(totals.tax)}</dd>
+            <dt><label htmlFor="docdisc">Discount (Rs)</label></dt><dd><input id="docdisc" type="number" step="0.01" min="0" value={doc.doc_discount || ""} placeholder="0" onChange={(e) => set("doc_discount", e.target.value)} /></dd>
+            <dt><input aria-label="Charges label" className="inline-label" value={doc.charges_label || ""} placeholder="Delivery / other charges" onChange={(e) => set("charges_label", e.target.value)} /></dt>
+            <dd><input type="number" step="0.01" min="0" value={doc.charges || ""} placeholder="0" onChange={(e) => set("charges", e.target.value)} aria-label="Charges amount" /></dd>
+            <dt><label htmlFor="adj">Round off</label> <button type="button" className="rate-hint inline" onClick={() => set("adjustment", r2(Math.round(totals.total - (Number(doc.adjustment) || 0)) - (totals.total - (Number(doc.adjustment) || 0))))}>round</button></dt>
+            <dd><input id="adj" type="number" step="0.01" value={doc.adjustment || ""} placeholder="0" onChange={(e) => set("adjustment", e.target.value)} /></dd>
             <dt className="grand">Total</dt><dd className="grand">{money(totals.total)}</dd>
           </dl>}
         </div>
@@ -158,7 +188,7 @@ export default function DocumentForm({ kind }) {
           <button className="btn ghost" onClick={() => nav(-1)}>Cancel</button>
           {kind === "quote" && (!id || doc.status === "enquiry") && <button className="btn" disabled={busy} onClick={() => save(false, true)}>Save as enquiry (rates pending)</button>}
           {(!id || doc.status === "draft") && <button className="btn" disabled={busy} onClick={() => save(false)}>Save as draft</button>}
-          <button className="btn primary" disabled={busy} onClick={() => save(!id || ["draft", "enquiry"].includes(doc.status))}>{id && !["draft", "enquiry"].includes(doc.status) ? "Save" : kind === "quote" ? "Save & mark sent" : kind === "dc" ? "Save & issue DC" : kind === "po" ? "Save & issue" : `Save & ${kind === "invoice" ? "issue" : "record"}`}</button>
+          <button className="btn primary" disabled={busy} onClick={() => save(!id || ["draft", "enquiry"].includes(doc.status))}>{id && !["draft", "enquiry"].includes(doc.status) ? "Save" : kind === "quote" ? "Save & mark sent" : kind === "dc" ? "Save & issue DC" : kind === "po" || isCredit ? "Save & issue" : `Save & ${kind === "invoice" ? "issue" : "record"}`}</button>
         </div>
       </div>
       {addingItem && <ItemForm onClose={() => setAddingItem(false)} onSaved={async (newId) => {

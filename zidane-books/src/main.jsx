@@ -27,10 +27,12 @@ const NAV = [
   { to: "/quotes", label: "Enquiries & Quotes", icon: "✎", any: ["sales.read"] },
   { to: "/delivery-challans", label: "Delivery Challans", icon: "⇥", any: ["sales.read"] },
   { to: "/invoices", label: "Invoices", icon: "▤", any: ["sales.read"] },
+  { to: "/credit-notes", label: "Credit Notes", icon: "↺", any: ["sales.read"] },
   { group: "Operations", any: ["ops.read"] },
   { to: "/suppliers", label: "Suppliers", icon: "⚑", any: ["ops.read"] },
   { to: "/purchase-orders", label: "Purchase Orders", icon: "✉", any: ["ops.read"] },
   { to: "/bills", label: "Supplier Bills", icon: "▥", any: ["ops.read"] },
+  { to: "/vendor-credits", label: "Vendor Credits", icon: "↻", any: ["ops.read"] },
   { group: "Accounts", any: ["money", "expenses"] },
   { to: "/payments-received", label: "Payments Received", icon: "↓", any: ["money"] },
   { to: "/payments-made", label: "Payments Made", icon: "↑", any: ["money"] },
@@ -74,7 +76,7 @@ function Shell() {
             <Route path="/customers" element={<Contacts type="customer" />} />
             <Route path="/suppliers" element={<Contacts type="supplier" />} />
             <Route path="/contacts/:id" element={<ContactView />} />
-            {["quote", "dc", "invoice", "po", "bill"].map((k) => [
+            {["quote", "dc", "invoice", "credit_note", "po", "bill", "vendor_credit"].map((k) => [
               <Route key={k} path={`/${pathOf(k)}`} element={<Documents kind={k} />} />,
               <Route key={k + "n"} path={`/${pathOf(k)}/new`} element={<DocumentForm kind={k} />} />,
               <Route key={k + "v"} path={`/${pathOf(k)}/:id`} element={<DocumentView kind={k} />} />,
@@ -94,7 +96,7 @@ function Shell() {
     </div>
   );
 }
-const pathOf = (k) => ({ quote: "quotes", dc: "delivery-challans", invoice: "invoices", po: "purchase-orders", bill: "bills" })[k];
+const pathOf = (k) => ({ quote: "quotes", dc: "delivery-challans", invoice: "invoices", credit_note: "credit-notes", po: "purchase-orders", bill: "bills", vendor_credit: "vendor-credits" })[k];
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter><ToastProvider><AuthProvider><Shell /></AuthProvider></ToastProvider></BrowserRouter>,

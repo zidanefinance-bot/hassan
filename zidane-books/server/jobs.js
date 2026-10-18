@@ -173,7 +173,7 @@ export function invoiceFromJob(db, userId, jobId) {
   const lines = items.map((i) => ({ item_id: i.item_id, description: i.description, qty: round2((anyDc ? delivered(i).qty : i.qty) - invoiced(i).qty), rate: i.sale_rate, tax_rate: i.tax_rate }))
     .filter((l) => l.qty > 0);
   if (lines.length === 0) throw httpError(400, anyDc ? "Everything delivered is already invoiced" : "Nothing left to invoice");
-  const days = getSetting(db, "paymentTermsDays") || 0;
+  const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
   const due = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
   return saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: due, reference: job.customer_po_number || job.number, lines });
 }

@@ -2,7 +2,8 @@
 // whatever is left stays with the contact as an advance (unused credit) and can be applied later.
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, Field, fmtDate, KIND, Loading, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
+import { api, Field, fmtDate, KIND, Loading, Modal, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
+import Attachments from "../components/Attachments.jsx";
 
 const isIn = (d) => d === "in";
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -32,7 +33,7 @@ export default function Payments({ direction }) {
 }
 
 // table of open invoices/bills with an amount box each; `max` caps the total
-function AllocationTable({ docs, values, setValues, max }) {
+export function AllocationTable({ docs, values, setValues, max }) {
   const applied = r2(Object.values(values).reduce((a, v) => a + (Number(v) || 0), 0));
   const autofill = () => {
     let left = r2(max);
@@ -112,11 +113,30 @@ export function RecordPayment() {
   );
 }
 
+// give back an unused advance or credit note: source = { payment_id } or { credit_id }
+export function RefundModal({ source, number, unused, onClose, onSaved }) {
+  const [r, setR] = useState({ amount: unused, date: today(), mode: "bank", reference: "", notes: "" });
+  const [err, setErr] = useState("");
+  const b = (k) => ({ value: r[k], onChange: (e) => setR({ ...r, [k]: e.target.value }) });
+  return (
+    <Modal title={`Refund from ${number}`} onClose={onClose}>
+      <form className="form" onSubmit={async (e) => { e.preventDefault(); try { await api("/refunds", { method: "POST", body: { ...source, ...r } }); onSaved(); } catch (x) { setErr(x.message); } }}>
+        <p className="muted">Unused: <b>{money(unused)}</b></p>
+        <div className="row-2"><Field label="Amount (Rs)"><input type="number" step="0.01" {...b("amount")} required autoFocus /></Field><Field label="Date"><input type="date" {...b("date")} /></Field></div>
+        <div className="row-2"><Field label="Mode"><select {...b("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field><Field label="Reference"><input {...b("reference")} /></Field></div>
+        {err && <div className="form-error">{err}</div>}
+        <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Record refund</button></div>
+      </form>
+    </Modal>
+  );
+}
+
 export function PaymentView() {
   const { id } = useParams();
   const state = useLoad(`/payments/${id}`);
   const [docs, setDocs] = useState(null);
   const [values, setValues] = useState({});
+  const [refunding, setRefunding] = useState(false);
   const nav = useNavigate();
   const toast = useToast();
   const act = async (fn, msg) => { try { await fn(); toast(msg); state.reload(); setDocs(null); setValues({}); } catch (x) { toast(x.message, "err"); } };
@@ -125,7 +145,8 @@ export function PaymentView() {
       <>
         <PageHead title={<>{p.number} {p.unused > 0 && <span className="badge green">{money(p.unused)} unused</span>}</>} sub={`${p.direction === "in" ? "Received from" : "Paid to"} ${p.contact_name} · ${fmtDate(p.date)}`}>
           <Link className="btn" to={`/contacts/${p.contact_id}`}>Ledger</Link>
-          {p.allocations.length === 0 && <button className="btn ghost danger" onClick={() => confirm(`Delete ${p.number}?`) && act(async () => { await api(`/payments/${id}`, { method: "DELETE" }); nav(p.direction === "in" ? "/payments-received" : "/payments-made"); }, "Payment deleted")}>Delete</button>}
+          {p.unused > 0 && <button className="btn" onClick={() => setRefunding(true)}>Refund</button>}
+          {p.allocations.length === 0 && p.refunds.length === 0 && <button className="btn ghost danger" onClick={() => confirm(`Delete ${p.number}?`) && act(async () => { await api(`/payments/${id}`, { method: "DELETE" }); nav(p.direction === "in" ? "/payments-received" : "/payments-made"); }, "Payment deleted")}>Delete</button>}
         </PageHead>
         <div className="stats">
           <div className="stat"><small>Amount</small><b>{money(p.amount)}</b><span className="muted">{p.mode}{p.reference ? ` · ${p.reference}` : ""}</span></div>
@@ -156,34 +177,44 @@ export function PaymentView() {
             )}
           </section>
         )}
+        {p.refunds.length > 0 && (
+          <section className="card flush"><h3 className="pad">Refunds</h3>
+            <table className="table"><tbody>{p.refunds.map((r) => <tr key={r.id}><td><b>{r.number}</b></td><td>{fmtDate(r.date)}</td><td>{r.mode}</td><td className="muted">{r.reference}</td><td className="r">{money(r.amount)}</td>
+              <td className="r"><button className="btn sm ghost danger" onClick={() => confirm(`Delete refund ${r.number}?`) && act(() => api(`/refunds/${r.id}`, { method: "DELETE" }), "Refund deleted")}>Delete</button></td></tr>)}</tbody></table>
+          </section>
+        )}
         {p.notes && <p className="muted">Notes: {p.notes}</p>}
+        <Attachments entity="payment" id={p.id} labels={["Payment proof", "Bank screenshot", "Cheque copy"]} />
+        {refunding && <RefundModal source={{ payment_id: p.id }} number={p.number} unused={p.unused} onClose={() => setRefunding(false)} onSaved={() => { setRefunding(false); toast("Refund recorded"); state.reload(); }} />}
       </>
     )}</Loading>
   );
 }
 
-// on an invoice/bill: use the contact's advances to clear it
-export function ApplyCreditsModal({ doc, onClose, onSaved, Modal }) {
+// on an invoice/bill: use the contact's advances and credit notes to clear it
+export function ApplyCreditsModal({ doc, onClose, onSaved }) {
   const [values, setValues] = useState({});
   const [err, setErr] = useState("");
+  const key = (c) => `${c.source}-${c.id}`;
   const total = useMemo(() => r2(Object.values(values).reduce((a, v) => a + (Number(v) || 0), 0)), [values]);
   const autofill = () => {
     let left = doc.balance; const next = {};
-    for (const c of doc.credits) { const take = r2(Math.min(left, c.unused)); if (take > 0) next[c.id] = take; left = r2(left - take); }
+    for (const c of doc.credits) { const take = r2(Math.min(left, c.unused)); if (take > 0) next[key(c)] = take; left = r2(left - take); }
     setValues(next);
   };
   const save = async () => {
-    try { await api(`/documents/${doc.id}/apply-credits`, { method: "POST", body: { credits: Object.entries(values).filter(([, v]) => Number(v) > 0).map(([payment_id, amount]) => ({ payment_id: Number(payment_id), amount: Number(amount) })) } }); onSaved(); } catch (x) { setErr(x.message); }
+    const credits = doc.credits.filter((c) => Number(values[key(c)]) > 0).map((c) => ({ [c.source === "payment" ? "payment_id" : "credit_id"]: c.id, amount: Number(values[key(c)]) }));
+    try { await api(`/documents/${doc.id}/apply-credits`, { method: "POST", body: { credits } }); onSaved(); } catch (x) { setErr(x.message); }
   };
   return (
     <Modal title={`Apply credits · ${doc.number}`} onClose={onClose}>
       <div className="form">
-        <div className="row-between"><p className="muted">Balance due <b>{money(doc.balance)}</b> · available credit <b>{money(doc.credits.reduce((a, c) => a + c.unused, 0))}</b></p><button className="btn sm" onClick={autofill}>Auto-apply</button></div>
+        <div className="row-between"><p className="muted">Balance due <b>{money(doc.balance)}</b> · available <b>{money(doc.credits.reduce((a, c) => a + c.unused, 0))}</b></p><button className="btn sm" onClick={autofill}>Auto-apply</button></div>
         <table className="table compact">
-          <thead><tr><th>Payment</th><th>Date</th><th>Reference</th><th className="r">Unused</th><th className="r" style={{ width: 140 }}>Apply</th></tr></thead>
+          <thead><tr><th>Credit</th><th>Date</th><th>Reference</th><th className="r">Unused</th><th className="r" style={{ width: 140 }}>Apply</th></tr></thead>
           <tbody>{doc.credits.map((c) => (
-            <tr key={c.id}><td>{c.number}</td><td>{fmtDate(c.date)}</td><td className="muted">{c.reference || c.mode}</td><td className="r">{money(c.unused)}</td>
-              <td className="r"><input type="number" step="0.01" min="0" max={c.unused} value={values[c.id] ?? ""} onChange={(e) => setValues({ ...values, [c.id]: e.target.value })} /></td></tr>
+            <tr key={key(c)}><td><b>{c.number}</b><div className="muted small">{c.label}</div></td><td>{fmtDate(c.date)}</td><td className="muted">{c.reference || c.mode || ""}</td><td className="r">{money(c.unused)}</td>
+              <td className="r"><input type="number" step="0.01" min="0" max={c.unused} value={values[key(c)] ?? ""} onChange={(e) => setValues({ ...values, [key(c)]: e.target.value })} /></td></tr>
           ))}</tbody>
           <tfoot><tr><td colSpan={4}>Applying</td><td className={`r ${total > doc.balance + 0.001 ? "neg" : ""}`}>{money(total)}</td></tr></tfoot>
         </table>
