@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { addDays, api, Field, KIND, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
+import { readFiles } from "./Inbox.jsx";
 
 const ISSUE_STATUS = { quote: "sent", invoice: "open", po: "issued", bill: "open", dc: "issued", credit_note: "open", vendor_credit: "open" };
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -28,6 +29,11 @@ export default function DocumentForm({ kind }) {
   const [addingItem, setAddingItem] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // AI draft: from the orders inbox (?inbox=ID) or a bill photo read on this page
+  const [inboxId, setInboxId] = useState(params.get("inbox"));
+  const [draft, setDraft] = useState(null);
+  const [reading, setReading] = useState(false);
+  const photo = useRef(null);
 
   useEffect(() => {
     if (id && existing.data) setDoc({ ...existing.data, lines: existing.data.lines.map((l) => ({ ...l, key: l.id, item_id: l.item_id || "" })) });
@@ -37,6 +43,7 @@ export default function DocumentForm({ kind }) {
         doc_discount: 0, charges: 0, charges_label: "", adjustment: 0, return_stock: 1, lines: [blankLine()] });
       // credit note from an invoice / vendor credit from a bill: start from its contact and lines
       const from = params.get("from");
+      if (inboxId) api(`/inbox/${inboxId}`).then((m) => m.extraction && setDraft({ ...m.extraction, from: m.from_addr || (m.source === "email" ? "email" : "upload") })).catch(() => {});
       if (from) api(`/documents/${from}`).then((src) => setDoc((x) => ({ ...x, contact_id: String(src.contact_id), reference: src.number,
         lines: src.lines.map((l) => ({ ...blankLine(), item_id: l.item_id || "", description: l.item_id ? "" : l.description, qty: l.qty, rate: l.rate, discount_pct: l.discount_pct, tax_rate: l.tax_rate })) }))).catch(() => {});
     }
@@ -51,6 +58,38 @@ export default function DocumentForm({ kind }) {
     const lineTotal = sub - disc + tax;
     return { sub, disc, tax, lineTotal, total: lineTotal - (Number(doc?.doc_discount) || 0) + (Number(doc?.charges) || 0) + (Number(doc?.adjustment) || 0) };
   }, [doc]);
+
+  // put an AI draft into the form once items are loaded (a missing rate falls back to the item's rate)
+  useEffect(() => {
+    if (!draft || !doc || !items.data) return;
+    const x = draft;
+    setDoc((d) => ({
+      ...d,
+      contact_id: x.party_match_id ? String(x.party_match_id) : d.contact_id,
+      date: x.date || d.date,
+      due_date: kind === "bill" && x.required_date ? x.required_date : d.due_date,
+      reference: x.reference || d.reference,
+      notes: [d.notes, !x.party_match_id && x.party_name ? `${isSale ? "Customer" : "Supplier"} on paper: ${x.party_name}` : null, kind !== "bill" && x.required_date ? `Needed by ${x.required_date}` : null, x.notes].filter(Boolean).join("\n"),
+      lines: x.lines.length ? x.lines.map((l) => {
+        const it = items.data.find((i) => i.id === l.item_match_id);
+        return { ...blankLine(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty,
+          rate: l.rate ?? (it ? (isSale ? it.sale_rate : it.purchase_rate) ?? 0 : 0), tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description };
+      }) : d.lines,
+    }));
+    setDraft(null);
+  }, [draft, items.data, doc === null]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const readPhoto = async (files) => {
+    setReading(true); setErr("");
+    try {
+      const m = await api("/inbox", { method: "POST", body: { files: await readFiles(files), wait: true } });
+      if (m.status === "error") throw new Error(m.error || "Couldn't read it");
+      if (!m.extraction || m.extraction.doc_type !== "supplier_bill") throw new Error("That doesn't look like a supplier bill. Try a clearer photo.");
+      setInboxId(String(m.id));
+      setDraft({ ...m.extraction, from: "photo" });
+      toast("Bill read. Check the lines, then save.");
+    } catch (x) { setErr(x.message); } finally { setReading(false); if (photo.current) photo.current.value = ""; }
+  };
 
   // purchases for a Job: pull in the Job's items (if the lines are still empty) so Operations only fills supplier, rates and bill #
   useEffect(() => {
@@ -74,7 +113,7 @@ export default function DocumentForm({ kind }) {
   };
   const save = async (issue, asEnquiry = false) => {
     setErr("");
-    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ...l }) => ({ ...l, item_id: l.item_id || null }));
+    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ai, ai_text, ...l }) => ({ ...l, item_id: l.item_id || null }));
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
@@ -84,6 +123,7 @@ export default function DocumentForm({ kind }) {
     setBusy(true);
     try {
       const r = id ? await api(`/documents/${id}`, { method: "PUT", body }) : await api("/documents", { method: "POST", body });
+      if (inboxId && !id) await api(`/inbox/${inboxId}/status`, { method: "POST", body: { status: "done", result_kind: kind, result_id: r.id } }).catch(() => {});
       toast(`${K.label} saved`);
       nav(`/${K.path}/${r.id}`);
     } catch (x) { setErr(x.message); } finally { setBusy(false); }
@@ -102,7 +142,15 @@ export default function DocumentForm({ kind }) {
     <>
       <PageHead title={id ? `Edit ${doc.number}` : params.get("enquiry") ? "New Enquiry" : `New ${K.label}`} sub={kind === "quote" && !id ? "Write down what the customer asked for. Rates can be added later."
         : kind === "credit_note" ? "For goods returned by the customer, or a discount after the invoice. Apply it to invoices or refund it."
-        : kind === "vendor_credit" ? "For goods we sent back, or a discount the supplier gave after the bill. Apply it to bills or take a refund." : null} />
+        : kind === "vendor_credit" ? "For goods we sent back, or a discount the supplier gave after the bill. Apply it to bills or take a refund." : null}>
+        {kind === "bill" && !id && <>
+          <button className="btn" disabled={reading} onClick={() => photo.current?.click()}>{reading ? "Reading bill…" : "📷 Fill from bill photo"}</button>
+          <input ref={photo} type="file" accept="image/*,application/pdf" capture="environment" hidden onChange={(e) => e.target.files.length && readPhoto([...e.target.files])} />
+        </>}
+      </PageHead>
+      {inboxId && !id && doc.lines.some((l) => l.ai) && (
+        <div className="ai-banner">✨ Filled by AI. Lines marked <span className="ai-flag">check</span> weren't matched to an item for sure. Fix them, then save.</div>
+      )}
       <div className="card form doc-form">
         <div className="row-4">
           <Field label={`${K.contact === "customer" ? "Customer" : "Supplier"} *`}>
@@ -140,8 +188,9 @@ export default function DocumentForm({ kind }) {
               const amt = (Number(l.qty) || 0) * (Number(l.rate) || 0) * (1 - (Number(l.discount_pct) || 0) / 100);
               const it = items.data?.find((x) => String(x.id) === String(l.item_id));
               return (
-                <tr key={l.key}>
+                <tr key={l.key} className={l.ai && l.ai !== "high" ? "ai-check" : ""}>
                   <td>
+                    {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”</small>}
                     <select value={l.item_id} onChange={(e) => pickItem(i, e.target.value)}>
                       <option value="">— custom line —</option>
                       {(items.data || []).map((x) => <option key={x.id} value={x.id}>{x.name}{x.track_stock ? ` (${x.stock_qty} ${x.unit})` : ""}</option>)}

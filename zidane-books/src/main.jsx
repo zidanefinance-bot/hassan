@@ -16,10 +16,12 @@ import Payments, { PaymentView, RecordPayment } from "./pages/Payments.jsx";
 import Expenses from "./pages/Expenses.jsx";
 import Reports from "./pages/Reports.jsx";
 import Settings from "./pages/Settings.jsx";
+import Inbox from "./pages/Inbox.jsx";
 import Bell from "./components/Notifications.jsx";
 
 const NAV = [
   { to: "/", label: "Home", icon: "⌂", end: true },
+  { to: "/inbox", label: "Orders Inbox", icon: "✉", any: ["sales.write", "buy", "admin"] },
   { to: "/jobs", label: "Jobs", icon: "▣", any: ["sales.read", "ops.read"] },
   { to: "/procurement", label: "Procurement", icon: "⛟", any: ["buy"] },
   { to: "/items", label: "Items", icon: "◫" },
@@ -69,6 +71,7 @@ function Shell() {
         <main className="content">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/inbox" element={<Inbox />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/jobs/new" element={<JobForm />} />
             <Route path="/jobs/:id" element={<JobView />} />

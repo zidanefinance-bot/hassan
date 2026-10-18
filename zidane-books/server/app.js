@@ -11,6 +11,9 @@ import * as J from "./jobs.js";
 import * as I from "./items.js";
 import * as R from "./reports.js";
 import * as C from "./collab.js";
+import * as IN from "./inbox.js";
+import { emailDocuments, mailReady } from "./mailer.js";
+import { documentPdf } from "./pdf.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -241,6 +244,30 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   });
   api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req)) }));
   api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req)) }));
+  // "Material arrived": delivery challan + invoice in one go, optionally emailed to the customer as PDFs
+  api.post("/jobs/:id/deliver", requirePerm("sales.write"), async (req, res) => {
+    const out = { dc_id: null, invoice_id: null, invoice_status: null, email: null };
+    const pending = db.prepare("SELECT 1 FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'draft'").get(id(req));
+    if (pending) throw httpError(400, "This Job already has a draft delivery challan. Issue or delete it first.");
+    out.dc_id = J.dcFromJob(db, req.user.id, id(req));
+    B.setStatus(db, req.user.id, out.dc_id, "issued");
+    out.invoice_id = J.invoiceFromJob(db, req.user.id, id(req));
+    const inv = db.prepare("SELECT * FROM documents WHERE id = ?").get(out.invoice_id);
+    try {
+      limitGuard(req, inv.id, () => checkCreditLimit(req, inv.contact_id, inv.total));
+      B.setStatus(db, req.user.id, inv.id, "open");
+      afterSave(req, inv.id, "draft");
+      out.invoice_status = "open";
+    } catch (e) {
+      if (e.status !== 403) throw e;
+      out.invoice_status = "draft"; out.invoice_note = e.message; // over the credit limit: stays draft, directors are asked
+    }
+    if (req.body?.email) {
+      const ids = out.invoice_status === "open" ? [out.dc_id, out.invoice_id] : [out.dc_id];
+      try { out.email = { ok: true, ...(await emailDocuments(db, req.user.id, ids, { to: req.body.to })) }; } catch (e) { out.email = { ok: false, error: e.message }; }
+    }
+    res.json(out);
+  });
   api.post("/jobs/:id/close", requirePerm("admin"), (req, res) => { J.closeJob(db, req.user.id, id(req), req.body.closed !== false); res.json({ ok: true }); });
   api.post("/job-items/:id/procurement", requirePerm("buy"), (req, res) => {
     const ji = db.prepare("SELECT ji.job_id, ji.procurement_status, COALESCE(i.name, ji.description) AS name FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.id = ?").get(id(req));
@@ -334,6 +361,17 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     B.setStatus(db, req.user.id, id(req), req.body.status);
     afterSave(req, d.id, d.status);
   }));
+  api.post("/documents/:id/email", async (req, res) => {
+    const d = loadDoc(req, DOC_WRITE);
+    res.json(await emailDocuments(db, req.user.id, [d.id, ...(req.body?.with || []).map(Number).filter((x) => x !== d.id && canAny(req.user, DOC_WRITE[db.prepare("SELECT kind FROM documents WHERE id = ?").get(x)?.kind]))], { to: req.body?.to, cc: req.body?.cc, message: req.body?.message }));
+  });
+  api.get("/documents/:id/pdf", async (req, res) => {
+    const d = loadDoc(req, DOC_READ);
+    const p = await documentPdf(db, d.id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `${req.query.download ? "attachment" : "inline"}; filename="${p.filename}"`);
+    res.send(p.buffer);
+  });
   api.post("/documents/:id/clone", docAction(DOC_WRITE, (req) => ({ id: B.cloneDocument(db, req.user.id, id(req)) })));
   api.post("/documents/:id/convert", docAction(DOC_WRITE, (req) => ({ id: B.convertDocument(db, req.user.id, id(req)) })));
   api.post("/documents/:id/job", docAction(DOC_WRITE, (req, d) => {
@@ -477,6 +515,39 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.get("/notifications", (req, res) => { C.dailyAlerts(db); res.json(C.inbox(db, req.user.id)); });
   api.post("/notifications/read", (req, res) => { C.markRead(db, req.user.id, req.body?.ids === "all" ? "all" : req.body?.ids); res.json({ ok: true }); });
 
+  // ---- orders inbox (AI reads POs and supplier bills)
+  const aiReady = () => IN.readerReady();
+  const needInbox = (req) => { if (!IN.canUseInbox(req.user)) throw httpError(403, "You don't have access to this"); };
+  api.get("/setup-status", (_req, res) => res.json({ ai: aiReady(), email_in: Boolean(process.env.IMAP_HOST && process.env.IMAP_USER), email_out: mailReady(), telegram: Boolean(process.env.TELEGRAM_BOT_TOKEN) }));
+  api.get("/inbox", (req, res) => { needInbox(req); res.json(IN.listInbox(db, req.user, req.query)); });
+  api.get("/inbox/files/:id", (req, res) => {
+    needInbox(req);
+    const f = IN.inboxFile(db, req.user, id(req));
+    res.setHeader("Content-Type", f.mime);
+    res.setHeader("Content-Disposition", `inline; filename="${f.filename}"`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.send(readFileSync(join(uploadDir, f.path)));
+  });
+  api.get("/inbox/:id", (req, res) => { needInbox(req); res.json(IN.getMessage(db, req.user, id(req))); });
+  // paste a message or upload photos/PDFs; with wait=true the answer comes back once AI has read it
+  api.post("/inbox", async (req, res) => {
+    needInbox(req);
+    const { text = "", subject = "", files = [], wait } = req.body || {};
+    if (!String(text).trim() && !files.length) throw httpError(400, "Paste the message or attach a photo / PDF");
+    const decoded = files.map((f) => ({ filename: f.filename, mime: f.mime, buffer: Buffer.from(String(f.data || ""), "base64") }));
+    if (decoded.some((f) => f.buffer.length > MAX_UPLOAD)) throw httpError(400, "Files can be at most 10 MB");
+    const mid = IN.addMessage(db, uploadDir, { source: files.length ? "upload" : "paste", subject: subject || null, body_text: String(text).slice(0, 100000), files: decoded, created_by: req.user.id });
+    const job = IN.enqueue(db, uploadDir, mid);
+    if (wait) await job;
+    res.json(wait ? IN.getMessage(db, req.user, mid) : { id: mid });
+  });
+  api.post("/inbox/:id/read", (req, res) => { needInbox(req); IN.getMessage(db, req.user, id(req)); if (!aiReady()) throw httpError(503, "AI is not set up yet"); IN.enqueue(db, uploadDir, id(req)); res.json({ ok: true }); });
+  api.post("/inbox/:id/status", (req, res) => { needInbox(req); IN.markHandled(db, req.user, id(req), req.body || {}); res.json({ ok: true }); });
+  api.post("/inbox/check", requirePerm("admin"), async (_req, res) => {
+    if (!process.env.IMAP_HOST) throw httpError(503, "Email inbox is not set up yet");
+    res.json({ added: await IN.fetchMail(db, uploadDir) });
+  });
+
   // ---- backup (director): a consistent copy of the whole database
   api.get("/admin/backup", requirePerm("admin"), (_req, res) => {
     const file = join(uploadDir, "..", `backup-${Date.now()}.db`);
@@ -506,7 +577,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   app.use((err, _req, res, _next) => {
     const status = err.status || 500;
     if (status >= 500) console.error(err);
-    res.status(status).json({ error: status >= 500 ? "Something went wrong on the server" : err.message });
+    // 502/503 are our own "email failed" / "not set up yet" messages; other 5xx are bugs and stay generic
+    res.status(status).json({ error: status >= 500 && ![502, 503].includes(status) ? "Something went wrong on the server" : err.message });
   });
   return app;
 }

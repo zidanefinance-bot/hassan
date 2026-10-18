@@ -57,6 +57,37 @@ function waText(d, company) {
   return `${head}\n\n${lines}${tail}\n\n${company.phone} · ${company.website}`;
 }
 
+function EmailModal({ doc, onClose, onSent }) {
+  const [to, setTo] = useState(doc.contact?.email || "");
+  const [message, setMessage] = useState("");
+  const [withDc, setWithDc] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const setup = useLoad("/setup-status");
+  // an invoice made from a Job can carry that Job's issued DC in the same email
+  const jobDocs = useLoad(doc.job_id && doc.kind === "invoice" ? `/jobs/${doc.job_id}` : null);
+  const dcs = (jobDocs.data?.documents || []).filter((x) => x.kind === "dc" && ["issued", "signed"].includes(x.status));
+  const send = async (e) => {
+    e.preventDefault(); setBusy(true); setErr("");
+    try { onSent(await api(`/documents/${doc.id}/email`, { method: "POST", body: { to, message: message || undefined, with: withDc ? dcs.map((x) => x.id) : [] } })); }
+    catch (x) { setErr(x.message); setBusy(false); }
+  };
+  return (
+    <Modal title={`Email ${doc.number}`} onClose={onClose}>
+      {setup.data && !setup.data.email_out ? <div className="form"><p>Email isn't set up on the server yet. A director can add the SMTP settings (see SETUP-AI-EMAIL.md). Until then use Print / PDF or WhatsApp.</p><div className="form-actions"><button className="btn" onClick={onClose}>Close</button></div></div> : (
+        <form className="form" onSubmit={send}>
+          <Field label="To" hint="Separate several addresses with commas"><input value={to} onChange={(e) => setTo(e.target.value)} required placeholder="accounts@customer.com" /></Field>
+          <Field label="Message (optional)" hint="Leave empty for a standard message with the amount and due date"><textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
+          {dcs.length > 0 && <label className="check"><input type="checkbox" checked={withDc} onChange={(e) => setWithDc(e.target.checked)} /> Also attach {dcs.map((x) => x.number).join(", ")}</label>}
+          <p className="muted small">The {doc.kind === "dc" ? "challan" : "document"} goes as a PDF attachment.{doc.kind === "invoice" && !doc.submitted_date ? " The invoice will be marked as submitted to the customer." : ""}</p>
+          {err && <div className="form-error">{err}</div>}
+          <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy}>{busy ? "Sending…" : "Send"}</button></div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
 export default function DocumentView({ kind }) {
   const K = KIND[kind];
   const { id } = useParams();
@@ -101,6 +132,7 @@ export default function DocumentView({ kind }) {
             {editable && <Link className="btn" to={`/${K.path}/${id}/edit`}>Edit</Link>}
             {writer && <button className="btn" onClick={async () => { const r = await post("/clone", {}, "Copied as a new draft"); if (r) nav(`/${K.path}/${r.id}/edit`); }}>Copy</button>}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
+            {writer && !["draft", "void", "enquiry"].includes(d.status) && <button className="btn" onClick={() => setModal("email")}>Email</button>}
             {phone && <a className="btn wa-btn" href={`https://wa.me/${phone}?text=${encodeURIComponent(waText(d, company))}`} target="_blank" rel="noreferrer">WhatsApp</a>}
             {writer && ["open", "issued"].includes(d.status) && d.paid === 0 && ["invoice", "bill", "dc", "credit_note", "vendor_credit"].includes(kind) && (!isCredit || d.balance === d.total) && <button className="btn ghost danger" onClick={() => confirm(`Void ${d.number}?${isDc || kind === "bill" ? " Stock will be reversed." : ""}`) && post("/status", { status: "void" }, "Voided")}>Void</button>}
             {writer && d.paid === 0 && ((!d.verified_at && d.status !== "signed") || can("admin")) && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${d.number}?`)) { await act(() => api(`/documents/${id}`, { method: "DELETE" }), "Deleted"); nav(`/${K.path}`); } }}>Delete</button>}
@@ -189,6 +221,7 @@ export default function DocumentView({ kind }) {
           <Comments entity="document" id={d.id} />
           {modal === "refund" && <RefundModal source={{ credit_id: d.id }} number={d.number} unused={d.balance} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Refund recorded"); state.reload(); }} />}
           {modal === "credits" && <ApplyCreditsModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
+          {modal === "email" && <EmailModal doc={d} onClose={() => setModal(null)} onSent={(r) => { setModal(null); toast(`Emailed to ${r.to}`); state.reload(); }} />}
           {modal === "sign" && <SignModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Signed DC recorded. Job marked delivered."); state.reload(); }} />}
         </>
       );

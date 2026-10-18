@@ -166,6 +166,32 @@ CREATE TABLE IF NOT EXISTS notifications (
   title TEXT NOT NULL, body TEXT, link TEXT, actor_id INTEGER REFERENCES users(id),
   read_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- v5: orders inbox. Emails (or a pasted message / uploaded photo) that AI reads into a draft quote, Job or supplier bill
+CREATE TABLE IF NOT EXISTS inbox_messages (
+  id INTEGER PRIMARY KEY, source TEXT NOT NULL CHECK (source IN ('email','upload','paste','telegram','api')), message_id TEXT UNIQUE,
+  from_addr TEXT, subject TEXT, body_text TEXT, received_at TEXT NOT NULL DEFAULT (datetime('now')),
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','reading','ready','done','ignored','error')),
+  doc_type TEXT, extraction TEXT, error TEXT, result_kind TEXT, result_id INTEGER,
+  created_by INTEGER REFERENCES users(id), handled_by INTEGER REFERENCES users(id), handled_at TEXT
+);
+CREATE TABLE IF NOT EXISTS inbox_files (
+  id INTEGER PRIMARY KEY, inbox_id INTEGER NOT NULL REFERENCES inbox_messages(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, path TEXT NOT NULL
+);
+-- v5: emails sent to customers/suppliers from the app
+CREATE TABLE IF NOT EXISTS email_log (
+  id INTEGER PRIMARY KEY, to_addr TEXT NOT NULL, subject TEXT NOT NULL, document_ids TEXT, status TEXT NOT NULL, error TEXT,
+  sent_by INTEGER REFERENCES users(id), sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- v5: a user's Telegram chat for alerts, and personal API keys (for an assistant bot such as OpenClaw; off until a director enables it)
+CREATE TABLE IF NOT EXISTS user_telegram (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, chat_id TEXT, link_code TEXT UNIQUE, linked_at TEXT
+);
+CREATE TABLE IF NOT EXISTS api_keys (
+  id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL,
+  prefix TEXT NOT NULL, key_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL DEFAULT (datetime('now')), last_used_at TEXT, revoked_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox_messages(status, received_at);
 CREATE INDEX IF NOT EXISTS idx_comments ON comments(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at);
 CREATE INDEX IF NOT EXISTS idx_docs_kind ON documents(kind, date);

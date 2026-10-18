@@ -1,5 +1,5 @@
 // Internal Jobs: Sales creates, Operations fulfils, Sales delivers and invoices. One screen, shaped by role.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OPS_STEPS, PageHead, Search, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import { ContactForm } from "./Contacts.jsx";
@@ -55,12 +55,33 @@ export function JobForm() {
   const [adding, setAdding] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
   const [err, setErr] = useState("");
+  // a customer PO read by AI in the orders inbox (?inbox=ID)
+  const inboxId = params.get("inbox");
+  const [aiFilled, setAiFilled] = useState(false);
+  useEffect(() => {
+    if (!inboxId || !items.data) return;
+    api(`/inbox/${inboxId}`).then((m) => {
+      const x = m.extraction;
+      if (!x) return;
+      setF((s) => ({
+        ...s, customer_id: x.party_match_id ? String(x.party_match_id) : s.customer_id, order_source: m.source === "email" ? (x.reference ? "formal PO" : "email") : m.source === "paste" ? "whatsapp" : x.reference ? "formal PO" : s.order_source,
+        customer_po_number: x.reference || "", customer_po_date: x.date || "", required_date: x.required_date || "", delivery_location: x.delivery_location || "",
+        instructions: [!x.party_match_id && x.party_name ? `Customer on paper: ${x.party_name}` : null, x.notes].filter(Boolean).join("\n"),
+        items: x.lines.length ? x.lines.map((l) => {
+          const it = items.data.find((i) => i.id === l.item_match_id);
+          return { ...blank(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty, sale_rate: l.rate ?? it?.sale_rate ?? 0, tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description };
+        }) : s.items,
+      }));
+      setAiFilled(true);
+    }).catch(() => {});
+  }, [inboxId, items.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (k) => ({ value: f[k], onChange: (e) => setF({ ...f, [k]: e.target.value }) });
   const setItem = (i, patch) => setF((s) => ({ ...s, items: s.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) }));
   const save = async () => {
     setErr("");
     try {
-      const r = await api("/jobs", { method: "POST", body: { ...f, items: f.items.map(({ key, ...x }) => ({ ...x, item_id: x.item_id || null })) } });
+      const r = await api("/jobs", { method: "POST", body: { ...f, items: f.items.map(({ key, ai, ai_text, ...x }) => ({ ...x, item_id: x.item_id || null })) } });
+      if (inboxId) await api(`/inbox/${inboxId}/status`, { method: "POST", body: { status: "done", result_kind: "job", result_id: r.id } }).catch(() => {});
       toast("Job created and sent to Operations");
       nav(`/jobs/${r.id}`);
     } catch (x) { setErr(x.message); }
@@ -68,6 +89,7 @@ export function JobForm() {
   return (
     <>
       <PageHead title="New Job" sub="For a confirmed order. Customer PO is optional; Operations gets only what it needs to fulfil." />
+      {aiFilled && <div className="ai-banner">✨ Filled by AI from the customer's PO. Lines marked <span className="ai-flag">check</span> weren't matched to an item for sure. Fix them, then create the Job.</div>}
       <div className="card form">
         <div className="row-4">
           <Field label="Customer *"><div className="with-btn"><select {...set("customer_id")}><option value="">Select…</option>{(customers.data || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button type="button" className="btn sm" onClick={() => setAdding(true)}>+</button></div></Field>
@@ -86,8 +108,9 @@ export function JobForm() {
         <table className="table lines-table">
           <thead><tr><th style={{ width: "45%" }}>Item</th><th>Qty</th><th>Selling rate (Rs)</th><th>Tax</th><th className="r">Amount</th><th /></tr></thead>
           <tbody>{f.items.map((l, i) => (
-            <tr key={l.key}>
+            <tr key={l.key} className={l.ai && l.ai !== "high" ? "ai-check" : ""}>
               <td>
+                {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”</small>}
                 <select value={l.item_id} onChange={(e) => { const it = items.data?.find((x) => String(x.id) === e.target.value); setItem(i, it ? { item_id: it.id, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate } : { item_id: "" }); }}>
                   <option value="">— item not in list —</option>{(items.data || []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                 </select>
@@ -147,6 +170,7 @@ export function JobView() {
   const nav = useNavigate();
   const toast = useToast();
   const [cost, setCost] = useState(false);
+  const [deliver, setDeliver] = useState(false);
   const act = async (fn, msg) => { try { const r = await fn(); if (msg) toast(msg); state.reload(); return r; } catch (x) { toast(x.message, "err"); } };
   return (
     <Loading state={state}>{(j) => {
@@ -161,7 +185,8 @@ export function JobView() {
             {can("ops.write") && nextOps && step >= 4 && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}
             {can("buy") && <Link className="btn" to={`/bills/new?job=${id}`}>+ Supplier bill</Link>}
             {can("buy") && <button className="btn" onClick={() => setCost(true)}>+ Freight / direct cost</button>}
-            {can("sales.write") && <button className="btn primary" onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
+            {can("sales.write") && step >= 4 && j.items.some((it) => it.delivered_qty < it.qty) && <button className="btn primary" onClick={() => setDeliver(true)}>Material arrived → DC + invoice</button>}
+            {can("sales.write") && <button className={`btn ${step >= 4 ? "" : "primary"}`} onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
             {can("sales.write") && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/invoice`, { method: "POST" }), "Draft invoice created"); if (r) nav(`/invoices/${r.id}`); }}>Create invoice</button>}
             {can("admin") && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/close`, { method: "POST", body: { closed: !j.closed } }), j.closed ? "Job reopened" : "Job closed")}>{j.closed ? "Reopen" : "Close job"}</button>}
           </PageHead>
@@ -232,10 +257,54 @@ export function JobView() {
           )}
           <Attachments entity="job" id={j.id} labels={["Customer PO", "Delivery photo", "Supplier quotation", "Other evidence"]} />
           <Comments entity="job" id={j.id} />
+          {deliver && <DeliverModal job={j} onClose={() => setDeliver(false)} onDone={() => { setDeliver(false); state.reload(); }} />}
           {cost && <JobCost job={j} settings={settings.data} onClose={() => setCost(false)} onSaved={() => { setCost(false); toast("Cost added to Job"); state.reload(); }} />}
         </>
       );
     }}</Loading>
+  );
+}
+
+// one click when goods are ready: issue the DC and the invoice together, and (optionally) email both PDFs to the customer
+function DeliverModal({ job, onClose, onDone }) {
+  const [email, setEmail] = useState(true);
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const setup = useLoad("/setup-status");
+  const customer = useLoad(`/contacts/${job.customer_id}`);
+  useEffect(() => { if (customer.data?.email) setTo(customer.data.email); }, [customer.data]);
+  const canEmail = setup.data?.email_out;
+  const go = async () => {
+    setBusy(true);
+    try { setResult(await api(`/jobs/${job.id}/deliver`, { method: "POST", body: { email: canEmail && email, to } })); }
+    catch (x) { setResult({ error: x.message }); } finally { setBusy(false); }
+  };
+  const left = job.items.filter((it) => it.delivered_qty < it.qty);
+  return (
+    <Modal title="Material arrived: deliver and invoice" onClose={result ? onDone : onClose}>
+      {!result ? (
+        <div className="form">
+          <p>This will <b>issue a delivery challan</b> for what's left to deliver and <b>issue the invoice</b> for it:</p>
+          <ul className="small">{left.map((it) => <li key={it.id}>{it.name}: {num(it.qty - it.delivered_qty)} {it.unit}</li>)}</ul>
+          {canEmail ? <>
+            <label className="check"><input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} /> Email both PDFs to the customer</label>
+            {email && <Field label="Customer email" hint={customer.data && !customer.data.email ? "No email saved on this customer. Type one (it isn't saved)." : null}><input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="accounts@customer.com" /></Field>}
+          </> : <p className="muted small">Email isn't set up on the server yet, so the documents won't be emailed. You can print or WhatsApp them.</p>}
+          <div className="form-actions"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy || (canEmail && email && !to)} onClick={go}>{busy ? "Working…" : "Issue DC + invoice"}</button></div>
+        </div>
+      ) : result.error ? (
+        <div className="form"><div className="form-error">{result.error}</div><div className="form-actions"><button className="btn" onClick={onClose}>Close</button></div></div>
+      ) : (
+        <div className="form">
+          <p className="pos">✓ Delivery challan issued: <Link to={`/delivery-challans/${result.dc_id}`}>open it</Link></p>
+          {result.invoice_status === "open" ? <p className="pos">✓ Invoice issued: <Link to={`/invoices/${result.invoice_id}`}>open it</Link></p>
+            : <p className="neg">Invoice saved as draft: {result.invoice_note} <Link to={`/invoices/${result.invoice_id}`}>open it</Link>. The directors have been asked to approve it.</p>}
+          {result.email && (result.email.ok ? <p className="pos">✓ Emailed to {result.email.to}</p> : <p className="neg">Email failed: {result.email.error}</p>)}
+          <div className="form-actions"><button className="btn primary" onClick={onDone}>Done</button></div>
+        </div>
+      )}
+    </Modal>
   );
 }
 

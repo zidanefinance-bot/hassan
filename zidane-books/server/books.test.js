@@ -395,3 +395,75 @@ test("API: comments, @mentions and notifications respect who can see a record", 
     server.close();
   }
 });
+
+test("API: orders inbox → AI draft → Job; material arrived → DC + invoice emailed as PDFs", async () => {
+  const IN = await import("./inbox.js");
+  const M = await import("./mailer.js");
+  const { mkdtempSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const atta = db.prepare("SELECT id FROM items WHERE sku = 'ATTA-10'").get().id;
+  const cust = db.prepare("SELECT id FROM contacts WHERE name = 'Crescent Hospital Kitchen'").get().id;
+  db.prepare("UPDATE contacts SET email = 'store@crescent.pk' WHERE id = ?").run(cust);
+  // a fake AI that "reads" every message as Crescent's PO for 30 bags of atta plus one unknown item
+  const seen = [];
+  IN.useReader({ ready: () => true, read: async (input) => { seen.push(input); return {
+    doc_type: "customer_order", summary: "PO 77 from Crescent", party_name: "Crescent Hospital", party_match_id: cust, reference: "CH-77", date: "2026-10-18", required_date: "2026-10-25",
+    delivery_location: "Main kitchen", total: null, notes: null,
+    lines: [{ description: "Atta 10 kg", qty: 30, unit: "bag", rate: 1300, tax_rate: null, item_match_id: atta, match_confidence: "high" },
+      { description: "Harpic 500ml", qty: 5, unit: "btl", rate: null, tax_rate: null, item_match_id: 99999, match_confidence: "low" }] }; } });
+  const mails = [];
+  M.useTransport(async (m) => mails.push(m));
+  const server = createApp(db, { uploadDir: mkdtempSync(join(tmpdir(), "zb-up-")) }).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (ck, path, body) => {
+    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const t = await r.text();
+    return { status: r.status, body: t.startsWith("{") || t.startsWith("[") ? JSON.parse(t) : t, type: r.headers.get("content-type") };
+  };
+  try {
+    const [dir, sales, ops] = [await login(director.email, director.password), await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk")];
+    // Sales pastes a WhatsApp order with a photo; the reader gets our catalog and the image
+    const png = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
+    const m = (await call(sales, "/inbox", { text: "30 bag atta bhej dein", files: [{ filename: "po.png", mime: "image/png", data: png }], wait: true })).body;
+    assert.equal(m.status, "ready");
+    assert.equal(m.extraction.lines[1].item_match_id, null, "a match to an item that doesn't exist is dropped");
+    assert.equal(m.extraction.lines[0].item_name, "Super Fine Atta 10kg");
+    assert.ok(seen[0].catalog.length >= 12 && seen[0].files[0].mime === "image/png");
+    // Operations doesn't see customer orders; the director does and got a notification
+    assert.equal((await call(ops, `/inbox/${m.id}`)).status, 404);
+    assert.ok((await call(dir, "/notifications")).body.items.some((n) => n.kind === "inbox"));
+    // the form turns it into a Job, then marks the inbox row done
+    const job = (await call(sales, "/jobs", { customer_id: cust, customer_po_number: "CH-77", items: [{ item_id: atta, qty: 30, sale_rate: 1300 }] })).body.id;
+    await call(sales, `/inbox/${m.id}/status`, { status: "done", result_kind: "job", result_id: job });
+    assert.equal((await call(sales, "/inbox")).body.find((r) => r.id === m.id).status, "done");
+
+    // goods ready → one click issues DC + invoice and emails both PDFs
+    db.prepare("UPDATE job_items SET procurement_status = 'from_stock' WHERE job_id = ?").run(job);
+    db.prepare("UPDATE jobs SET ops_status = 'material_ready' WHERE id = ?").run(job);
+    const r = (await call(sales, `/jobs/${job}/deliver`, { email: true })).body;
+    assert.equal(r.invoice_status, "open");
+    assert.equal(r.email.ok, true);
+    assert.equal(mails.length, 1);
+    assert.equal(mails[0].to, "store@crescent.pk");
+    assert.deepEqual(mails[0].attachments.map((a) => a.contentType), ["application/pdf", "application/pdf"]);
+    assert.ok(mails[0].attachments.every((a) => a.content.subarray(0, 4).toString() === "%PDF"));
+    assert.ok(db.prepare("SELECT submitted_date FROM documents WHERE id = ?").get(r.invoice_id).submitted_date, "emailing marks the invoice submitted");
+    assert.equal(db.prepare("SELECT status FROM documents WHERE id = ?").get(r.dc_id).status, "issued");
+    // the PDF is also downloadable, and a second click has nothing left to deliver
+    const pdf = await call(sales, `/documents/${r.invoice_id}/pdf`);
+    assert.equal(pdf.type, "application/pdf");
+    assert.equal((await call(sales, `/jobs/${job}/deliver`, {})).status, 400);
+    // drafts can't be emailed
+    const draft = (await call(sales, "/documents", { kind: "invoice", contact_id: cust, status: "draft", lines: [{ item_id: atta, qty: 1, rate: 10 }] })).body.id;
+    assert.equal((await call(sales, `/documents/${draft}/email`, {})).status, 400);
+  } finally {
+    server.close();
+    IN.useReader({ ready: () => false, read: async () => { throw new Error("off"); } });
+    M.useTransport(null);
+  }
+});

@@ -1,13 +1,16 @@
 import express from "express";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { openDb } from "./db.js";
 import { createApp } from "./app.js";
 import { ensureAdmin } from "./seed.js";
+import { startMailPoller } from "./inbox.js";
 
 const db = openDb();
 ensureAdmin(db);
-const app = createApp(db);
+const uploadDir = process.env.UPLOAD_DIR || join(dirname(process.env.DB_FILE || "data/zidane-books.db"), "uploads");
+const app = createApp(db, { uploadDir });
+if (startMailPoller(db, uploadDir)) console.log("Orders inbox: checking email every few minutes");
 
 // production: serve the built frontend from dist/
 const dist = join(import.meta.dirname, "..", "dist");
