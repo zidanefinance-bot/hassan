@@ -5,7 +5,8 @@ import cookieParser from "cookie-parser";
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { authMiddleware, can, checkPassword, createSession, hashPassword, requirePerm, requireUser, ROLE_LABELS, ROLES } from "./auth.js";
+import { authMiddleware, can, checkPassword, createApiKey, createSession, hashPassword, requirePerm, requireUser, ROLE_LABELS, ROLES } from "./auth.js";
+import * as TG from "./telegram.js";
 import * as B from "./books.js";
 import * as J from "./jobs.js";
 import * as I from "./items.js";
@@ -19,6 +20,8 @@ const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
 const DOC_WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.write"], credit_note: ["sales.write"], po: ["ops.write", "buy"], bill: ["ops.write", "buy"], vendor_credit: ["ops.write"] };
 const MAX_UPLOAD = 10 * 1024 * 1024;
+// What an API key may do: read, add to the Orders Inbox, comment, and save drafts. Issuing, money, deleting and settings stay in the app.
+const API_ALLOWED = [/^POST \/inbox$/, /^POST \/comments$/, /^POST \/documents$/, /^PUT \/documents\/\d+$/, /^POST \/notifications\/read$/];
 const UPLOAD_TYPES = /^(image\/(png|jpe?g|webp|gif|heic)|application\/pdf|text\/csv|application\/vnd\.(ms-excel|openxmlformats-officedocument\.(spreadsheetml\.sheet|wordprocessingml\.document)))$/;
 const CONTACT_WRITE = { customer: ["sales.write"], supplier: ["ops.write"] };
 
@@ -56,6 +59,16 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.clearCookie("zb_session").json({ ok: true });
   });
   api.use(requireUser);
+  api.use((req, _res, next) => {
+    if (!req.viaApi) return next();
+    const route = `${req.method} ${req.path}`;
+    if (req.method === "GET" && !/^\/(admin|api-keys|me\/)/.test(req.path)) return next();
+    if (!API_ALLOWED.some((r) => r.test(route))) return next(httpError(403, "API keys can only read, add to the inbox, comment and save drafts. Do this in the app."));
+    if (/documents/.test(route) && !["draft", "enquiry"].includes(req.body?.status || "draft")) return next(httpError(403, "API keys can only save drafts. Issue it in the app."));
+    if (/^PUT/.test(route) && !["draft", "enquiry"].includes(db.prepare("SELECT status FROM documents WHERE id = ?").get(Number(req.path.split("/")[2]))?.status)) return next(httpError(403, "API keys can only change drafts"));
+    B.log(db, req.user.id, "API", "api", req.viaApi, route);
+    next();
+  });
   api.get("/auth/me", (req, res) => res.json({ ...req.user, role_label: ROLE_LABELS[req.user.role], perms: ROLES[req.user.role] }));
   api.post("/auth/password", (req, res) => {
     const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
@@ -507,6 +520,27 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json({ ok: true });
   });
 
+  // ---- my Telegram link and API keys
+  api.get("/me/telegram", (req, res) => res.json(TG.telegramStatus(db, req.user.id)));
+  api.post("/me/telegram", async (req, res) => { if (!TG.telegramReady()) throw httpError(503, "Telegram is not set up on the server yet"); res.json(await TG.linkCode(db, req.user.id)); });
+  api.delete("/me/telegram", (req, res) => { TG.unlink(db, req.user.id); res.json({ ok: true }); });
+  api.get("/api-keys", (req, res) => res.json({ enabled: B.getSetting(db, "apiKeysEnabled") === true,
+    keys: db.prepare("SELECT k.id, k.name, k.prefix, k.created_at, k.last_used_at, k.revoked_at, k.user_id, u.name AS user_name FROM api_keys k JOIN users u ON u.id = k.user_id WHERE k.user_id = ? OR ? ORDER BY k.id DESC").all(req.user.id, can(req.user, "admin") ? 1 : 0) }));
+  api.post("/api-keys", (req, res) => {
+    if (B.getSetting(db, "apiKeysEnabled") !== true) throw httpError(403, "API keys are switched off. A director can turn them on in Settings.");
+    const key = createApiKey(db, req.user.id, req.body?.name);
+    B.log(db, req.user.id, "created API key", "api", null, req.body?.name || "");
+    res.json({ key });
+  });
+  api.delete("/api-keys/:id", (req, res) => {
+    const k = db.prepare("SELECT * FROM api_keys WHERE id = ?").get(id(req));
+    if (!k || (k.user_id !== req.user.id && !can(req.user, "admin"))) throw httpError(404, "Not found");
+    db.prepare("UPDATE api_keys SET revoked_at = datetime('now') WHERE id = ?").run(k.id);
+    B.log(db, req.user.id, "revoked API key", "api", k.id, k.name);
+    res.json({ ok: true });
+  });
+  api.post("/api-keys/enabled", requirePerm("admin"), (req, res) => { B.setSetting(db, "apiKeysEnabled", req.body?.enabled === true); B.log(db, req.user.id, req.body?.enabled ? "turned on API keys" : "turned off API keys", "settings", null, ""); res.json({ ok: true }); });
+
   // ---- comments and notifications
   api.get("/comments", (req, res) => res.json(C.listComments(db, req.user, req.query.entity, Number(req.query.entity_id))));
   api.get("/comments/people", (req, res) => res.json(C.mentionable(db, req.user, req.query.entity, Number(req.query.entity_id))));
@@ -518,7 +552,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   // ---- orders inbox (AI reads POs and supplier bills)
   const aiReady = () => IN.readerReady();
   const needInbox = (req) => { if (!IN.canUseInbox(req.user)) throw httpError(403, "You don't have access to this"); };
-  api.get("/setup-status", (_req, res) => res.json({ ai: aiReady(), email_in: Boolean(process.env.IMAP_HOST && process.env.IMAP_USER), email_out: mailReady(), telegram: Boolean(process.env.TELEGRAM_BOT_TOKEN) }));
+  api.get("/setup-status", (_req, res) => res.json({ ai: aiReady(), email_in: Boolean(process.env.IMAP_HOST && process.env.IMAP_USER), email_out: mailReady(), telegram: TG.telegramReady() }));
   api.get("/inbox", (req, res) => { needInbox(req); res.json(IN.listInbox(db, req.user, req.query)); });
   api.get("/inbox/files/:id", (req, res) => {
     needInbox(req);

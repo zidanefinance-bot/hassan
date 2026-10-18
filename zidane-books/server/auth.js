@@ -1,5 +1,5 @@
 // Password hashing (scrypt), cookie sessions and role permissions.
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { httpError } from "./books.js";
 
 export function hashPassword(pw) {
@@ -38,8 +38,30 @@ export const ROLES = {
 export const ROLE_LABELS = { director: "Director", sales: "Sales", operations: "Operations", purchaser: "Field Purchaser", accounts: "Accounts" };
 export const can = (user, perm) => Boolean(user && ROLES[user.role]?.includes(perm));
 
+// Personal API keys (for an assistant bot such as OpenClaw). Only work while a director has switched them on in Settings,
+// act as the key's owner with that person's role, and are limited to reading and drafting (see API_ALLOWED in app.js).
+export const hashKey = (key) => createHash("sha256").update(key).digest("hex");
+export function createApiKey(db, userId, name) {
+  const prefix = randomBytes(4).toString("hex");
+  const key = `zb_${prefix}_${randomBytes(24).toString("base64url")}`;
+  db.prepare("INSERT INTO api_keys (user_id, name, prefix, key_hash) VALUES (?, ?, ?, ?)").run(userId, String(name || "API key").slice(0, 60), prefix, hashKey(key));
+  return key;
+}
+const apiKeysOn = (db) => JSON.parse(db.prepare("SELECT value FROM settings WHERE key = 'apiKeysEnabled'").get()?.value || "false") === true;
+
 export function authMiddleware(db) {
   return (req, _res, next) => {
+    const bearer = req.headers.authorization?.match(/^Bearer (zb_[a-f0-9]{8}_[\w-]+)$/)?.[1];
+    if (bearer) {
+      if (!apiKeysOn(db)) return next();
+      const row = db.prepare("SELECT k.id AS key_id, u.id, u.name, u.email, u.role, u.active FROM api_keys k JOIN users u ON u.id = k.user_id WHERE k.key_hash = ? AND k.revoked_at IS NULL").get(hashKey(bearer));
+      if (row?.active) {
+        req.user = { id: row.id, name: row.name, email: row.email, role: row.role };
+        req.viaApi = row.key_id;
+        db.prepare("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?").run(row.key_id);
+      }
+      return next();
+    }
     const token = req.cookies?.zb_session;
     if (token) {
       const row = db.prepare(`SELECT u.id, u.name, u.email, u.role, u.active, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`).get(token);

@@ -467,3 +467,78 @@ test("API: orders inbox → AI draft → Job; material arrived → DC + invoice 
     M.useTransport(null);
   }
 });
+
+test("API keys: off by default, act as their owner, and can only read, comment, inbox and draft", async () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const { createApiKey } = await import("./auth.js");
+  const salesId = db.prepare("SELECT id FROM users WHERE role = 'sales'").get().id;
+  const key = createApiKey(db, salesId, "OpenClaw");
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const call = async (path, body, method) => {
+    const r = await fetch(base + path, { method: method || (body ? "POST" : "GET"), headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, body: await r.json() };
+  };
+  try {
+    assert.equal((await call("/auth/me")).status, 401, "keys do nothing until a director switches them on");
+    B.setSetting(db, "apiKeysEnabled", true);
+    const me = (await call("/auth/me")).body;
+    assert.equal(me.role, "sales");
+    assert.equal((await call("/documents?kind=bill")).status, 403, "the key has its owner's role limits");
+    const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer'").get().id;
+    const draft = await call("/documents", { kind: "quote", contact_id: cust, status: "draft", lines: [{ item_id: 1, qty: 2, rate: 100 }] });
+    assert.equal(draft.status, 200);
+    assert.equal((await call("/documents", { kind: "invoice", contact_id: cust, status: "open", lines: [{ item_id: 1, qty: 1, rate: 1 }] })).status, 403);
+    assert.equal((await call(`/documents/${draft.body.id}/status`, { status: "sent" })).status, 403);
+    assert.equal((await call(`/documents/${draft.body.id}`, null, "DELETE")).status, 403);
+    assert.equal((await call("/comments", { entity: "document", entity_id: draft.body.id, body: "Drafted by the bot" })).status, 200);
+    assert.ok(db.prepare("SELECT 1 FROM activity WHERE action = 'API'").get(), "API writes are logged");
+    db.prepare("UPDATE api_keys SET revoked_at = datetime('now')").run();
+    assert.equal((await call("/auth/me")).status, 401, "revoked keys stop working");
+  } finally {
+    server.close();
+  }
+});
+
+test("Telegram: link with a one-time code; a linked purchaser's bill photo lands in the inbox", async () => {
+  const TG = await import("./telegram.js");
+  const { mkdtempSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const sent = [];
+  const realFetch = globalThis.fetch;
+  process.env.TELEGRAM_BOT_TOKEN = "test-token";
+  globalThis.fetch = async (url, opts) => {
+    const method = String(url).split("/").pop();
+    if (String(url).includes("/file/bot")) return { arrayBuffer: async () => new Uint8Array([0xff, 0xd8, 0xff]).buffer };
+    const body = opts?.body ? JSON.parse(opts.body) : {};
+    sent.push({ method, body });
+    const result = method === "getMe" ? { username: "ZidaneBooksBot" } : method === "getFile" ? { file_path: "photos/1.jpg" } : {};
+    return { json: async () => ({ ok: true, result }) };
+  };
+  try {
+    const buyer = db.prepare("SELECT id FROM users WHERE role = 'purchaser'").get().id;
+    const link = await TG.linkCode(db, buyer);
+    assert.equal(link.url, `https://t.me/ZidaneBooksBot?start=${link.code}`);
+    const up = mkdtempSync(join(tmpdir(), "zb-tg-"));
+    const chat = { id: 555, type: "private" };
+    await TG.handle(db, up, { chat: { id: 999, type: "private" }, message_id: 1, text: "hello" });
+    assert.match(sent.at(-1).body.text, /only work for the Zidane Books team/);
+    await TG.handle(db, up, { chat, message_id: 2, text: `/start ${link.code}` });
+    assert.equal(TG.telegramStatus(db, buyer).linked, true);
+    await TG.handle(db, up, { chat, message_id: 3, caption: "Metro Rice bill", photo: [{ file_id: "small" }, { file_id: "big" }] });
+    const row = db.prepare("SELECT * FROM inbox_messages WHERE source = 'telegram'").get();
+    assert.equal(row.created_by, buyer);
+    assert.equal(db.prepare("SELECT mime FROM inbox_files WHERE inbox_id = ?").get(row.id).mime, "image/jpeg");
+    assert.ok(sent.some((s) => s.method === "getFile" && s.body.file_id === "big"), "downloads the largest photo size");
+    assert.equal((await TG.linkCode(db, buyer)) && TG.telegramStatus(db, buyer).linked, true);
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env.TELEGRAM_BOT_TOKEN;
+  }
+});

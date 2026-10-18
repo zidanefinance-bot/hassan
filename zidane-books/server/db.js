@@ -57,6 +57,7 @@ export const DEFAULT_SETTINGS = {
   expenseBudgets: {},
   lowMarginPct: 8,
   dcSignDays: 3,
+  apiKeysEnabled: false,
 };
 
 export const SCHEMA_VERSION = 5;

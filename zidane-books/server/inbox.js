@@ -58,7 +58,8 @@ export async function processMessage(db, uploadDir, id) {
     db.prepare("UPDATE inbox_messages SET status = ?, doc_type = ?, extraction = ? WHERE id = ?").run(status, x.doc_type, JSON.stringify(x), id);
     if (status === "ready") {
       const who = x.doc_type === "customer_order" ? usersWith(db, "sales.write") : usersWith(db, "buy");
-      notify(db, [...who, ...usersWith(db, "admin")], { kind: "inbox", title: `${x.doc_type === "customer_order" ? "New order" : "Supplier bill"} read by AI: ${x.party_name || m.from_addr || "unknown sender"}`, body: x.summary, link: `/inbox?open=${id}`, actor: m.created_by });
+      // whoever sent it from Telegram hears back too; someone who pasted it in the app is already looking at it
+      notify(db, [...who, ...usersWith(db, "admin"), m.source === "telegram" ? m.created_by : null], { kind: "inbox", title: `${x.doc_type === "customer_order" ? "New order" : "Supplier bill"} read by AI: ${x.party_name || m.from_addr || "unknown sender"}`, body: x.summary, link: `/inbox?open=${id}`, actor: m.source === "telegram" ? null : m.created_by });
     }
   } catch (e) {
     db.prepare("UPDATE inbox_messages SET status = 'error', error = ? WHERE id = ?").run(String(e.message || e).slice(0, 500), id);

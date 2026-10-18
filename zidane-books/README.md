@@ -51,9 +51,16 @@ API (`server/auth.js` caps, `server/app.js`), and the tests check them over HTTP
 - **Reports:** P&L, Job profit, receivables and payables ageing, inventory, sales by customer and by item, sales tax. CSV export and print.
 - **Documents:** printable quote, DC (with signature lines, no prices), invoice, PO and bill, plus WhatsApp share.
 - **Records:** verified invoices and bills, and signed DCs, can only be changed by a director. Changing a verified document clears its verification. There is an activity log.
+- **Role dashboards:** a today strip, a period picker with change vs the previous period, receivable/payable ageing with top debtors, sales trend, top customers and items, monthly sales target, expense budgets, and queues for low stock, POs not yet billed, unsigned DCs, low-margin Jobs, credit-limit approvals and questions for you. KPI cards open their reports.
+- **Comments and notifications:** every invoice, bill, Job, contact, item and payment has a comment thread. Type @ to ask someone; only people who can open the record can be tagged. The bell shows alerts (questions, new Jobs, material ready, items not available, documents to verify, payments received, approvals, low stock, overdue), with optional browser pop-ups and Telegram.
+- **Orders Inbox (AI):** customer POs and supplier bills come in by email, Telegram or paste/upload. Claude reads them into a draft matched to your items and contacts, and one click opens a prefilled Job, quote or supplier bill for a person to check. The supplier bill form can also be filled from a photo.
+- **Email PDFs:** invoices, DCs, quotes and POs are emailed as PDFs from your own mailbox. On a Job, **Material arrived** issues the DC and the invoice together and emails both.
+- **API keys for assistant bots** (such as OpenClaw): off until a director turns them on. A key acts as its owner, with that role's limits, and can only read, add to the inbox, comment and save drafts.
+
+AI, email and Telegram need keys on the server: see **[deploy/SETUP-AI-EMAIL.md](deploy/SETUP-AI-EMAIL.md)**.
 
 Not yet (later phases): ration-bag kits, double-entry ledger with chart of accounts, banks and reconciliation, WHT,
-cheques, credit notes, approvals for low margin, purchaser wallet, investors/loans, AI command box, WhatsApp/Telegram.
+cheques, purchaser wallet, investors/loans, WhatsApp to customers.
 
 ## Put it online
 

@@ -17,6 +17,7 @@ import Expenses from "./pages/Expenses.jsx";
 import Reports from "./pages/Reports.jsx";
 import Settings from "./pages/Settings.jsx";
 import Inbox from "./pages/Inbox.jsx";
+import Account from "./pages/Account.jsx";
 import Bell from "./components/Notifications.jsx";
 
 const NAV = [
@@ -65,7 +66,7 @@ function Shell() {
           <button className="icon-btn menu" onClick={() => setOpen((o) => !o)} aria-label="Menu">☰</button>
           <div className="spacer" />
           <Bell />
-          <div className="user"><div className="avatar">{user.name[0]}</div><div><b>{user.name}</b><small>{user.role_label}</small></div></div>
+          <NavLink className="user" to="/account" title="My account"><div className="avatar">{user.name[0]}</div><div><b>{user.name}</b><small>{user.role_label}</small></div></NavLink>
           <button className="btn ghost" onClick={logout}>Sign out</button>
         </header>
         <main className="content">
@@ -94,6 +95,7 @@ function Shell() {
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/account" element={<Account />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>

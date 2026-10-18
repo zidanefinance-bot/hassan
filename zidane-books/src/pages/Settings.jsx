@@ -47,7 +47,7 @@ function Users() {
   );
 }
 
-function Password() {
+export function Password() {
   const [p, setP] = useState({ current: "", next: "" });
   const toast = useToast();
   return (
