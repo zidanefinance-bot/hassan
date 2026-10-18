@@ -2,7 +2,7 @@
 // Sales creates the Job from customer demand; Operations fulfils it (procurement, purchases, supplier bills,
 // direct costs, fulfilment status); Sales then raises the customer DC and invoice from it.
 import { tx } from "./db.js";
-import { getSetting, httpError, log, nextNumber, round2, saveDocument, today } from "./books.js";
+import { getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
 
 export const OPS_STATUSES = ["new", "procurement_started", "partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"];
 export const PROCUREMENT_STATUSES = ["to_buy", "partial", "bought", "not_available", "from_stock"];
@@ -102,7 +102,7 @@ export function jobDetail(db, id, can) {
   const delivered = lineTotals(db, id, "dc", ["issued", "signed"]);
   const invoiced = lineTotals(db, id, "invoice", ["open"]);
   const bought = lineTotals(db, id, "bill", ["open", "draft"]);
-  const docs = db.prepare("SELECT d.id, d.kind, d.number, d.date, d.status, d.total, d.submitted_date, d.verified_at, d.signed_at, d.signed_by_name, c.name AS contact_name, COALESCE((SELECT SUM(amount) FROM payments p WHERE p.document_id = d.id), 0) AS paid FROM documents d JOIN contacts c ON c.id = d.contact_id WHERE d.job_id = ? ORDER BY d.id").all(id);
+  const docs = db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.status, d.total, d.submitted_date, d.verified_at, d.signed_at, d.signed_by_name, c.name AS contact_name, ${PAID_SQL} AS paid FROM documents d JOIN contacts c ON c.id = d.contact_id WHERE d.job_id = ? ORDER BY d.id`).all(id);
   const out = {
     ...job,
     items: items.map((i) => ({

@@ -38,6 +38,8 @@ API (`server/auth.js` caps, `server/app.js`), and the tests check them over HTTP
 ## Also included
 
 - **Items, like Zoho:** anyone writing a document can add a new item on the spot. Each item page shows every transaction it appears in (quotes, DCs, invoices, POs, bills), buying rates by supplier (last, 30/90-day average, cheapest), selling rates by customer, stock history, and a change log with before → after values. Line editors show the last rate charged to that customer or paid to that supplier. Items import from CSV (a Zoho Books export works) and export to CSV. Every view is filtered by role.
+- **Payments like Zoho:** one receipt or supplier payment can be split across several invoices or bills. Whatever isn't applied stays as the contact's **advance / unused credit**. Use "Apply credits" on any invoice or bill, or "Apply to invoices" on the payment, to adjust it later, and "Unapply" to undo. Overpaying an invoice keeps the extra as an advance. Accounts' home lists advances that are waiting to be applied.
+- **Ledger / statement of account** for every customer and supplier. It has an opening balance for any date range, invoices or bills against payments, a running balance, and print.
 - **Stock:** bills bring stock in. On Jobs the DC takes it out, and the invoice doesn't take it out again. Direct-delivery Jobs never touch the warehouse. Manual adjustments and stock history are kept.
 - **Master procurement list:** the same item is totalled across all active Jobs, e.g. 500 + 250 = 750, with a per-Job breakdown.
 - **Reports:** P&L, Job profit, receivables and payables ageing, inventory, sales by customer and by item, sales tax. CSV export and print.

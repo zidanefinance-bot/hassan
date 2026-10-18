@@ -45,15 +45,15 @@ export const DEFAULT_SETTINGS = {
   },
   currency: "PKR",
   taxes: [{ name: "GST", rate: 18 }, { name: "Reduced GST", rate: 10 }, { name: "Exempt", rate: 0 }],
-  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-" },
-  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1 },
+  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-", receipt: "RCPT-", payment: "PMT-" },
+  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1, receipt: 1, payment: 1 },
   paymentTermsDays: 15,
   jobExpenseCategories: ["Freight", "Loading / Unloading", "Packing", "Labour", "Vehicle", "Market expense", "Other direct cost"],
   expenseCategories: ["Rent", "Salaries", "Fuel & Transport", "Utilities", "Packaging", "Loading & Labour", "Office", "Marketing", "Bank Charges", "Other"],
   invoiceFooter: "Thank you for your business. Groceries for business.",
 };
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -104,11 +104,18 @@ CREATE TABLE IF NOT EXISTS document_lines (
   item_id INTEGER REFERENCES items(id), description TEXT, qty REAL NOT NULL, rate REAL NOT NULL,
   discount_pct REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0, cost_rate REAL NOT NULL DEFAULT 0, amount REAL NOT NULL
 );
+-- A payment (customer receipt or supplier payment) can be split across several invoices/bills through allocations.
+-- Whatever isn't allocated is the contact's advance / unused credit, applied to documents later.
 CREATE TABLE IF NOT EXISTS payments (
-  id INTEGER PRIMARY KEY, direction TEXT NOT NULL CHECK (direction IN ('in','out')),
-  contact_id INTEGER NOT NULL REFERENCES contacts(id), document_id INTEGER REFERENCES documents(id) ON DELETE SET NULL,
+  id INTEGER PRIMARY KEY, number TEXT NOT NULL UNIQUE, direction TEXT NOT NULL CHECK (direction IN ('in','out')),
+  contact_id INTEGER NOT NULL REFERENCES contacts(id),
   date TEXT NOT NULL, amount REAL NOT NULL CHECK (amount > 0), mode TEXT NOT NULL DEFAULT 'cash', reference TEXT, notes TEXT,
   created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS payment_allocations (
+  id INTEGER PRIMARY KEY, payment_id INTEGER NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE, amount REAL NOT NULL CHECK (amount > 0),
+  date TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS expenses (
   id INTEGER PRIMARY KEY, date TEXT NOT NULL, category TEXT NOT NULL, amount REAL NOT NULL CHECK (amount > 0),
@@ -125,7 +132,9 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 CREATE INDEX IF NOT EXISTS idx_docs_kind ON documents(kind, date);
 CREATE INDEX IF NOT EXISTS idx_lines_doc ON document_lines(document_id);
-CREATE INDEX IF NOT EXISTS idx_pay_doc ON payments(document_id);
+CREATE INDEX IF NOT EXISTS idx_alloc_doc ON payment_allocations(document_id);
+CREATE INDEX IF NOT EXISTS idx_alloc_pay ON payment_allocations(payment_id);
+CREATE INDEX IF NOT EXISTS idx_pay_contact ON payments(contact_id);
 CREATE INDEX IF NOT EXISTS idx_docs_job ON documents(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_items ON job_items(job_id);
 `;

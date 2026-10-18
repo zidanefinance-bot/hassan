@@ -12,7 +12,7 @@ import Items, { ItemView } from "./pages/Items.jsx";
 import Documents from "./pages/Documents.jsx";
 import DocumentForm from "./pages/DocumentForm.jsx";
 import DocumentView from "./pages/DocumentView.jsx";
-import Payments from "./pages/Payments.jsx";
+import Payments, { PaymentView, RecordPayment } from "./pages/Payments.jsx";
 import Expenses from "./pages/Expenses.jsx";
 import Reports from "./pages/Reports.jsx";
 import Settings from "./pages/Settings.jsx";
@@ -82,6 +82,8 @@ function Shell() {
             ])}
             <Route path="/payments-received" element={<Payments direction="in" />} />
             <Route path="/payments-made" element={<Payments direction="out" />} />
+            <Route path="/payments/new" element={<RecordPayment />} />
+            <Route path="/payments/:id" element={<PaymentView />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />

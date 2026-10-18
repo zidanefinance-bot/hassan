@@ -48,9 +48,9 @@ test("payments drive paid/partial/overdue and can't exceed balance", () => {
   assert.equal(B.displayStatus(doc(), 0), "overdue");
   B.recordPayment(db, 1, { direction: "in", document_id: inv, amount: 400 });
   assert.equal(B.displayStatus(doc(), B.paidAmount(db, inv), "1999-12-01"), "partial");
-  assert.throws(() => B.recordPayment(db, 1, { direction: "in", document_id: inv, amount: 700 }), /more than the balance/);
-  B.recordPayment(db, 1, { direction: "in", document_id: inv, amount: 600 });
+  const extra = B.recordPayment(db, 1, { direction: "in", document_id: inv, amount: 700 });
   assert.equal(B.displayStatus(doc(), B.paidAmount(db, inv)), "paid");
+  assert.equal(B.unusedAmount(db, extra), 100, "overpayment stays as customer advance");
   assert.throws(() => B.setStatus(db, 1, inv, "void"), /payments/);
 });
 
@@ -186,4 +186,35 @@ test("item 360: transactions, rate history, last rate, change log and CSV import
   const sugar = db.prepare("SELECT * FROM items WHERE sku = 'SUG-1'").get();
   assert.equal(sugar.sale_rate, 155);
   assert.equal(sugar.stock_qty, 40);
+});
+
+test("advances: receive ahead, apply later; split one payment across invoices; unapply; statement", () => {
+  const { db, c, s: sup, i } = fresh();
+  const inv1 = B.saveDocument(db, 1, { kind: "invoice", contact_id: c, status: "open", date: "2030-01-05", lines: [{ item_id: i, qty: 10, rate: 100 }] });
+  const inv2 = B.saveDocument(db, 1, { kind: "invoice", contact_id: c, status: "open", date: "2030-01-10", lines: [{ item_id: i, qty: 5, rate: 100 }] });
+  // advance with nothing applied
+  const adv = B.recordPayment(db, 1, { direction: "in", contact_id: c, amount: 800, date: "2030-01-01" });
+  assert.equal(db.prepare("SELECT number FROM payments WHERE id = ?").get(adv).number, "RCPT-00001");
+  assert.equal(B.contactCredits(db, c)[0].unused, 800);
+  B.applyCredits(db, 1, inv1, [{ payment_id: adv, amount: 800 }]);
+  assert.equal(B.paidAmount(db, inv1), 800);
+  assert.equal(B.contactCredits(db, c).length, 0);
+  assert.throws(() => B.applyCredits(db, 1, inv2, [{ payment_id: adv, amount: 1 }]), /doesn't have that much left/);
+  // one payment split across both invoices, with the rest as advance
+  const p2 = B.recordPayment(db, 1, { direction: "in", contact_id: c, amount: 1000, date: "2030-01-12", allocations: [{ document_id: inv1, amount: 200 }, { document_id: inv2, amount: 500 }] });
+  assert.equal(B.unusedAmount(db, p2), 300);
+  assert.throws(() => B.recordPayment(db, 1, { direction: "in", contact_id: c, amount: 10, allocations: [{ document_id: inv1, amount: 20 }] }), /more than the payment/);
+  // a supplier payment can't touch a customer invoice
+  const sp = B.recordPayment(db, 1, { direction: "out", contact_id: sup, amount: 50 });
+  assert.throws(() => B.applyCredits(db, 1, inv1, [{ payment_id: sp, amount: 10 }]), /different contact|Customer receipts/);
+  // unapply puts money back on credit
+  const alloc = db.prepare("SELECT id FROM payment_allocations WHERE payment_id = ? AND document_id = ?").get(p2, inv2).id;
+  B.removeAllocation(db, 1, alloc);
+  assert.equal(B.unusedAmount(db, p2), 800);
+  // statement: 1000 + 500 charged, 800 + 1000 received → customer is 300 in credit
+  const st = B.statement(db, c);
+  assert.equal(st.closing, -300);
+  assert.equal(st.rows.length, 4);
+  const jan = B.statement(db, c, "2030-01-06");
+  assert.equal(jan.opening, 200, "opening balance carries entries before the period");
 });

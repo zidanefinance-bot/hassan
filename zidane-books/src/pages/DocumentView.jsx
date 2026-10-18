@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import { ApplyCreditsModal } from "./Payments.jsx";
 
 const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.write"], po: ["ops.write", "buy"], bill: ["ops.write", "buy"] };
 
@@ -15,7 +16,7 @@ export function PaymentModal({ doc, onClose, onSaved }) {
   return (
     <Modal title={doc.kind === "invoice" ? `Receive payment · ${doc.number}` : `Pay supplier · ${doc.number}`} onClose={onClose}>
       <form className="form" onSubmit={save}>
-        <p className="muted">Balance due: <b>{money(doc.balance)}</b></p>
+        <p className="muted">Balance due: <b>{money(doc.balance)}</b>{Number(p.amount) > doc.balance && <><br /><span className="pos">{money(Number(p.amount) - doc.balance)} extra will be kept as {doc.kind === "invoice" ? "the customer's" : "an"} advance.</span></>}</p>
         <div className="row-2"><Field label="Amount (Rs)"><input type="number" step="0.01" {...bind("amount")} required autoFocus /></Field><Field label="Date"><input type="date" {...bind("date")} /></Field></div>
         <div className="row-2">
           <Field label="Mode"><select {...bind("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
@@ -85,6 +86,7 @@ export default function DocumentView({ kind }) {
             {writer && kind === "invoice" && d.status === "open" && !d.submitted_date && <button className="btn" onClick={() => post("/submit", { date: today() }, "Marked submitted to customer")}>Mark submitted</button>}
             {can("verify") && isMoney && d.status === "open" && !d.verified_at && <button className="btn primary" onClick={() => post("/verify", {}, "Verified")}>Verify</button>}
             {can("money") && isMoney && d.status === "open" && d.balance > 0 && <button className="btn primary" onClick={() => setModal("pay")}>{kind === "invoice" ? "Receive payment" : "Pay supplier"}</button>}
+            {can("money") && isMoney && d.status === "open" && d.balance > 0 && d.credits.length > 0 && <button className="btn" onClick={() => setModal("credits")}>Apply credits ({money(d.credits.reduce((a, c) => a + c.unused, 0))})</button>}
             {writer && kind === "po" && ["issued", "draft"].includes(d.status) && <button className="btn primary" onClick={async () => { const r = await post("/convert", {}, "Bill created"); if (r) nav(`/bills/${r.id}`); }}>Convert to bill</button>}
             {editable && <Link className="btn" to={`/${K.path}/${id}/edit`}>Edit</Link>}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
@@ -140,14 +142,15 @@ export default function DocumentView({ kind }) {
           {isMoney && d.payments.length > 0 && (
             <section className="card flush no-print">
               <h3 className="pad">Payments</h3>
-              <table className="table"><thead><tr><th>Date</th><th>Mode</th><th>Reference</th><th className="r">Amount</th><th /></tr></thead>
+              <table className="table"><thead><tr><th>Payment</th><th>Paid on</th><th>Mode</th><th>Reference</th><th className="r">Applied here</th><th /></tr></thead>
                 <tbody>{d.payments.map((p) => (
-                  <tr key={p.id}><td>{fmtDate(p.date)}</td><td>{p.mode}</td><td>{p.reference}</td><td className="r">{money(p.amount)}</td>
-                    <td className="r">{can("money") && <button className="icon-btn" aria-label="Delete payment" onClick={async () => { if (confirm("Delete this payment?")) await act(() => api(`/payments/${p.id}`, { method: "DELETE" }), "Payment deleted"); }}>×</button>}</td></tr>
+                  <tr key={p.allocation_id}><td>{can("money") ? <Link to={`/payments/${p.id}`}>{p.number}</Link> : p.number}</td><td>{fmtDate(p.date)}</td><td>{p.mode}</td><td>{p.reference}</td><td className="r">{money(p.amount)}</td>
+                    <td className="r">{can("money") && <button className="btn sm ghost danger" onClick={async () => { if (confirm("Unapply this payment? The amount goes back to the contact's advance.")) await act(() => api(`/allocations/${p.allocation_id}`, { method: "DELETE" }), "Unapplied"); }}>Unapply</button>}</td></tr>
                 ))}</tbody></table>
             </section>
           )}
           {modal === "pay" && <PaymentModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Payment recorded"); state.reload(); }} />}
+          {modal === "credits" && <ApplyCreditsModal doc={d} Modal={Modal} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
           {modal === "sign" && <SignModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Signed DC recorded. Job marked delivered."); state.reload(); }} />}
         </>
       );

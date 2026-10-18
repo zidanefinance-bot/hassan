@@ -90,6 +90,10 @@ export function seedDemo(db) {
   const bill = B.saveDocument(db, ops, { kind: "bill", contact_id: sup[2], date: d(-30), due_date: d(-5), status: "open", lines: [buy(4, 40), buy(5, 120)] });
   B.recordPayment(db, acc, { direction: "out", document_id: bill, amount: 100000, date: d(-6), mode: "bank" });
   B.saveDocument(db, ops, { kind: "po", contact_id: sup[1], date: d(-1), status: "issued", lines: [buy(2, 60)] });
+
+  // advances: the NGO paid ahead for Ramadan bags; we paid the oil distributor ahead to lock a rate
+  B.recordPayment(db, acc, { direction: "in", contact_id: cust[2], amount: 50000, date: d(-2), mode: "bank", reference: "Advance for Ramadan bags" });
+  B.recordPayment(db, acc, { direction: "out", contact_id: sup[2], amount: 30000, date: d(-3), mode: "bank", reference: "Advance, rate lock" });
   for (const [cat, amt, off] of [["Rent", 85000, -30], ["Salaries", 240000, -28], ["Fuel & Transport", 38500, -20], ["Packaging", 22000, -10], ["Utilities", 18400, -6], ["Loading & Labour", 15000, -2]]) {
     db.prepare("INSERT INTO expenses (date, category, amount, paid_through, created_by) VALUES (?, ?, ?, 'bank', ?)").run(d(off), cat, amt, admin);
   }

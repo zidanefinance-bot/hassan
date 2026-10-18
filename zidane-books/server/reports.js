@@ -1,11 +1,11 @@
 // Reports. P&L is document-based: sales (ex-tax) − cost of goods sold (cost captured on each invoice line) − expenses.
-import { round2, today, displayStatus } from "./books.js";
+import { round2, today, displayStatus, PAID_SQL, UNUSED_SQL } from "./books.js";
 import { jobEconomics, jobList, OPS_STATUSES, procurementList } from "./jobs.js";
 
 const ISSUED = "status = 'open'";
 
 function balances(db, kind, on = today()) {
-  return db.prepare(`SELECT d.*, c.name AS contact_name, COALESCE((SELECT SUM(amount) FROM payments p WHERE p.document_id = d.id), 0) AS paid
+  return db.prepare(`SELECT d.*, c.name AS contact_name, ${PAID_SQL} AS paid
     FROM documents d JOIN contacts c ON c.id = d.contact_id WHERE d.kind = ? AND d.${ISSUED}`).all(kind)
     .map((d) => ({ ...d, paid: round2(d.paid), balance: round2(d.total - d.paid), display_status: displayStatus(d, d.paid, on) }))
     .filter((d) => d.balance > 0.001);
@@ -25,8 +25,9 @@ function aging(rows, on = today()) {
   return { buckets, total: round2(Object.values(buckets).reduce((a, b) => a + b, 0)), contacts: Object.values(byContact).sort((a, b) => b.total - a.total), documents: rows };
 }
 
-export const receivables = (db) => aging(balances(db, "invoice"));
-export const payables = (db) => aging(balances(db, "bill"));
+const advances = (db, dir) => round2(db.prepare(`SELECT COALESCE(SUM(${UNUSED_SQL}), 0) AS v FROM payments p WHERE p.direction = ?`).get(dir).v);
+export const receivables = (db) => ({ ...aging(balances(db, "invoice")), advances: advances(db, "in") });
+export const payables = (db) => ({ ...aging(balances(db, "bill")), advances: advances(db, "out") });
 
 export function profitAndLoss(db, from, to) {
   const sales = db.prepare(`SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v, COALESCE(SUM(tax_total), 0) AS tax FROM documents WHERE kind = 'invoice' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to);
@@ -90,7 +91,7 @@ export function jobProfit(db, from, to) {
 export function home(db, user, can) {
   const t = today();
   const soon = (n) => new Date(Date.parse(t) + n * 864e5).toISOString().slice(0, 10);
-  const docs = (sql, ...args) => db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, COALESCE((SELECT SUM(amount) FROM payments p WHERE p.document_id = d.id), 0) AS paid
+  const docs = (sql, ...args) => db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, ${PAID_SQL} AS paid
     FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id WHERE ${sql} ORDER BY COALESCE(d.due_date, d.date), d.id`).all(...args)
     .map((d) => ({ ...d, balance: round2(d.total - d.paid) }));
   const jobs = jobList(db, { scope: "active" });
@@ -129,6 +130,9 @@ export function home(db, user, can) {
       q("Accounts", "vbill", "Supplier bills to verify", docs("d.kind = 'bill' AND d.status = 'open' AND d.verified_at IS NULL").map((d) => docItem(d, `Rs ${d.total.toLocaleString("en-PK")}`))),
       q("Accounts", "vinv", "Invoices to verify", docs("d.kind = 'invoice' AND d.status = 'open' AND d.verified_at IS NULL").map((d) => docItem(d, `Rs ${d.total.toLocaleString("en-PK")}`))),
       q("Accounts", "collect", "Collections due (next 7 days or overdue)", docs("d.kind = 'invoice' AND d.status = 'open' AND d.due_date <= ?", soon(7)).filter((d) => d.balance > 0).map((d) => docItem(d, `Rs ${d.balance.toLocaleString("en-PK")} · due ${d.due_date}`)), "blue"),
+      q("Accounts", "adv", "Advances waiting to be applied", db.prepare(`SELECT p.*, c.name AS contact_name, ${UNUSED_SQL} AS unused FROM payments p JOIN contacts c ON c.id = p.contact_id
+        WHERE ${UNUSED_SQL} > 0.001 AND EXISTS (SELECT 1 FROM documents d WHERE d.contact_id = p.contact_id AND d.status = 'open' AND d.kind = CASE p.direction WHEN 'in' THEN 'invoice' ELSE 'bill' END AND d.total - ${PAID_SQL} > 0.001)
+        ORDER BY p.date`).all().map((p) => ({ label: `${p.number} · ${p.contact_name}`, sub: `Rs ${round2(p.unused).toLocaleString("en-PK")} unused · open ${p.direction === "in" ? "invoices" : "bills"} exist`, link: `/payments/${p.id}` })), "blue"),
       q("Accounts", "pay", "Supplier payments due (next 7 days or overdue)", docs("d.kind = 'bill' AND d.status = 'open' AND d.due_date <= ?", soon(7)).filter((d) => d.balance > 0).map((d) => docItem(d, `Rs ${d.balance.toLocaleString("en-PK")} · due ${d.due_date}`)), "red"),
     );
   }

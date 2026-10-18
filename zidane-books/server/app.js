@@ -105,21 +105,35 @@ export function createApp(db) {
     if (type) need(req.user, CONTACT_READ[type] || "admin");
     const q = `%${req.query.q || ""}%`;
     const rows = db.prepare(`SELECT c.*,
-      COALESCE((SELECT SUM(d.total) FROM documents d WHERE d.contact_id = c.id AND d.kind IN ('invoice','bill') AND d.status = 'open'), 0)
-      - COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.contact_id = c.id AND p.document_id IS NOT NULL), 0) AS outstanding
+      COALESCE((SELECT SUM(d.total - ${B.PAID_SQL}) FROM documents d WHERE d.contact_id = c.id AND d.kind IN ('invoice','bill') AND d.status = 'open'), 0) AS outstanding,
+      COALESCE((SELECT SUM(${B.UNUSED_SQL}) FROM payments p WHERE p.contact_id = c.id), 0) AS credits
       FROM contacts c WHERE (? IS NULL OR c.type = ?) AND (c.name LIKE ? OR IFNULL(c.company,'') LIKE ? OR IFNULL(c.phone,'') LIKE ?) ORDER BY c.name`)
       .all(type || null, type || null, q, q, q);
-    res.json(rows.filter((c) => canAny(req.user, CONTACT_READ[c.type])).map((c) => ({ ...c, outstanding: round2(c.outstanding) })));
+    res.json(rows.filter((c) => canAny(req.user, CONTACT_READ[c.type])).map((c) => ({ ...c, outstanding: round2(c.outstanding), credits: round2(c.credits) })));
   });
   api.get("/contacts/:id", (req, res) => {
     const c = db.prepare("SELECT * FROM contacts WHERE id = ?").get(id(req));
     if (!c) throw httpError(404, "Not found");
     need(req.user, CONTACT_READ[c.type]);
-    const docs = db.prepare("SELECT d.*, COALESCE((SELECT SUM(amount) FROM payments p WHERE p.document_id = d.id), 0) AS paid FROM documents d WHERE contact_id = ? ORDER BY date DESC, id DESC").all(c.id)
+    const docs = db.prepare(`SELECT d.*, ${B.PAID_SQL} AS paid FROM documents d WHERE contact_id = ? ORDER BY date DESC, id DESC`).all(c.id)
       .map((d) => ({ ...d, paid: round2(d.paid), display_status: B.displayStatus(d, d.paid) }));
     const jobs = c.type === "customer" ? db.prepare("SELECT id, number, ops_status, required_date, closed FROM jobs WHERE customer_id = ? ORDER BY id DESC").all(c.id) : [];
-    const payments = can(req.user, "money") ? db.prepare("SELECT * FROM payments WHERE contact_id = ? ORDER BY date DESC, id DESC").all(c.id) : [];
-    res.json({ ...c, documents: docs, jobs, payments });
+    const payments = db.prepare(`SELECT p.*, ${B.UNUSED_SQL} AS unused FROM payments p WHERE contact_id = ? ORDER BY date DESC, id DESC`).all(c.id).map((p) => ({ ...p, unused: round2(p.unused) }));
+    res.json({ ...c, documents: docs, jobs, payments, credits: round2(payments.reduce((a, p) => a + p.unused, 0)) });
+  });
+  // ledger / statement of account: the side that owns the contact can see it, and Accounts
+  api.get("/contacts/:id/statement", (req, res) => {
+    const c = db.prepare("SELECT type FROM contacts WHERE id = ?").get(id(req));
+    if (!c) throw httpError(404, "Not found");
+    need(req.user, [...CONTACT_READ[c.type], "money"]);
+    res.json({ ...B.statement(db, id(req), req.query.from || undefined, req.query.to || undefined), company: B.getSetting(db, "company") });
+  });
+  api.get("/contacts/:id/open-documents", (req, res) => {
+    need(req.user, "money");
+    const c = db.prepare("SELECT * FROM contacts WHERE id = ?").get(id(req));
+    if (!c) throw httpError(404, "Not found");
+    res.json(db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.due_date, d.total, ${B.PAID_SQL} AS paid FROM documents d WHERE d.contact_id = ? AND d.kind = ? AND d.status = 'open' ORDER BY COALESCE(d.due_date, d.date), d.id`)
+      .all(c.id, c.type === "customer" ? "invoice" : "bill").map((d) => ({ ...d, paid: round2(d.paid), balance: round2(d.total - d.paid) })).filter((d) => d.balance > 0.001));
   });
   const contactFields = (b) => [b.name, b.company || null, b.phone || null, b.email || null, b.address || null, b.ntn || null, Number(b.opening_balance) || 0, b.notes || null];
   api.post("/contacts", (req, res) => {
@@ -216,7 +230,7 @@ export function createApp(db) {
     const kind = req.query.kind;
     need(req.user, DOC_READ[kind] || "admin");
     const q = `%${req.query.q || ""}%`;
-    const rows = db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, COALESCE((SELECT SUM(amount) FROM payments p WHERE p.document_id = d.id), 0) AS paid
+    const rows = db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, ${B.PAID_SQL} AS paid
       FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id WHERE d.kind = ? AND (d.number LIKE ? OR c.name LIKE ? OR IFNULL(j.number,'') LIKE ?) ORDER BY d.date DESC, d.id DESC LIMIT 500`).all(kind, q, q, q)
       .map((d) => ({ ...d, paid: round2(d.paid), balance: round2(d.total - d.paid), display_status: B.displayStatus(d, d.paid) }));
     const status = req.query.status;
@@ -235,7 +249,8 @@ export function createApp(db) {
       ...d, paid, balance: round2(d.total - paid), display_status: B.displayStatus(d, paid),
       contact: db.prepare("SELECT * FROM contacts WHERE id = ?").get(d.contact_id),
       lines: db.prepare("SELECT l.id, l.item_id, l.description, l.qty, l.rate, l.discount_pct, l.tax_rate, l.amount, i.name AS item_name, i.unit FROM document_lines l LEFT JOIN items i ON i.id = l.item_id WHERE document_id = ? ORDER BY l.id").all(d.id),
-      payments: db.prepare("SELECT * FROM payments WHERE document_id = ? ORDER BY date, id").all(d.id),
+      payments: db.prepare("SELECT a.id AS allocation_id, a.amount, a.date AS applied_on, p.id, p.number, p.date, p.mode, p.reference FROM payment_allocations a JOIN payments p ON p.id = a.payment_id WHERE a.document_id = ? ORDER BY a.id").all(d.id),
+      credits: can(req.user, "money") && ["invoice", "bill"].includes(d.kind) ? B.contactCredits(db, d.contact_id).filter((p) => p.direction === (d.kind === "invoice" ? "in" : "out")) : [],
       source: d.source_id ? db.prepare("SELECT id, kind, number FROM documents WHERE id = ?").get(d.source_id) : null,
       children: db.prepare("SELECT id, kind, number FROM documents WHERE source_id = ?").all(d.id),
       job: d.job_id ? db.prepare("SELECT id, number, customer_po_number, delivery_location FROM jobs WHERE id = ?").get(d.job_id) : null,
@@ -279,17 +294,28 @@ export function createApp(db) {
     B.deleteDocument(db, req.user.id, d.id);
   }));
 
-  // ---- payments (Accounts)
+  // ---- payments (Accounts): receipts and supplier payments, split across documents; leftovers are advances
   api.get("/payments", requirePerm("money"), (req, res) => {
-    res.json(db.prepare(`SELECT p.*, c.name AS contact_name, d.number AS document_number, d.kind AS document_kind FROM payments p JOIN contacts c ON c.id = p.contact_id
-      LEFT JOIN documents d ON d.id = p.document_id WHERE p.direction = ? ORDER BY p.date DESC, p.id DESC LIMIT 500`).all(req.query.direction === "out" ? "out" : "in"));
+    res.json(db.prepare(`SELECT p.*, c.name AS contact_name, ${B.UNUSED_SQL} AS unused,
+      (SELECT GROUP_CONCAT(d.number, ', ') FROM payment_allocations a JOIN documents d ON d.id = a.document_id WHERE a.payment_id = p.id) AS applied_to
+      FROM payments p JOIN contacts c ON c.id = p.contact_id WHERE p.direction = ? ORDER BY p.date DESC, p.id DESC LIMIT 500`).all(req.query.direction === "out" ? "out" : "in")
+      .map((p) => ({ ...p, unused: round2(p.unused) })));
+  });
+  api.get("/payments/:id", requirePerm("money"), (req, res) => {
+    const p = db.prepare(`SELECT p.*, c.name AS contact_name, c.type AS contact_type, ${B.UNUSED_SQL} AS unused FROM payments p JOIN contacts c ON c.id = p.contact_id WHERE p.id = ?`).get(id(req));
+    if (!p) throw httpError(404, "Not found");
+    const allocations = db.prepare("SELECT a.*, d.kind, d.number, d.total FROM payment_allocations a JOIN documents d ON d.id = a.document_id WHERE a.payment_id = ? ORDER BY a.id").all(p.id);
+    res.json({ ...p, unused: round2(p.unused), allocations, created_by_name: db.prepare("SELECT name FROM users WHERE id = ?").get(p.created_by)?.name });
   });
   api.post("/payments", requirePerm("money"), (req, res) => res.json({ id: B.recordPayment(db, req.user.id, req.body) }));
+  api.post("/payments/:id/allocate", requirePerm("money"), (req, res) => { B.allocatePayment(db, req.user.id, id(req), req.body.allocations); res.json({ ok: true }); });
+  api.post("/documents/:id/apply-credits", requirePerm("money"), (req, res) => { B.applyCredits(db, req.user.id, id(req), req.body.credits); res.json({ ok: true }); });
+  api.delete("/allocations/:id", requirePerm("money"), (req, res) => { B.removeAllocation(db, req.user.id, id(req)); res.json({ ok: true }); });
   api.delete("/payments/:id", requirePerm("money"), (req, res) => {
     const p = db.prepare("SELECT * FROM payments WHERE id = ?").get(id(req));
     if (!p) throw httpError(404, "Not found");
     db.prepare("DELETE FROM payments WHERE id = ?").run(p.id);
-    B.log(db, req.user.id, "deleted payment", "payment", p.id, String(p.amount));
+    B.log(db, req.user.id, "deleted payment", "payment", p.id, `${p.number} · ${p.amount}`);
     res.json({ ok: true });
   });
 

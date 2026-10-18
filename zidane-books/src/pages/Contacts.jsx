@@ -57,10 +57,50 @@ export default function Contacts({ type }) {
   );
 }
 
+// Statement of account: everything charged and paid, with a running balance, for any date range
+function Statement({ contactId, isCust }) {
+  const [range, setRange] = useState({ from: "", to: "" });
+  const state = useLoad(`/contacts/${contactId}/statement?from=${range.from}&to=${range.to}`);
+  return (
+    <section className="card">
+      <div className="stmt-head">
+        <div><h3>Statement of account</h3><p className="muted small">{isCust ? "Positive balance = customer owes us. Negative = customer has advance with us." : "Positive balance = we owe the supplier. Negative = our advance with them."}</p></div>
+        <div className="actions">
+          <input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} aria-label="From" /><span className="muted">to</span>
+          <input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} aria-label="To" />
+          <button className="btn" onClick={() => window.print()}>Print / PDF</button>
+        </div>
+      </div>
+      <Loading state={state}>{(st) => (
+        <>
+          <div className="stmt-sum">
+            <div className="stat"><small>Opening</small><b>{money(st.opening)}</b></div>
+            <div className="stat"><small>{isCust ? "Invoiced" : "Billed"}</small><b>{money(st.charges)}</b></div>
+            <div className="stat"><small>{isCust ? "Received" : "Paid"}</small><b>{money(st.payments)}</b></div>
+            <div className="stat"><small>Closing balance</small><b className={st.closing > 0 ? "neg" : st.closing < 0 ? "pos" : ""}>{money(st.closing)}</b><span className="muted">{st.closing < 0 ? "advance" : st.closing > 0 ? (isCust ? "receivable" : "payable") : "settled"}</span></div>
+          </div>
+          <div className="tablewrap"><table className="table compact">
+            <thead><tr><th>Date</th><th>Transaction</th><th>Details</th><th className="r">{isCust ? "Invoice" : "Bill"}</th><th className="r">{isCust ? "Payment" : "Paid"}</th><th className="r">Balance</th></tr></thead>
+            <tbody>
+              <tr><td>{st.from && st.from !== "0000-01-01" ? fmtDate(st.from) : ""}</td><td colSpan={4}><i>Opening balance</i></td><td className="r">{money(st.opening)}</td></tr>
+              {st.rows.map((r, i) => (
+                <tr key={i}><td>{fmtDate(r.date)}</td><td>{r.type === "payment" ? <Link to={`/payments/${r.id}`}>{r.number}</Link> : <Link to={`/${KIND[r.type].path}/${r.id}`}>{r.number}</Link>}</td><td className="muted">{r.details}</td>
+                  <td className="r">{r.charge ? money(r.charge) : ""}</td><td className="r">{r.payment ? money(r.payment) : ""}</td><td className="r"><b>{money(r.balance)}</b></td></tr>
+              ))}
+            </tbody>
+            <tfoot><tr><td colSpan={3}>Closing balance</td><td className="r">{money(st.charges)}</td><td className="r">{money(st.payments)}</td><td className="r">{money(st.closing)}</td></tr></tfoot>
+          </table></div>
+        </>
+      )}</Loading>
+    </section>
+  );
+}
+
 export function ContactView() {
   const { id } = useParams();
   const state = useLoad(`/contacts/${id}`);
   const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState("transactions");
   const nav = useNavigate();
   const toast = useToast();
   const { can } = useAuth();
@@ -78,6 +118,7 @@ export function ContactView() {
             {isCust && can("sales.write") && <Link className="btn primary" to={`/quotes/new?enquiry=1&contact=${c.id}`}>+ Enquiry</Link>}
             {isCust && can("sales.write") && <Link className="btn" to={`/jobs/new?customer=${c.id}`}>+ Job</Link>}
             {!isCust && can("buy") && <Link className="btn primary" to={`/bills/new?contact=${c.id}`}>+ Supplier bill</Link>}
+            {can("money") && <Link className="btn primary" to={`/payments/new?direction=${isCust ? "in" : "out"}&contact=${c.id}`}>{isCust ? "Receive payment / advance" : "Pay supplier / advance"}</Link>}
             {can(isCust ? "sales.write" : "ops.write") && <button className="btn" onClick={() => setEditing(true)}>Edit</button>}
             {can(isCust ? "sales.write" : "ops.write") && <button className="btn ghost danger" onClick={() => del(c)}>Delete</button>}
           </PageHead>
@@ -88,15 +129,25 @@ export function ContactView() {
                 <dt>Email</dt><dd>{c.email || "—"}</dd><dt>Address</dt><dd>{c.address || "—"}</dd><dt>NTN</dt><dd>{c.ntn || "—"}</dd><dt>Notes</dt><dd>{c.notes || "—"}</dd>
               </dl>
             </section>
-            <section className="card stat big"><small>{isCust ? "They owe you" : "You owe them"}</small><b className={outstanding > 0 ? "neg" : ""}>{money(outstanding)}</b></section>
+            <section className="card stat big"><small>{isCust ? "They owe you" : "You owe them"}</small><b className={outstanding > 0 ? "neg" : ""}>{money(outstanding)}</b>
+              {c.credits > 0 && <span className="pos">{isCust ? "Customer advance (unused):" : "Our advance with them (unused):"} <b>{money(c.credits)}</b></span>}
+              {c.credits > 0 && outstanding > 0 && <span className="muted small">Open an {isCust ? "invoice" : "bill"} and use "Apply credits" to adjust it.</span>}</section>
           </div>
-          {c.jobs.length > 0 && (
+          <div className="tabs">{[["transactions", "Transactions"], ["statement", "Statement / ledger"], ...(c.payments.length ? [["payments", `Payments (${c.payments.length})`]] : [])].map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>
+          {tab === "statement" && <Statement contactId={c.id} isCust={isCust} />}
+          {tab === "payments" && (
+            <section className="card flush"><table className="table">
+              <thead><tr><th>Date</th><th>Number</th><th>Mode</th><th>Reference</th><th className="r">Amount</th><th className="r">Unused</th></tr></thead>
+              <tbody>{c.payments.map((p) => <tr key={p.id} className={can("money") ? "click" : ""} onClick={() => can("money") && nav(`/payments/${p.id}`)}><td>{fmtDate(p.date)}</td><td><b>{p.number}</b></td><td>{p.mode}</td><td className="muted">{p.reference}</td><td className="r">{money(p.amount)}</td><td className={`r ${p.unused > 0 ? "pos" : "muted"}`}>{p.unused > 0 ? money(p.unused) : "—"}</td></tr>)}</tbody>
+            </table></section>
+          )}
+          {tab === "transactions" && c.jobs.length > 0 && (
             <section className="card flush"><h3 className="pad">Jobs</h3>
               <table className="table"><tbody>{c.jobs.map((j) => <tr key={j.id} className="click" onClick={() => nav(`/jobs/${j.id}`)}><td><b>{j.number}</b></td><td><Badge status={j.ops_status} /></td><td>{fmtDate(j.required_date)}</td><td className="muted">{j.closed ? "closed" : ""}</td></tr>)}</tbody></table>
             </section>
           )}
-          <section className="card flush">
-            <h3 className="pad">Transactions</h3>
+          {tab === "transactions" && <section className="card flush">
+            <h3 className="pad">Documents</h3>
             {c.documents.length === 0 ? <p className="muted pad">No transactions yet.</p> : (
               <table className="table"><thead><tr><th>Date</th><th>Type</th><th>Number</th><th>Status</th><th className="r">Total</th><th className="r">Balance</th></tr></thead>
                 <tbody>{c.documents.map((d) => (
@@ -106,7 +157,7 @@ export function ContactView() {
                   </tr>
                 ))}</tbody></table>
             )}
-          </section>
+          </section>}
           {editing && <ContactForm type={c.type} initial={c} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); state.reload(); }} />}
         </>
       );
