@@ -57,7 +57,7 @@ cheques, credit notes, approvals for low margin, purchaser wallet, investors/loa
 
 ## Put it online
 
-See **[DEPLOY.md](DEPLOY.md)** for step-by-step Railway hosting in Roman Urdu. It uses the `Dockerfile`, a `/data` volume and `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+Two ways, both with step-by-step guides in Roman Urdu: **[deploy/SERVER.md](deploy/SERVER.md)** puts it on your own Ubuntu server next to the website (systemd + nginx + Let's Encrypt + daily backups, via `deploy/install-on-server.sh`). **[DEPLOY.md](DEPLOY.md)** puts it on Railway (Dockerfile, `/data` volume).
 
 ## Run it
 
