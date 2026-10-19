@@ -386,11 +386,19 @@ test("API: comments, @mentions and notifications respect who can see a record", 
     assert.ok(dh.queues.find((q) => q.key === "approve").count >= 1);
     assert.ok(dh.queues.find((q) => q.key === "overlimit").count >= 1);
     assert.ok(dh.kpis.period && dh.kpis.previous && dh.kpis.sales_trend.length === 6);
+    // orders in hand: open Jobs at selling rates with tax, less what's already invoiced
+    const want = db.prepare(`SELECT COALESCE(SUM(ji.qty * ji.sale_rate * (1 + ji.tax_rate / 100.0)), 0) v FROM job_items ji JOIN jobs j ON j.id = ji.job_id
+      WHERE j.closed = 0 AND ji.procurement_status <> 'not_available'`).get().v;
+    assert.ok(want > 0);
+    assert.equal(dh.kpis.orders_in_hand.value, Math.round(want * 100) / 100);
+    assert.equal(dh.kpis.orders_in_hand.jobs, db.prepare("SELECT COUNT(*) n FROM jobs WHERE closed = 0").get().n);
+    assert.ok(dh.kpis.orders_in_hand.to_invoice <= dh.kpis.orders_in_hand.value);
 
     // Operations' home never carries money figures
     const oh = (await call(ops, "/reports/home")).body;
     assert.equal(oh.kpis.receivables, undefined);
     assert.equal(oh.kpis.period, undefined);
+    assert.equal(oh.kpis.orders_in_hand, undefined);
 
     // mark all read
     await call(sales, "/notifications/read", { ids: "all" });

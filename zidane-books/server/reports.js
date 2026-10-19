@@ -187,6 +187,13 @@ export function home(db, user, can, { from, to } = {}) {
     kpis.open_quotes = round2(db.prepare("SELECT COALESCE(SUM(total), 0) AS v FROM documents WHERE kind = 'quote' AND status IN ('enquiry','draft','sent','accepted')").get().v);
     kpis.receivables = receivables(db).total;
   }
+  if (can("price.view")) {
+    // orders in hand: what every open Job is worth at its selling rates (with tax), and how much of that isn't invoiced yet
+    const rows = db.prepare(`SELECT j.id, COALESCE(SUM(ji.qty * ji.sale_rate * (1 + ji.tax_rate / 100.0)), 0) AS value,
+        (SELECT COALESCE(SUM(d.total), 0) FROM documents d WHERE d.job_id = j.id AND d.kind = 'invoice' AND d.status = 'open') AS invoiced
+      FROM jobs j LEFT JOIN job_items ji ON ji.job_id = j.id AND ji.procurement_status <> 'not_available' WHERE j.closed = 0 GROUP BY j.id`).all();
+    kpis.orders_in_hand = { value: round2(rows.reduce((a, r) => a + r.value, 0)), to_invoice: round2(rows.reduce((a, r) => a + Math.max(0, r.value - r.invoiced), 0)), jobs: rows.length };
+  }
   if (can("ops.read")) {
     kpis.active_jobs = jobs.length;
     kpis.blocked_jobs = jobs.filter((j) => j.required_date && j.required_date < t && step(j.ops_status) < step("material_ready")).length;
