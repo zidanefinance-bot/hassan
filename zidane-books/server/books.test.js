@@ -725,3 +725,82 @@ test("audit fixes: role leaks and workflow holes stay closed", async () => {
     server.close();
   }
 });
+
+// a PO laid out like a customer's ERP printout (header centred over left-aligned columns, "15.00 PC" in the qty column)
+async function fakeErpPo({ po, plant, lines }) {
+  const PDFDocument = (await import("pdfkit")).default;
+  const pdf = new PDFDocument({ size: "A4", margin: 20 });
+  const chunks = []; pdf.on("data", (c) => chunks.push(c));
+  const done = new Promise((ok) => pdf.on("end", () => ok(Buffer.concat(chunks))));
+  pdf.font("Helvetica-Bold").fontSize(11).text("TEXMARK (PVT) LTD", 223, 20, { lineBreak: false }).text(`PLANT-${plant}`, 496, 20, { lineBreak: false });
+  pdf.font("Helvetica").fontSize(8).text("STRN # : 3277876153757 , NTN # : 5064360-6", 187, 38, { lineBreak: false }).text("PURCHASE ORDER", 245, 52, { lineBreak: false });
+  const kv = (y, a, b, c, d) => { pdf.text(a, 24, y, { lineBreak: false }).text(":", 80, y, { lineBreak: false }).text(b, 91, y, { lineBreak: false }); if (c) pdf.text(c, 361, y, { lineBreak: false }).text(":", 426, y, { lineBreak: false }).text(d, 438, y, { lineBreak: false }); };
+  kv(72, "Supplier", "ZIDANE CORPORATION", "P.O #", po); kv(86, "Sales Tax #", "-", "P.O Date", "13-Oct-2026"); kv(98, "C. Person", "-", "Delivery Date", "20-Oct-2026"); kv(110, "Address", "KORANGI", "Dlv. Location", `WH-CONSUMABLE-${plant}`);
+  [["S #", 20], ["Item Code", 43], ["Item Name", 182], ["Narration", 342], ["Qty", 419], ["UoM", 460], ["Rate", 501], ["Amount", 542]].forEach(([t, x]) => pdf.text(t, x, 132, { lineBreak: false }));
+  let y = 146, total = 0;
+  lines.forEach(([code, name, note, qty, unit, rate], i) => {
+    const amount = qty * rate; total += amount;
+    pdf.text(String(i + 1), 19, y, { lineBreak: false }).text(code, 33, y, { lineBreak: false }).text(name, 91, y, { lineBreak: false });
+    if (note) pdf.text(note, 312, y, { lineBreak: false });
+    pdf.text(`${qty.toFixed(2)} ${unit}`, 429, y, { lineBreak: false }).text(rate.toLocaleString("en-US", { minimumFractionDigits: 2 }), 502, y, { lineBreak: false }).text(amount.toLocaleString("en-US", { minimumFractionDigits: 2 }), 557, y, { lineBreak: false });
+    y += 12;
+  });
+  pdf.text("Total", 19, y + 6, { lineBreak: false }).text(total.toLocaleString("en-US", { minimumFractionDigits: 2 }), 546, y + 6, { lineBreak: false });
+  pdf.text("Payment Terms", 19, y + 40, { lineBreak: false }).text("30 DAYS CREDIT", 105, y + 40, { lineBreak: false }).text("Total Amount", 379, y + 70, { lineBreak: false }).text(total.toLocaleString("en-US", { minimumFractionDigits: 2 }), 541, y + 70, { lineBreak: false });
+  pdf.end();
+  return done;
+}
+
+test("customer ERP PDFs are read without AI, and line matches are learned per customer", async () => {
+  const { parseOrderPdf } = await import("./poparse.js");
+  const IN = await import("./inbox.js");
+  const { mkdtempSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  IN.useReader({ ready: () => false, read: async () => { throw new Error("AI must not be called for a text PDF"); } });
+  const po1 = await fakeErpPo({ po: "POP-P1400-2610-00028", plant: 1400, lines: [["00200400020642", "BEARING - 60/20", "WITH COLLAR", 15, "PC", 1200], ["00200500020050", "BEARING - 6202 - NTN", null, 42, "PC", 240], ["00200500050173", "WD - 40 (SPRAY) 330ml", null, 6, "CAN", 1100]] });
+  const x = await parseOrderPdf(po1);
+  assert.equal(x.doc_type, "customer_order");
+  assert.equal(x.party_name, "TEXMARK (PVT) LTD");
+  assert.equal(x.reference, "POP-P1400-2610-00028");
+  assert.equal(x.date, "2026-10-13");
+  assert.equal(x.required_date, "2026-10-20");
+  assert.equal(x.delivery_location, "WH-CONSUMABLE-1400");
+  assert.equal(x.total, 18000 + 10080 + 6600);
+  assert.deepEqual(x.lines.map((l) => [l.code, l.description, l.qty, l.unit, l.rate]), [
+    ["00200400020642", "BEARING - 60/20 (WITH COLLAR)", 15, "PC", 1200], ["00200500020050", "BEARING - 6202 - NTN", 42, "PC", 240], ["00200500050173", "WD - 40 (SPRAY) 330ml", 6, "CAN", 1100]]);
+
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db, { uploadDir: mkdtempSync(join(tmpdir(), "zb-po-")) }).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const ck = (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "sales@zidane.com.pk", password: "demo1234" }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (method, path, body) => (await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined })).json();
+  try {
+    // first PO: new customer, new items; the person adds them and creates the Job
+    const tex = (await call("POST", "/contacts", { type: "customer", name: "Texmark (Pvt) Ltd" })).id;
+    let m = await call("POST", "/inbox", { files: [{ filename: "po.pdf", mime: "application/pdf", data: po1.toString("base64") }], wait: true });
+    assert.equal(m.status, "ready");
+    assert.equal(m.extraction.reader, "pdf-text");
+    assert.equal(m.extraction.party_match_id, tex, "Texmark (Pvt) Ltd = TEXMARK (PVT) LTD");
+    assert.ok(m.extraction.lines.every((l) => l.item_match_id === null), "nothing to match yet");
+    const ids = [];
+    for (const l of m.extraction.lines) ids.push((await call("POST", "/items", { name: l.description, unit: "pcs", sale_rate: l.rate })).id);
+    const job = (await call("POST", "/jobs", { customer_id: tex, customer_po_number: m.extraction.reference, items: ids.map((id, i) => ({ item_id: id, qty: m.extraction.lines[i].qty, sale_rate: m.extraction.lines[i].rate })) })).id;
+    await call("POST", `/inbox/${m.id}/status`, { status: "done", result_kind: "job", result_id: job, lines: m.extraction.lines.map((l, i) => ({ code: l.code, description: l.description, item_id: ids[i] })) });
+    // second PO from another plant: the bearing they ordered before is now matched by its code
+    const po2 = await fakeErpPo({ po: "POP-P2100-2610-00038", plant: 2100, lines: [["00200500020050", "BEARING - 6202 - NTN", null, 100, "PC", 240], ["00200500020472", "BEARING - 628-8 - ZZ", null, 100, "PC", 550]] });
+    m = await call("POST", "/inbox", { files: [{ filename: "po2.pdf", mime: "application/pdf", data: po2.toString("base64") }], wait: true });
+    assert.equal(m.extraction.lines[0].item_match_id, ids[1]);
+    assert.equal(m.extraction.lines[0].match_confidence, "high");
+    assert.notEqual(m.extraction.lines[1].item_match_id, ids[1], "6202 and 628-8 are different bearings");
+    // a photo with AI off says so instead of guessing
+    const png = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
+    m = await call("POST", "/inbox", { files: [{ filename: "photo.png", mime: "image/png", data: png }], wait: true });
+    assert.equal(m.status, "error");
+    assert.match(m.error, /no readable text/);
+  } finally {
+    server.close();
+  }
+});

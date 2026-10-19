@@ -658,7 +658,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (wait) await job;
     res.json(wait ? IN.getMessage(db, req.user, mid) : { id: mid });
   });
-  api.post("/inbox/:id/read", (req, res) => { needInbox(req); IN.getMessage(db, req.user, id(req)); if (!aiReady()) throw httpError(503, "AI is not set up yet"); IN.enqueue(db, uploadDir, id(req)); res.json({ ok: true }); });
+  api.post("/inbox/:id/read", (req, res) => { needInbox(req); IN.getMessage(db, req.user, id(req)); IN.enqueue(db, uploadDir, id(req)); res.json({ ok: true }); });
   api.post("/inbox/:id/status", (req, res) => { needInbox(req); IN.markHandled(db, req.user, id(req), req.body || {}); res.json({ ok: true }); });
   api.post("/inbox/check", requirePerm("admin"), async (_req, res) => {
     if (!process.env.IMAP_HOST) throw httpError(503, "Email inbox is not set up yet");

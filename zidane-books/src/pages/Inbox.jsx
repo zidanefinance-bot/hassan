@@ -19,7 +19,7 @@ function SetupNote({ st, isAdmin }) {
   if (!st || (st.ai && st.email_in)) return null;
   return (
     <div className="ai-banner warn">
-      {!st.ai && <p><b>AI reading is off.</b> Messages are collected, but nobody reads them automatically yet. {isAdmin ? "Add ANTHROPIC_API_KEY on the server (see SETUP-AI-EMAIL.md)." : "Ask a director to set it up."}</p>}
+      {!st.ai && <p><b>PDF orders are read automatically, free.</b> POs and bills made by a computer system (like Texmark's) are read without AI. Photos, scans and typed messages need AI reading, which is off. {isAdmin ? "Add ANTHROPIC_API_KEY on the server to turn it on (see SETUP-AI-EMAIL.md)." : ""}</p>}
       {!st.email_in && <p><b>Email inbox not connected.</b> Paste messages or upload photos below for now. {isAdmin ? "Add the IMAP settings on the server to read the orders mailbox automatically." : ""}</p>}
     </div>
   );
@@ -76,12 +76,12 @@ function Detail({ id, onChanged }) {
         <span className={`badge ${TONE[m.status]}`}>{STATUS[m.status]}</span>
       </div>
 
-      {m.status === "reading" || m.status === "new" ? <p className="ai-reading">✨ AI is reading this… {m.status === "new" && "(waiting in line)"}</p> : null}
+      {m.status === "reading" || m.status === "new" ? <p className="ai-reading">Reading… {m.status === "new" && "(waiting in line)"}</p> : null}
       {m.status === "error" && <div className="form-error">Couldn't read it: {m.error}</div>}
 
       {x && (
         <div className="ai-result">
-          <div className="row-between"><b>✨ {x.summary}</b>{x.doc_type && <span className={`badge ${TYPE[x.doc_type][1]}`}>{TYPE[x.doc_type][0]}</span>}</div>
+          <div className="row-between"><b>{x.reader === "pdf-text" ? "📄" : "✨"} {x.summary}</b>{x.doc_type && <span className={`badge ${TYPE[x.doc_type][1]}`}>{TYPE[x.doc_type][0]}</span>}</div>
           <dl className="kv small">
             <dt>{bill ? "Supplier" : "Customer"}</dt><dd>{x.party_name || "—"} {x.party_match_id ? <span className="badge green sm">= {x.party_match_name}</span> : x.party_name ? <span className="badge amber sm">new / not matched</span> : null}</dd>
             {x.reference && <><dt>{bill ? "Bill #" : "PO #"}</dt><dd>{x.reference}</dd></>}

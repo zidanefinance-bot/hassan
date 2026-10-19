@@ -78,15 +78,3 @@ export async function readPaperwork({ text = "", subject = "", from = "", files 
   if (!response.parsed_output) throw new Error("The AI reply could not be understood");
   return { ...response.parsed_output, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens }, skipped };
 }
-
-// keep only matches that point at real records of the right type
-export function checkMatches(db, x) {
-  const wantType = x.doc_type === "supplier_bill" ? "supplier" : "customer";
-  const party = x.party_match_id && db.prepare("SELECT id FROM contacts WHERE id = ? AND type = ?").get(x.party_match_id, wantType);
-  const lines = (x.lines || []).map((l) => {
-    const item = l.item_match_id && db.prepare("SELECT id FROM items WHERE id = ? AND active = 1").get(l.item_match_id);
-    return item ? l : { ...l, item_match_id: null, match_confidence: "none" };
-  });
-  const iso = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d : null);
-  return { ...x, party_match_id: party ? x.party_match_id : null, date: iso(x.date), required_date: iso(x.required_date), lines };
-}

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { addDays, api, Field, KIND, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import Picker from "../components/Picker.jsx";
+import { cleanLine, createMissingItems, learnedLines, missingLines } from "../components/draftLines.js";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import { readFiles } from "./Inbox.jsx";
@@ -80,7 +81,7 @@ export default function DocumentForm({ kind }) {
       lines: x.lines.length ? x.lines.map((l) => {
         const it = items.data.find((i) => i.id === l.item_match_id);
         return { ...blankLine(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty,
-          rate: l.rate ?? (it ? (isSale ? it.sale_rate : it.purchase_rate) ?? 0 : 0), tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description, ai_unit: l.unit, ai_rate: l.rate };
+          rate: l.rate ?? (it ? (isSale ? it.sale_rate : it.purchase_rate) ?? 0 : 0), tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description, ai_unit: l.unit, ai_rate: l.rate, ai_code: l.code };
       }) : d.lines,
     }));
     setDraft(null);
@@ -111,7 +112,7 @@ export default function DocumentForm({ kind }) {
   const setLine = (i, patch) => setDoc((d) => ({ ...d, lines: d.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
   const pickItem = (i, itemId, list = items.data) => {
     const it = list?.find((x) => String(x.id) === String(itemId));
-    setLine(i, it ? { item_id: it.id, rate: (isSale ? it.sale_rate : it.purchase_rate) ?? 0, tax_rate: it.tax_rate, description: "", hint: null } : { item_id: "", hint: null });
+    setLine(i, it ? { item_id: it.id, rate: doc.lines[i]?.ai_rate ?? (isSale ? it.sale_rate : it.purchase_rate) ?? 0, tax_rate: it.tax_rate, description: "", hint: null, ai: null } : { item_id: "", hint: null });
     // what we last charged this customer / paid this supplier for it
     if (it && doc.contact_id && !isDc) {
       api(`/items/last-rate?item_id=${it.id}&contact_id=${doc.contact_id}&side=${isSale ? "sale" : "purchase"}`)
@@ -120,7 +121,7 @@ export default function DocumentForm({ kind }) {
   };
   const save = async (issue, asEnquiry = false) => {
     setErr("");
-    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ai, ai_text, ai_unit, ai_rate, ...l }) => ({ ...l, item_id: l.item_id || null }));
+    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ...l }) => ({ ...cleanLine(l), item_id: l.item_id || null }));
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
@@ -130,7 +131,7 @@ export default function DocumentForm({ kind }) {
     setBusy(true);
     try {
       const r = id ? await api(`/documents/${id}`, { method: "PUT", body }) : await api("/documents", { method: "POST", body });
-      if (inboxId && !id) await api(`/inbox/${inboxId}/status`, { method: "POST", body: { status: "done", result_kind: kind, result_id: r.id } }).catch(() => {});
+      if (inboxId && !id) await api(`/inbox/${inboxId}/status`, { method: "POST", body: { status: "done", result_kind: kind, result_id: r.id, lines: learnedLines(doc.lines) } }).catch(() => {});
       toast(`${K.label} saved`);
       nav(`/${K.path}/${r.id}`);
     } catch (x) { setErr(x.message); } finally { setBusy(false); }
@@ -160,7 +161,8 @@ export default function DocumentForm({ kind }) {
           {can(CONTACT_WRITE[K.contact]) ? <button className="btn sm" onClick={() => setAddingContact(aiParty)}>+ Add {aiParty} as a new {K.contact}</button> : `Pick the right ${K.contact}, or ask someone to add them.`}</div>
       )}
       {inboxId && !id && doc.lines.some((l) => l.ai) && (
-        <div className="ai-banner">✨ Filled by AI. Lines marked <span className="ai-flag">check</span> weren't matched to an item for sure. Fix them, then save.</div>
+        <div className="ai-banner">✨ Filled from the paper. Lines marked <span className="ai-flag">check</span> weren't matched to one of your items for sure. Pick the right item (it's remembered for next time) or add them as new items.
+          {missingLines(doc.lines).length > 0 && <> <button className="btn sm" disabled={busy} onClick={async () => { setBusy(true); try { const lines2 = await createMissingItems(doc.lines, isSale ? "sale_rate" : "purchase_rate"); items.reload(); setDoc((d) => ({ ...d, lines: lines2 })); toast("Items added"); } catch (x) { toast(x.message, "err"); } finally { setBusy(false); } }}>+ Add the {missingLines(doc.lines).length} new item(s) to my items</button></>}</div>
       )}
       <div className="card form doc-form">
         <div className="row-4">

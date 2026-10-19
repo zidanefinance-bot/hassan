@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { can } from "./auth.js";
 import { httpError } from "./books.js";
-import { aiReady, checkMatches, readPaperwork } from "./ai.js";
+import { aiReady, readPaperwork } from "./ai.js";
+import { parseOrderPdf } from "./poparse.js";
+import { completeDraft, rememberLines } from "./matching.js";
 import { notify, usersWith } from "./collab.js";
 
 const MAX_FILE = 10 * 1024 * 1024;
@@ -50,19 +52,26 @@ export function addMessage(db, uploadDir, { source, message_id = null, from_addr
 // AI reads one message. Runs in the background; the row's status tells the UI where it is.
 export async function processMessage(db, uploadDir, id) {
   const m = db.prepare("SELECT * FROM inbox_messages WHERE id = ?").get(id);
-  if (!m || !reader.ready()) return;
+  if (!m) return;
   db.prepare("UPDATE inbox_messages SET status = 'reading', error = NULL WHERE id = ?").run(id);
   try {
     const files = db.prepare("SELECT * FROM inbox_files WHERE inbox_id = ?").all(id).map((f) => ({ filename: f.filename, mime: f.mime === "image/jpg" ? "image/jpeg" : f.mime, buffer: readFileSync(join(uploadDir, f.path)) }));
-    const catalog = db.prepare("SELECT id, name, sku, unit FROM items WHERE active = 1 ORDER BY name").all();
-    const contacts = db.prepare("SELECT id, type, name FROM contacts WHERE active = 1 ORDER BY name").all();
-    const x = checkMatches(db, await reader.read({ text: m.body_text, subject: m.subject, from: m.from_addr, files, catalog, contacts }));
+    // computer-made PDFs (ERP purchase orders, printed bills) are read for free; only photos and scans need AI
+    let draft = null;
+    for (const f of files.filter((f) => f.mime === "application/pdf")) { draft = await parseOrderPdf(f.buffer); if (draft) break; }
+    if (!draft) {
+      if (!reader.ready()) throw new Error(files.length ? "This file has no readable text (a photo or scan). Turn on AI reading, or type the order in." : "Nothing to read automatically. Turn on AI reading, or type the order in.");
+      const catalog = db.prepare("SELECT id, name, sku, unit FROM items WHERE active = 1 ORDER BY name").all();
+      const contacts = db.prepare("SELECT id, type, name FROM contacts WHERE active = 1 ORDER BY name").all();
+      draft = { ...(await reader.read({ text: m.body_text, subject: m.subject, from: m.from_addr, files, catalog, contacts })), reader: "ai" };
+    }
+    const x = completeDraft(db, draft);
     const status = x.doc_type === "other" ? "ignored" : "ready";
     db.prepare("UPDATE inbox_messages SET status = ?, doc_type = ?, extraction = ? WHERE id = ?").run(status, x.doc_type, JSON.stringify(x), id);
     if (status === "ready") {
       const who = x.doc_type === "customer_order" ? usersWith(db, "sales.write") : usersWith(db, "buy");
       // whoever sent it from Telegram hears back too; someone who pasted it in the app is already looking at it
-      notify(db, [...who, ...usersWith(db, "admin"), m.source === "telegram" ? m.created_by : null], { kind: "inbox", title: `${x.doc_type === "customer_order" ? "New order" : "Supplier bill"} read by AI: ${x.party_name || m.from_addr || "unknown sender"}`, body: x.summary, link: `/inbox?open=${id}`, actor: m.source === "telegram" ? null : m.created_by });
+      notify(db, [...who, ...usersWith(db, "admin"), m.source === "telegram" ? m.created_by : null], { kind: "inbox", title: `${x.doc_type === "customer_order" ? "New order" : "Supplier bill"}${x.reader === "ai" ? " read by AI" : ""}: ${x.party_name || m.from_addr || "unknown sender"}`, body: x.summary, link: `/inbox?open=${id}`, actor: m.source === "telegram" ? null : m.created_by });
     }
   } catch (e) {
     db.prepare("UPDATE inbox_messages SET status = 'error', error = ? WHERE id = ?").run(String(e.message || e).slice(0, 500), id);
@@ -102,10 +111,16 @@ export function inboxFile(db, user, fileId) {
   return f;
 }
 
-export function markHandled(db, user, id, { status, result_kind = null, result_id = null }) {
+export function markHandled(db, user, id, { status, result_kind = null, result_id = null, lines = null }) {
   const m = db.prepare("SELECT * FROM inbox_messages WHERE id = ?").get(id);
   if (!m || !allowed(user, m)) throw httpError(404, "Not found");
   if (!["done", "ignored", "ready"].includes(status)) throw httpError(400, "Invalid status");
+  // what the person picked for each line is remembered for this customer/supplier
+  if (status === "done" && lines && result_id) {
+    const table = result_kind === "job" ? "SELECT customer_id AS c FROM jobs WHERE id = ?" : "SELECT contact_id AS c FROM documents WHERE id = ?";
+    const contactId = db.prepare(table).get(result_id)?.c;
+    if (contactId) rememberLines(db, contactId, lines);
+  }
   db.prepare("UPDATE inbox_messages SET status = ?, result_kind = ?, result_id = ?, handled_by = ?, handled_at = datetime('now') WHERE id = ?").run(status, result_kind, result_id, user.id, id);
 }
 

@@ -197,6 +197,12 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, endpoint TEXT NOT NULL UNIQUE,
   p256dh TEXT NOT NULL, auth TEXT NOT NULL, user_agent TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), last_ok_at TEXT
 );
+-- what a customer/supplier calls an item (their code or name) → our item; learned when a person confirms a draft
+CREATE TABLE IF NOT EXISTS item_aliases (
+  id INTEGER PRIMARY KEY, contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE, code TEXT, name_norm TEXT NOT NULL,
+  item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE, created_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE (contact_id, name_norm)
+);
+CREATE INDEX IF NOT EXISTS idx_alias_code ON item_aliases(contact_id, code);
 CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox_messages(status, received_at);
 CREATE INDEX IF NOT EXISTS idx_comments ON comments(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at);
