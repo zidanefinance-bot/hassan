@@ -13,6 +13,10 @@
 # GITHUB_TOKEN  only for way B: read-only token for the private repo zidanefinance-bot/hassan
 # BRANCH        optional, default ccr-52506c1f-ufvep1
 # PORT          optional, default 3200 (local port the app listens on; nginx forwards to it)
+# ADMIN_PASSWORD optional; if not set, the script asks. It is removed from the server once the account exists.
+#
+# Safe on a shared server: it never runs apt-get and never changes the system Node.js. If something it needs is
+# missing it stops and says what, so the other apps on the server (website, OPS, bots) are never touched.
 set -euo pipefail
 
 DOMAIN="${DOMAIN:?Set DOMAIN, e.g. books.zidane.com.pk}"
@@ -28,19 +32,20 @@ DATA=/var/lib/zidane-books
 ENV_FILE=/etc/zidane-books.env
 
 [ "$(id -u)" = 0 ] || { echo "Run with sudo"; exit 1; }
-if ss -ltn "( sport = :$PORT )" | grep -q ":$PORT"; then echo "Port $PORT is already in use. Re-run with PORT=<free port>"; exit 1; fi
+if command -v ss >/dev/null && ss -ltn "( sport = :$PORT )" | grep -q ":$PORT"; then echo "Port $PORT is already in use. Re-run with PORT=<free port>"; exit 1; fi
 
-echo "==> Packages"
-apt-get update -y
-apt-get install -y git curl ca-certificates nginx certbot python3-certbot-nginx
-NODE_MAJOR=$(node -v 2>/dev/null | sed -E 's/v([0-9]+).*/\1/' || echo 0)
-NODE_MINOR=$(node -v 2>/dev/null | sed -E 's/v[0-9]+\.([0-9]+).*/\1/' || echo 0)
-if [ "${NODE_MAJOR:-0}" -lt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && [ "${NODE_MINOR:-0}" -lt 13 ]; }; then
-  echo "==> Installing Node.js 22 (the website keeps working; it uses its own process)"
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  apt-get install -y nodejs
+echo "==> Checking what's already on the server (nothing is installed or upgraded)"
+MISSING=""
+for c in git curl nginx node npm; do command -v "$c" >/dev/null || MISSING="$MISSING $c"; done
+[ -z "$GITHUB_TOKEN" ] && MISSING="${MISSING/ git/}"   # git is only needed for the GitHub way
+if [ -n "$MISSING" ]; then echo "Missing on this server:$MISSING. Install them first (ask before touching a shared server), then run again."; exit 1; fi
+NODE_MAJOR=$(node -v | sed -E 's/v([0-9]+).*/\1/'); NODE_MINOR=$(node -v | sed -E 's/v[0-9]+\.([0-9]+).*/\1/')
+if [ "$NODE_MAJOR" -lt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -lt 13 ]; }; then
+  echo "Node.js $(node -v) is too old (need 22.13 or newer). Not upgrading it here because other apps may use it. Stopping."; exit 1
 fi
-node -v
+HAVE_CERTBOT=0
+command -v certbot >/dev/null && certbot plugins 2>/dev/null | grep -q "^\* nginx" && HAVE_CERTBOT=1
+echo "node $(node -v) · nginx $(nginx -v 2>&1 | sed 's/.*\///') · certbot nginx plugin: $([ $HAVE_CERTBOT = 1 ] && echo yes || echo no)"
 
 echo "==> App user and folders"
 id "$APP_USER" >/dev/null 2>&1 || useradd --system --home "$DATA" --shell /usr/sbin/nologin "$APP_USER"
@@ -65,7 +70,7 @@ chown -R root:root "$SRC"
 
 echo "==> Settings"
 if [ ! -f "$ENV_FILE" ]; then
-  read -r -s -p "Choose the director password for $ADMIN_EMAIL (8+ characters): " ADMIN_PASSWORD; echo
+  [ -n "${ADMIN_PASSWORD:-}" ] || { read -r -s -p "Choose the director password for $ADMIN_EMAIL (8+ characters): " ADMIN_PASSWORD; echo; }
   [ "${#ADMIN_PASSWORD}" -ge 8 ] || { echo "Password too short"; exit 1; }
   cat > "$ENV_FILE" <<ENV
 NODE_ENV=production
@@ -101,8 +106,9 @@ WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload
 systemctl enable --now zidane-books
-sleep 2
-curl -fsS "http://127.0.0.1:$PORT/api/health" && echo " app is up"
+UP=0
+for _ in $(seq 15); do sleep 2; curl -fsS "http://127.0.0.1:$PORT/api/health" >/dev/null 2>&1 && { UP=1; break; }; done
+[ $UP = 1 ] && echo "app is up" || { echo "The app didn't start. See: journalctl -u zidane-books -n 50"; exit 1; }
 
 echo "==> nginx site for $DOMAIN (the existing website config is not changed)"
 cat > /etc/nginx/sites-available/zidane-books <<NGINX
@@ -123,8 +129,18 @@ NGINX
 ln -sf /etc/nginx/sites-available/zidane-books /etc/nginx/sites-enabled/zidane-books
 nginx -t && systemctl reload nginx
 
-echo "==> HTTPS certificate"
-certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$ADMIN_EMAIL" --redirect || echo "!! certbot failed. Check that $DOMAIN points to this server, then run: certbot --nginx -d $DOMAIN"
+echo "==> HTTPS certificate (only for $DOMAIN; other sites' certificates are not touched)"
+if [ $HAVE_CERTBOT = 1 ]; then
+  certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$ADMIN_EMAIL" --redirect || echo "!! certbot failed. Check that $DOMAIN points to this server, then run: certbot --nginx -d $DOMAIN"
+else
+  echo "!! certbot with the nginx plugin isn't on this server, so the site is on http for now. Add HTTPS the way the main website got it."
+fi
+
+# the director account exists now; the password doesn't need to stay on the server
+if grep -q '^ADMIN_PASSWORD=' "$ENV_FILE"; then
+  for _ in $(seq 15); do curl -fsS "http://127.0.0.1:$PORT/api/health" >/dev/null 2>&1 && break; sleep 2; done
+  sed -i '/^ADMIN_PASSWORD=/d' "$ENV_FILE"
+fi
 
 echo "==> Daily backup at 2:30am (keeps 30 days in $DATA/backups)"
 cat > /etc/cron.d/zidane-books-backup <<CRON

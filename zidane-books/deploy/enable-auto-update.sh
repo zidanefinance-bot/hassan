@@ -15,7 +15,7 @@ BRANCH="${BRANCH:-ccr-52506c1f-ufvep1}"
 SRC=/opt/zidane-books-src
 REPO="https://x-access-token:${GITHUB_TOKEN}@github.com/zidanefinance-bot/hassan.git"
 
-command -v git >/dev/null || apt-get install -y git
+command -v git >/dev/null || { echo "git isn't installed on this server. Install it first (ask before touching a shared server)."; exit 1; }
 
 echo "==> Checking the token can read the code"
 git ls-remote --exit-code "$REPO" "refs/heads/$BRANCH" >/dev/null || { echo "Token can't read branch $BRANCH of zidanefinance-bot/hassan. Check the token's repository access and Contents: Read-only."; exit 1; }
