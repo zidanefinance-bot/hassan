@@ -53,7 +53,16 @@ Aakhir mein likha aayega: `Done. Open https://books.zidane.com.pk`
 4. **Items → Import CSV:** Zoho se items
 5. Customers aur suppliers, saath mein opening balance, payment terms aur credit limit
 
-## Naya update kaise lagega
+## Auto-update (ek dafa ka setup, phir sab khud)
+Server har 10 minute mein GitHub check karta hai. Naya version aaye to khud backup leta hai, update karta hai aur
+restart karta hai. Naya version sahi na chale to purana version aur data khud wapas laga deta hai.
+```bash
+sudo GITHUB_TOKEN=github_pat_... bash deploy/enable-auto-update.sh
+```
+Token: GitHub → Settings → Developer settings → Fine-grained tokens → sirf `zidanefinance-bot/hassan` → **Contents: Read-only**.
+Log dekhna: `sudo journalctl -u zidane-books-update -n 50` · Abhi update: `sudo systemctl start zidane-books-update`
+
+## Naya update kaise lagega (bina auto-update ke)
 Jab main naya kaam push karun, server par bas yeh chalayein:
 ```bash
 sudo bash /opt/zidane-books-src/zidane-books/deploy/update-on-server.sh

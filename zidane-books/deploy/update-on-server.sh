@@ -7,8 +7,6 @@ SRC=/opt/zidane-books-src
 DATA=/var/lib/zidane-books
 PKG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [ "$(id -u)" = 0 ] || { echo "Run with sudo"; exit 1; }
-echo "==> Backup before update"
-node --disable-warning=ExperimentalWarning -e "const{DatabaseSync}=require('node:sqlite');new DatabaseSync('$DATA/zidane-books.db').exec(\"VACUUM INTO '$DATA/backups/before-update-\"+Date.now()+\".db'\")"
 if [ "$PKG_DIR" != "$SRC/zidane-books" ]; then
   echo "==> Code from release package $PKG_DIR"
   rm -rf "$SRC/zidane-books/server" "$SRC/zidane-books/dist"
@@ -27,7 +25,16 @@ if [ -f "$NG" ] && ! grep -q proxy_read_timeout "$NG"; then
   sed -i 's#proxy_pass http://127.0.0.1:\([0-9]*\);#proxy_pass http://127.0.0.1:\1;\n        proxy_read_timeout 180s;#' "$NG"
   nginx -t && systemctl reload nginx
 fi
+# backup right before the switch, so nothing typed during the build is missed if we ever have to roll back
+echo "==> Backup before update"
+mkdir -p "$DATA/backups"
+node --disable-warning=ExperimentalWarning -e "const{DatabaseSync}=require('node:sqlite');new DatabaseSync('$DATA/zidane-books.db').exec(\"VACUUM INTO '$DATA/backups/before-update-\"+Date.now()+\".db'\")"
 systemctl restart zidane-books
-sleep 2
 PORT=$(grep '^PORT=' /etc/zidane-books.env | cut -d= -f2)
-curl -fsS "http://127.0.0.1:${PORT:-3200}/api/health" && echo " updated and running"
+# give it up to 30 seconds to start
+for _ in $(seq 15); do
+  sleep 2
+  if curl -fsS "http://127.0.0.1:${PORT:-3200}/api/health" >/dev/null 2>&1; then echo "updated and running"; exit 0; fi
+done
+echo "The app didn't start. See: sudo journalctl -u zidane-books -n 50"
+exit 1
