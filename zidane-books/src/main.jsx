@@ -88,6 +88,7 @@ function Shell() {
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/jobs/new" element={<JobForm />} />
             <Route path="/jobs/:id" element={<JobView />} />
+            <Route path="/jobs/:id/edit" element={<JobForm />} />
             <Route path="/procurement" element={<Procurement />} />
             <Route path="/items" element={<Items />} />
             <Route path="/items/:id" element={<ItemView />} />

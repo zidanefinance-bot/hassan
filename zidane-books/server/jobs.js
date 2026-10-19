@@ -124,10 +124,54 @@ export function updateJob(db, userId, id, input) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
   if (!job) throw httpError(404, "Job not found");
   if (job.closed) throw httpError(400, "This Job is closed. A director can reopen it.");
-  db.prepare("UPDATE jobs SET customer_po_number=?, customer_po_date=?, required_date=?, delivery_location=?, priority=?, instructions=? WHERE id=?")
-    .run(input.customer_po_number ?? job.customer_po_number, input.customer_po_date ?? job.customer_po_date, input.required_date ?? job.required_date,
-      input.delivery_location ?? job.delivery_location, input.priority ?? job.priority, input.instructions ?? job.instructions, id);
-  log(db, userId, "updated job", "job", id, job.number);
+  tx(db, () => {
+    db.prepare("UPDATE jobs SET customer_po_number=?, customer_po_date=?, required_date=?, delivery_location=?, priority=?, instructions=?, order_source=?, fulfilment_type=? WHERE id=?")
+      .run(input.customer_po_number ?? job.customer_po_number, input.customer_po_date ?? job.customer_po_date, input.required_date ?? job.required_date,
+        input.delivery_location ?? job.delivery_location, input.priority ?? job.priority, input.instructions ?? job.instructions,
+        input.order_source ?? job.order_source, input.fulfilment_type === "direct" ? "direct" : input.fulfilment_type === "stock" ? "stock" : job.fulfilment_type, id);
+    if (Array.isArray(input.items)) updateJobItems(db, job, input.items);
+    log(db, userId, "updated job", "job", id, job.number);
+  });
+}
+
+// Correcting a Job's lines: change qty / rate, add lines, remove lines. Whatever is already on a supplier bill,
+// a DC or an invoice stays: a line can't go below that, and such a line can't be removed or swapped for another item.
+function updateJobItems(db, job, input) {
+  const lines = input.filter((i) => i.item_id || i.description);
+  if (!lines.length) throw httpError(400, "Add at least one item");
+  if (lines.some((i) => !(Number(i.qty) > 0))) throw httpError(400, "Every line needs a quantity above 0");
+  if (lines.some((i) => Number(i.sale_rate ?? i.rate) < 0)) throw httpError(400, "A selling rate can't be negative");
+  const existing = db.prepare("SELECT ji.*, COALESCE(i.name, ji.description) AS name FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.job_id = ?").all(job.id);
+  const used = { bill: lineTotals(db, job.id, "bill", ["open", "draft"]), dc: lineTotals(db, job.id, "dc", ["issued", "signed", "draft"]), invoice: lineTotals(db, job.id, "invoice", ["open", "draft"]) };
+  const taken = (it) => Math.max(used.bill(it).qty, used.dc(it).qty, used.invoice(it).qty);
+  const keep = new Set(lines.filter((l) => l.id).map((l) => Number(l.id)));
+  for (const it of existing) {
+    if (!keep.has(it.id) && taken(it) > 0) throw httpError(400, `${it.name} is already on a bill, DC or invoice, so it can't be removed. Lower its quantity instead.`);
+  }
+  for (const it of existing) if (!keep.has(it.id)) db.prepare("DELETE FROM job_items WHERE id = ?").run(it.id);
+  let addsBuying = false;
+  for (const l of lines) {
+    const qty = Number(l.qty), rate = Number(l.sale_rate ?? l.rate) || 0, tax = Number(l.tax_rate) || 0;
+    const it = l.id && existing.find((x) => x.id === Number(l.id));
+    if (it) {
+      const t = taken(it);
+      const sameItem = (Number(l.item_id) || null) === (it.item_id || null) && (it.item_id || (l.description || null) === (it.description || null));
+      if (!sameItem && t > 0) throw httpError(400, `${it.name} is already on a bill, DC or invoice, so it can't be changed to another item`);
+      if (qty < t - 0.001) throw httpError(400, `${it.name}: ${t} is already on a bill, DC or invoice, so the quantity can't go below that`);
+      // more than was bought before: back to buying
+      const status = qty > it.qty + 0.001 && ["bought", "partial"].includes(it.procurement_status) ? (used.bill(it).qty > 0 ? "partial" : "to_buy") : it.procurement_status;
+      if (status !== it.procurement_status) addsBuying = true;
+      db.prepare("UPDATE job_items SET item_id = ?, description = ?, qty = ?, sale_rate = ?, tax_rate = ?, procurement_status = ? WHERE id = ?")
+        .run(Number(l.item_id) || null, Number(l.item_id) ? null : l.description || null, qty, rate, tax, status, it.id);
+    } else {
+      db.prepare("INSERT INTO job_items (job_id, item_id, description, qty, sale_rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)").run(job.id, Number(l.item_id) || null, Number(l.item_id) ? null : l.description || null, qty, rate, tax);
+      addsBuying = true;
+    }
+  }
+  // a new or bigger line after the material was ready sends the Job back to buying (unless goods are already out)
+  if (addsBuying && step(job.ops_status) >= step("material_ready") && step(job.ops_status) < step("dispatched")) db.prepare("UPDATE jobs SET ops_status = 'partially_purchased' WHERE id = ?").run(job.id);
+  rollupOps(db, job.id);
+  syncJobBuying(db, null, job.id);
 }
 
 // qty per job_item already on issued DCs / invoices / supplier bills
@@ -317,7 +361,7 @@ export function dcFromJob(db, userId, jobId, { admin = false } = {}) {
   const ready = readyQty(db, jobId);
   const lines = items.map((i) => ({ item_id: i.item_id, description: i.description, qty: round2((admin ? i.qty : ready(i)) - delivered(i).qty), rate: 0 })).filter((l) => l.qty > 0);
   if (lines.length === 0) throw httpError(400, "Nothing more is bought / in hand yet. Operations marks items bought (or the material ready) first.");
-  return saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, notes: job.delivery_location ? `Deliver to: ${job.delivery_location}` : null, lines });
+  return saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, lines });
 }
 
 // Sales: draft invoice for delivered-but-not-invoiced quantities (or the whole Job when nothing has a DC yet)

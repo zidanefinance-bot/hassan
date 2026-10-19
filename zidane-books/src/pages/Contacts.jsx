@@ -40,7 +40,7 @@ export default function Contacts({ type }) {
   const state = useLoad(`/contacts?type=${type}&q=${encodeURIComponent(q)}`);
   const nav = useNavigate();
   const { can } = useAuth();
-  const canWrite = can(type === "customer" ? "sales.write" : "ops.write");
+  const canWrite = type === "customer" ? can("sales.write") : can("ops.write") || can("buy");
   const title = type === "customer" ? "Customers" : "Suppliers";
   return (
     <>

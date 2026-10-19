@@ -56,6 +56,7 @@ export function JobForm() {
   const nav = useNavigate();
   const toast = useToast();
   const [params] = useSearchParams();
+  const { id: editId } = useParams(); // /jobs/:id/edit corrects an existing Job
   const customers = useLoad("/contacts?type=customer");
   const items = useLoad("/items");
   const settings = useLoad("/settings");
@@ -92,12 +93,28 @@ export function JobForm() {
       setAiFilled(true);
     }).catch(() => {});
   }, [inboxId, items.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!editId) return;
+    api(`/jobs/${editId}`).then((j) => setF({
+      customer_id: String(j.customer_id), order_source: j.order_source, customer_po_number: j.customer_po_number || "", customer_po_date: j.customer_po_date || "",
+      required_date: j.required_date || "", delivery_location: j.delivery_location || "", priority: j.priority, fulfilment_type: j.fulfilment_type, instructions: j.instructions || "",
+      items: j.items.map((it) => ({ key: it.id, id: it.id, item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: it.qty, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate ?? 0 })),
+    })).catch((x) => setErr(x.message));
+  }, [editId]);
   const set = (k) => ({ value: f[k], onChange: (e) => setF({ ...f, [k]: e.target.value }) });
   const setItem = (i, patch) => setF((s) => ({ ...s, items: s.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) }));
   const save = async () => {
     setErr("");
     try {
-      const r = await api("/jobs", { method: "POST", body: { ...f, items: f.items.map(({ key, ...x }) => ({ ...cleanLine(x), item_id: x.item_id || null })) } });
+      // "Customer on paper" was only a hint while the customer wasn't picked
+      const instructions = f.customer_id ? f.instructions.split("\n").filter((l) => !l.startsWith("Customer on paper:")).join("\n") : f.instructions;
+      const body = { ...f, instructions, items: f.items.map(({ key, ...x }) => ({ ...cleanLine(x), item_id: x.item_id || null })) };
+      if (editId) {
+        await api(`/jobs/${editId}`, { method: "PUT", body });
+        toast("Job updated");
+        return nav(`/jobs/${editId}`);
+      }
+      const r = await api("/jobs", { method: "POST", body });
       if (inboxId) await api(`/inbox/${inboxId}/status`, { method: "POST", body: { status: "done", result_kind: "job", result_id: r.id, lines: learnedLines(f.items) } }).catch(() => {});
       toast("Job created and sent to Operations");
       nav(`/jobs/${r.id}`);
@@ -105,13 +122,13 @@ export function JobForm() {
   };
   return (
     <>
-      <PageHead title="New Job" sub="For a confirmed order. Customer PO is optional; Operations gets only what it needs to fulfil." />
+      <PageHead title={editId ? "Edit Job" : "New Job"} sub={editId ? "Correct quantities, rates or items. What's already on a bill, DC or invoice can't go below that." : "For a confirmed order. Customer PO is optional; Operations gets only what it needs to fulfil."} />
       {aiParty && !f.customer_id && <div className="ai-banner">The PO is from <b>{aiParty}</b>, who isn't in your customers yet. <button className="btn sm" onClick={() => setAdding(aiParty)}>+ Add {aiParty} as a new customer</button></div>}
       {aiFilled && <div className="ai-banner">✨ Filled from the customer's PO. Lines marked <span className="ai-flag">check</span> weren't matched to one of your items for sure. Pick the right item (it's remembered for next time) or add them as new items.
         {missingLines(f.items).length > 0 && <> <button className="btn sm" onClick={() => setCreating(true)}>+ Add the {missingLines(f.items).length} new item(s) to my items</button></>}</div>}
       <div className="card form">
         <div className="row-4">
-          <Field label="Customer *"><div className="with-btn"><Picker options={contactOptions(customers.data)} value={f.customer_id} onChange={(v) => setF((s) => ({ ...s, customer_id: String(v) }))} placeholder="Type customer name…" createLabel="customer" onCreate={(name) => setAdding(name)} /><button type="button" className="btn sm" title="New customer" onClick={() => setAdding("")}>+</button></div></Field>
+          {editId ? <Field label="Customer"><input value={customers.data?.find((c) => String(c.id) === f.customer_id)?.name || ""} disabled /></Field> : <Field label="Customer *"><div className="with-btn"><Picker options={contactOptions(customers.data)} value={f.customer_id} onChange={(v) => setF((s) => ({ ...s, customer_id: String(v) }))} placeholder="Type customer name…" createLabel="customer" onCreate={(name) => setAdding(name)} /><button type="button" className="btn sm" title="New customer" onClick={() => setAdding("")}>+</button></div></Field>}
           <Field label="Order came by"><select {...set("order_source")}>{["call", "whatsapp", "email", "verbal", "repeat order", "tender", "contract", "formal PO", "walk-in"].map((s) => <option key={s}>{s}</option>)}</select></Field>
           <Field label="Customer PO # (optional)"><input {...set("customer_po_number")} /></Field>
           <Field label="PO date"><input type="date" {...set("customer_po_date")} /></Field>
@@ -148,7 +165,7 @@ export function JobForm() {
           <button type="button" className="btn ghost" onClick={() => setAddingItem({ line: -1, name: "" })}>+ New item (not in list)</button></div>
         <Field label="Instructions for Operations"><textarea rows={2} {...set("instructions")} placeholder="Packing, delivery timing, gate pass…" /></Field>
         {err && <div className="form-error">{err}</div>}
-        <div className="form-actions"><button className="btn ghost" onClick={() => nav(-1)}>Cancel</button><button className="btn primary" onClick={save}>Create Job</button></div>
+        <div className="form-actions"><button className="btn ghost" onClick={() => nav(-1)}>Cancel</button><button className="btn primary" onClick={save}>{editId ? "Save changes" : "Create Job"}</button></div>
       </div>
       {creating && <NewItems lines={f.items} items={items.data} rateField="sale_rate" onClose={() => setCreating(false)} onDone={(items2) => { setCreating(false); items.reload(); setF((s) => ({ ...s, items: items2 })); }} />}
       {addingItem && <ItemForm presetName={addingItem.name} preset={addingItem.preset} onClose={() => setAddingItem(null)} onSaved={async (newId) => {
@@ -163,7 +180,7 @@ export function JobForm() {
           return { ...s, items: at < 0 ? [...s.items, line] : s.items.map((x, j) => (j === at ? line : x)) };
         });
       }} />}
-      {adding !== null && <ContactForm type="customer" presetName={adding} preset={adding === aiParty ? partyInfo : {}} onClose={() => setAdding(null)} onSaved={(id) => { setAdding(null); setAiParty(null); customers.reload(); setF((s) => ({ ...s, customer_id: String(id) })); }} />}
+      {adding !== null && <ContactForm type="customer" presetName={adding} preset={adding === aiParty ? partyInfo : {}} onClose={() => setAdding(null)} onSaved={(id) => { setAdding(null); setAiParty(null); customers.reload(); setF((s) => ({ ...s, customer_id: String(id)})); }} />}
     </>
   );
 }
@@ -214,6 +231,7 @@ export function JobView() {
             {can("ops.write") && step === 4 && !j.documents.some((d) => d.kind === "dc" && d.status !== "draft" && d.status !== "void") && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "procurement_started" } }), "Moved back to procurement")}>Not ready after all</button>}
             {can("ops.write") && j.ops_status === "dispatched" && !j.documents.some((d) => d.kind === "dc" && ["issued", "signed"].includes(d.status)) && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "material_ready" } }), "Moved back to material ready")}>Not dispatched yet</button>}
             {can("ops.write") && nextOps && step >= 4 && nextOps !== "delivered" && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}
+            {can("sales.write") && !j.closed && <Link className="btn ghost" to={`/jobs/${id}/edit`}>Edit Job</Link>}
             {can("buy") && <Link className="btn" to={`/bills/new?job=${id}`}>+ Supplier bill</Link>}
             {can("buy") && <button className="btn" onClick={() => setCost(true)}>+ Freight / direct cost</button>}
             {can("sales.write") && !j.closed && canDeliver && <button className="btn primary" onClick={() => setDeliver(true)}>{step >= 4 ? "Material arrived" : "Send what's in hand"} → DC + invoice</button>}
@@ -257,7 +275,7 @@ export function JobView() {
           <section className="card flush">
             <h3 className="pad">Items</h3>
             <table className="table">
-              <thead><tr><th>Item</th><th className="r">Qty</th>{can("price.view") && <th className="r">Selling rate</th>}{can("cost.view") && <th className="r">Last cost</th>}<th>Procurement</th><th className="r">Bought</th>{can("sales.read") && <th className="r">Delivered</th>}{can("sales.read") && <th className="r">Invoiced</th>}</tr></thead>
+              <thead><tr><th>Item</th><th className="r">Qty</th>{can("price.view") && <th className="r">Selling rate</th>}{can("cost.view") && <th className="r">Last cost</th>}<th>Procurement</th>{can("ops.read") && <th className="r">Bought</th>}{can("sales.read") && <th className="r">Delivered</th>}{can("sales.read") && <th className="r">Invoiced</th>}</tr></thead>
               <tbody>{j.items.map((it) => (
                 <tr key={it.id}>
                   <td><b>{it.name}</b>{it.stock_qty !== null && it.stock_qty !== undefined && can("ops.read") && <div className="muted small">In stock: {num(it.stock_qty)} {it.unit}</div>}</td>
@@ -271,7 +289,7 @@ export function JobView() {
                       </select>
                     ) : <ProcBadge s={it.procurement_status} />}
                   </td>
-                  <td className="r">{num(it.purchased_qty)}</td>
+                  {can("ops.read") && <td className="r">{num(it.purchased_qty)}</td>}
                   {can("sales.read") && <td className="r">{num(it.delivered_qty)}</td>}
                   {can("sales.read") && <td className="r">{num(it.invoiced_qty)}</td>}
                 </tr>

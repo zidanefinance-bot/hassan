@@ -16,6 +16,7 @@ import { startFresh } from "./reset.js";
 import * as R from "./reports.js";
 import * as C from "./collab.js";
 import * as IN from "./inbox.js";
+import { norm } from "./matching.js";
 import { emailDocuments, mailReady } from "./mailer.js";
 import { documentPdf } from "./pdf.js";
 
@@ -26,7 +27,8 @@ const MAX_UPLOAD = 10 * 1024 * 1024;
 // What an API key may do: read, add to the Orders Inbox, comment, and save drafts. Issuing, money, deleting and settings stay in the app.
 const API_ALLOWED = [/^POST \/inbox$/, /^POST \/comments$/, /^POST \/documents$/, /^PUT \/documents\/\d+$/, /^POST \/notifications\/read$/];
 const UPLOAD_TYPES = /^(image\/(png|jpe?g|webp|gif|heic)|application\/pdf|text\/csv|application\/vnd\.(ms-excel|openxmlformats-officedocument\.(spreadsheetml\.sheet|wordprocessingml\.document)))$/;
-const CONTACT_WRITE = { customer: ["sales.write"], supplier: ["ops.write"] };
+// a field purchaser buying from a new shop adds the supplier on the spot
+const CONTACT_WRITE = { customer: ["sales.write"], supplier: ["ops.write", "buy"] };
 
 export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirname(process.env.DB_FILE || "data/zidane-books.db"), "uploads") } = {}) {
   const app = express();
@@ -188,6 +190,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!CONTACT_WRITE[b.type]) throw httpError(400, "Type must be customer or supplier");
     need(req.user, CONTACT_WRITE[b.type]);
     if (!b.name?.trim()) throw httpError(400, "Name is required");
+    const same = db.prepare("SELECT name FROM contacts WHERE type = ? AND active = 1").all(b.type).find((c) => norm(c.name) === norm(b.name));
+    if (same) throw httpError(400, `${same.name} is already in your ${b.type}s. Pick it from the list instead.`);
     const r = db.prepare("INSERT INTO contacts (type, name, company, phone, email, address, ntn, opening_balance, notes, payment_terms_days, credit_limit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(b.type, ...contactFields(b));
     B.log(db, req.user.id, "added", b.type, Number(r.lastInsertRowid), b.name);
     res.json({ id: Number(r.lastInsertRowid) });
@@ -235,6 +239,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!can(req.user, "cost.view")) delete b.purchase_rate;
     if (!can(req.user, "price.view")) delete b.sale_rate;
     if (!b.name?.trim()) throw httpError(400, "Name is required");
+    const same = db.prepare("SELECT name FROM items WHERE active = 1").all().find((i) => i.name.trim().toLowerCase().replace(/\s+/g, " ") === b.name.trim().toLowerCase().replace(/\s+/g, " "));
+    if (same) throw httpError(400, `"${same.name}" is already an item. Pick it from the list instead.`);
     b.category = I.itemCategory(db, b.category);
     const r = db.prepare("INSERT INTO items (name, sku, unit, category, purchase_rate, sale_rate, tax_rate, reorder_level, track_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...itemFields(b));
     const newId = Number(r.lastInsertRowid);
@@ -580,7 +586,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!a || !canSeeEntity(req.user, a.entity, a.entity_id)) throw httpError(404, "Not found");
     if (a.uploaded_by !== req.user.id && !can(req.user, "admin")) throw httpError(403, "Only the person who uploaded it or a director can remove it");
     db.prepare("DELETE FROM attachments WHERE id = ?").run(a.id);
-    rmSync(join(uploadDir, a.path), { force: true });
+    // the customer's PO file is shared with the orders inbox: only remove it when nothing else uses it
+    if (!db.prepare("SELECT 1 FROM attachments WHERE path = ? UNION SELECT 1 FROM inbox_files WHERE path = ?").get(a.path, a.path)) rmSync(join(uploadDir, a.path), { force: true });
     res.json({ ok: true });
   });
 

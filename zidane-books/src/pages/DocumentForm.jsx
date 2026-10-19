@@ -10,7 +10,8 @@ import { readFiles } from "./Inbox.jsx";
 
 const ISSUE_STATUS = { quote: "sent", invoice: "open", po: "issued", bill: "open", dc: "issued", credit_note: "open", vendor_credit: "open" };
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-const CONTACT_WRITE = { customer: "sales.write", supplier: "ops.write" };
+const CONTACT_WRITE = { customer: ["sales.write"], supplier: ["ops.write", "buy"] };
+const canAddContact = (can, type) => CONTACT_WRITE[type].some(can);
 export const contactOptions = (list) => (list || []).map((c) => ({ id: c.id, label: c.name, sub: [c.company, c.phone].filter(Boolean).join(" · "), search: `${c.company || ""} ${c.phone || ""}` }));
 export const itemOptions = (list) => (list || []).map((x) => ({ id: x.id, label: x.name, sub: [x.sku, x.track_stock ? `${num(x.stock_qty)} ${x.unit} in stock` : x.unit].filter(Boolean).join(" · "), search: `${x.sku || ""} ${x.category || ""}` }));
 const blankLine = () => ({ key: Math.random(), item_id: "", description: "", qty: 1, rate: 0, discount_pct: 0, tax_rate: 0 });
@@ -166,7 +167,7 @@ export default function DocumentForm({ kind }) {
       </PageHead>
       {aiParty && !doc.contact_id && (
         <div className="ai-banner">The paper says <b>{aiParty}</b>, who isn't in your {K.contact}s yet.{" "}
-          {can(CONTACT_WRITE[K.contact]) ? <button className="btn sm" onClick={() => setAddingContact(aiParty)}>+ Add {aiParty} as a new {K.contact}</button> : `Pick the right ${K.contact}, or ask someone to add them.`}</div>
+          {canAddContact(can, K.contact) ? <button className="btn sm" onClick={() => setAddingContact(aiParty)}>+ Add {aiParty} as a new {K.contact}</button> : `Pick the right ${K.contact}, or ask someone to add them.`}</div>
       )}
       {inboxId && !id && doc.lines.some((l) => l.ai) && (
         <div className="ai-banner">✨ Filled from the paper. Lines marked <span className="ai-flag">check</span> weren't matched to one of your items for sure. Pick the right item (it's remembered for next time) or add them as new items.
@@ -177,8 +178,8 @@ export default function DocumentForm({ kind }) {
           <Field label={`${K.contact === "customer" ? "Customer" : "Supplier"} *`}>
             <div className="with-btn">
               <Picker options={contactOptions(contacts.data)} value={doc.contact_id} onChange={(v) => pickContact(String(v))} placeholder={`Type ${K.contact} name…`}
-                createLabel={K.contact} onCreate={can(CONTACT_WRITE[K.contact]) ? (name) => setAddingContact(name) : null} />
-              {can(CONTACT_WRITE[K.contact]) && <button type="button" className="btn sm" title={`New ${K.contact}`} onClick={() => setAddingContact("")}>+</button>}
+                createLabel={K.contact} onCreate={canAddContact(can, K.contact) ? (name) => setAddingContact(name) : null} />
+              {canAddContact(can, K.contact) && <button type="button" className="btn sm" title={`New ${K.contact}`} onClick={() => setAddingContact("")}>+</button>}
             </div>
           </Field>
           <Field label="Date"><input type="date" value={doc.date} onChange={(e) => set("date", e.target.value)} /></Field>

@@ -95,7 +95,9 @@ export function listInbox(db, user, { status = "" } = {}) {
 export function getMessage(db, user, id) {
   const m = db.prepare("SELECT * FROM inbox_messages WHERE id = ?").get(id);
   if (!m || !allowed(user, m)) throw httpError(404, "Not found");
-  const x = m.extraction ? JSON.parse(m.extraction) : null;
+  let x = m.extraction ? JSON.parse(m.extraction) : null;
+  // match again each time it's opened: a customer or items added since (from this very PO) are found now
+  if (x && m.status === "ready") x = completeDraft(db, x);
   // costs on a supplier bill stay away from Sales, selling rates on an order away from Operations
   // (payment terms are money talk too)
   if (x && ((x.doc_type === "supplier_bill" && !can(user, "cost.view")) || (x.doc_type === "customer_order" && !can(user, "price.view")))) {
@@ -128,6 +130,15 @@ export function markHandled(db, user, id, { status, result_kind = null, result_i
     if (contactId) rememberLines(db, contactId, lines);
   }
   db.prepare("UPDATE inbox_messages SET status = ?, result_kind = ?, result_id = ?, handled_by = ?, handled_at = datetime('now') WHERE id = ?").run(status, result_kind, result_id, user.id, id);
+  // the paper it came from goes with the Job / document as evidence (the customer's PO, the supplier's bill)
+  if (status === "done" && result_id && ["job", "quote", "bill", "invoice"].includes(result_kind)) {
+    const entity = result_kind === "job" ? "job" : "document";
+    const label = m.doc_type === "supplier_bill" ? "Supplier bill" : "Customer PO";
+    for (const f of db.prepare("SELECT * FROM inbox_files WHERE inbox_id = ?").all(id)) {
+      if (db.prepare("SELECT 1 FROM attachments WHERE entity = ? AND entity_id = ? AND path = ?").get(entity, result_id, f.path)) continue;
+      db.prepare("INSERT INTO attachments (entity, entity_id, filename, mime, size, path, label, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(entity, result_id, f.filename, f.mime, f.size, f.path, label, user.id);
+    }
+  }
 }
 
 // ---- email: check the orders mailbox every few minutes (IMAP). Settings come from the server environment.

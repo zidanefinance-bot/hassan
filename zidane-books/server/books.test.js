@@ -823,6 +823,7 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
     assert.equal((await call("GET", `/items/${ids[0]}`)).category, "Mechanical", "written as in the list");
     const job = (await call("POST", "/jobs", { customer_id: tex, customer_po_number: m.extraction.reference, items: ids.map((id, i) => ({ item_id: id, qty: m.extraction.lines[i].qty, sale_rate: m.extraction.lines[i].rate })) })).id;
     await call("POST", `/inbox/${m.id}/status`, { status: "done", result_kind: "job", result_id: job, lines: m.extraction.lines.map((l, i) => ({ description: l.description, item_id: ids[i] })) });
+    assert.equal(db.prepare("SELECT label FROM attachments WHERE entity = 'job' AND entity_id = ?").get(job)?.label, "Customer PO", "the PO file goes with the Job");
     // second PO from another plant: the bearing they ordered before is now matched by what was chosen last time
     const po2 = await fakeErpPo({ po: "POP-P2100-2610-00038", plant: 2100, lines: [["00200500020050", "BEARING - 6202 - NTN", null, 100, "PC", 240], ["00200500020472", "BEARING - 628-8 - ZZ", null, 100, "PC", 550]] });
     m = await call("POST", "/inbox", { files: [{ filename: "po2.pdf", mime: "application/pdf", data: po2.toString("base64") }], wait: true });
@@ -972,6 +973,15 @@ test("QA round: buying, delivering and invoicing follow the real paperwork", asy
     assert.ok(!invView.related.some((r) => r.kind === "bill"), "Sales doesn't see the supplier bills of the Job");
     // an issued invoice is voided, not deleted (unless a director does it)
     assert.equal((await call(sales, "DELETE", `/documents/${inv}`)).status, 400);
+    // correcting the Job: what's billed / delivered / invoiced holds; other lines can change or go
+    const items = db.prepare("SELECT * FROM job_items WHERE job_id = ? ORDER BY id").all(job);
+    const put = (lines) => call(sales, "PUT", `/jobs/${job}`, { items: lines });
+    assert.match((await put([{ id: items[0].id, item_id: a, qty: 12, sale_rate: 100 }, { id: items[1].id, item_id: b, qty: 4, sale_rate: 50 }])).body.error, /can't go below/);
+    assert.match((await put([{ id: items[1].id, item_id: b, qty: 4, sale_rate: 50 }])).body.error, /can't be removed/);
+    const c3 = db.prepare("SELECT id FROM items ORDER BY id LIMIT 1 OFFSET 2").get().id;
+    assert.equal((await put([{ id: items[0].id, item_id: a, qty: 15, sale_rate: 110 }, { item_id: c3, qty: 2, sale_rate: 70 }])).status, 200, "b goes, a new line comes");
+    assert.deepEqual(db.prepare("SELECT item_id, qty, sale_rate, procurement_status FROM job_items WHERE job_id = ? ORDER BY id").all(job).map((r) => [r.item_id, r.qty, r.sale_rate, r.procurement_status]),
+      [[a, 15, 110, "bought"], [c3, 2, 70, "to_buy"]]);
     // the rest still shows as to deliver
     home = (await call(sales, "GET", "/reports/home")).body;
     assert.ok(home.queues.find((q) => q.key === "dc").items.some((i) => /Part delivered/.test(i.sub)), "the rest of the order is still to deliver");

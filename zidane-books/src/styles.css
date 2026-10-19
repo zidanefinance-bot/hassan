@@ -435,3 +435,22 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .new-items select.need { border-color: var(--amber); }
 .danger-zone { border-color: #f0c4c6; }
 .danger-zone h3 { color: var(--red); }
+
+/* phones: nothing wider than the screen. Tables scroll inside their card; item lines become small cards */
+@media (max-width: 600px) {
+  .content { overflow-x: hidden; }
+  .card:not(.form) { overflow-x: auto; }
+  .card.form { overflow: visible; }
+  .step { min-width: 58px; font-size: 10px; }
+  .page-head { flex-wrap: wrap; }
+  .page-head > div:last-child { flex-wrap: wrap; }
+  .lines-table thead { display: none; }
+  .lines-table, .lines-table tbody { display: block; width: 100%; }
+  .lines-table tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+  .lines-table td { display: block; width: auto !important; padding: 0; border: none; }
+  .lines-table td:first-child { grid-column: 1 / -1; }
+  .lines-table td .picker-list { min-width: 0; width: 100%; }
+  .lines-table input, .lines-table select { width: 100%; min-width: 0; }
+  .table th, .table td { padding: 8px 6px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+}
