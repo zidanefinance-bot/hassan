@@ -38,7 +38,7 @@ function Bars({ rows, value, label }) {
   );
 }
 
-const AGE = [["current", "Not due"], ["1-30", "1–30 days"], ["31-60", "31–60"], ["61-90", "61–90"], ["90+", "90+"]];
+const AGE = [["current", "Within credit days"], ["1-30", "1–30 days late"], ["31-60", "31–60"], ["61-90", "61–90"], ["90+", "90+"]];
 function AgingBar({ buckets }) {
   const total = AGE.reduce((a, [k]) => a + (buckets[k] || 0), 0);
   if (!total) return <p className="muted small">Nothing outstanding.</p>;

@@ -17,7 +17,7 @@ function Aging({ d, kind }) {
   const b = ["current", "1-30", "31-60", "61-90", "90+"];
   return (
     <>
-      <div className="stats">{b.map((k) => <div key={k} className="stat"><small>{k === "current" ? "Not yet due" : `${k} days overdue`}</small><b className={k !== "current" && d.buckets[k] ? "neg" : ""}>{money(d.buckets[k])}</b></div>)}</div>
+      <div className="stats">{b.map((k) => <div key={k} className="stat"><small>{k === "current" ? "Within credit days (not late)" : `${k} days late`}</small><b className={k !== "current" && d.buckets[k] ? "neg" : ""}>{money(d.buckets[k])}</b></div>)}</div>
       <div className="card flush"><table className="table">
         <thead><tr><th>{kind === "invoice" ? "Customer" : "Supplier"}</th>{b.map((k) => <th key={k} className="r">{k}</th>)}<th className="r">Total</th></tr></thead>
         <tbody>{d.contacts.map((c) => <tr key={c.contact_id}><td><Link to={`/contacts/${c.contact_id}`}>{c.name}</Link></td>{b.map((k) => <td key={k} className="r">{c[k] ? money(c[k]) : "—"}</td>)}<td className="r"><b>{money(c.total)}</b></td></tr>)}</tbody>
