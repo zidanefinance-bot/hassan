@@ -9,6 +9,8 @@ import { aiReady, readPaperwork } from "./ai.js";
 import { parseOrderPdf } from "./poparse.js";
 import { completeDraft, rememberLines } from "./matching.js";
 import { notify, usersWith } from "./collab.js";
+import { createJob } from "./jobs.js";
+import { getSetting } from "./books.js";
 
 const MAX_FILE = 10 * 1024 * 1024;
 // tests swap in a fake reader so they don't call the AI
@@ -68,6 +70,7 @@ export async function processMessage(db, uploadDir, id) {
     const x = completeDraft(db, draft);
     const status = x.doc_type === "other" ? "ignored" : "ready";
     db.prepare("UPDATE inbox_messages SET status = ?, doc_type = ?, extraction = ? WHERE id = ?").run(status, x.doc_type, JSON.stringify(x), id);
+    if (status === "ready" && x.doc_type === "customer_order" && autoJob(db, m, x)) return;
     if (status === "ready") {
       const who = x.doc_type === "customer_order" ? usersWith(db, "sales.write") : usersWith(db, "buy");
       // whoever sent it from Telegram hears back too; someone who pasted it in the app is already looking at it
@@ -75,6 +78,41 @@ export async function processMessage(db, uploadDir, id) {
     }
   } catch (e) {
     db.prepare("UPDATE inbox_messages SET status = 'error', error = ? WHERE id = ?").run(String(e.message || e).slice(0, 500), id);
+  }
+}
+
+// A PO we're sure about becomes a Job by itself (like the old sheet filling itself in): a known customer, a PO number,
+// every line matched to one of our items for sure. The same PO arriving again (a resent email) points at the Job it
+// already is. Anything less certain waits in the inbox for a person. Director can switch this off in Settings.
+function autoJob(db, m, x) {
+  if (getSetting(db, "autoJobFromPo") === false) return false;
+  if (!x.party_match_id || !x.reference) return false;
+  const existing = db.prepare("SELECT id, number FROM jobs WHERE customer_id = ? AND LOWER(TRIM(customer_po_number)) = LOWER(TRIM(?))").get(x.party_match_id, x.reference);
+  if (existing) {
+    db.prepare("UPDATE inbox_messages SET status = 'done', result_kind = 'job', result_id = ?, handled_at = datetime('now') WHERE id = ?").run(existing.id, m.id);
+    return true;
+  }
+  if (!x.lines.length || x.lines.some((l) => !l.item_match_id || l.match_confidence !== "high" || !(l.qty > 0))) return false;
+  const rateOf = db.prepare("SELECT sale_rate, tax_rate FROM items WHERE id = ?");
+  const jobId = createJob(db, null, {
+    customer_id: x.party_match_id, customer_po_number: x.reference, customer_po_date: x.date, required_date: x.required_date, delivery_location: x.delivery_location,
+    order_source: "formal PO", instructions: [x.buyer_name ? `Buyer: ${[x.buyer_name, x.contact_phone].filter(Boolean).join(", ")}` : null, x.notes].filter(Boolean).join("\n") || null,
+    items: x.lines.map((l) => { const it = rateOf.get(l.item_match_id); return { item_id: l.item_match_id, qty: l.qty, sale_rate: l.rate ?? it?.sale_rate ?? 0, tax_rate: l.tax_rate ?? it?.tax_rate ?? 0 }; }),
+  });
+  db.prepare("UPDATE inbox_messages SET status = 'done', result_kind = 'job', result_id = ?, handled_at = datetime('now') WHERE id = ?").run(jobId, m.id);
+  attachSource(db, m, "job", jobId, m.created_by || null);
+  const job = db.prepare("SELECT number FROM jobs WHERE id = ?").get(jobId);
+  notify(db, [...usersWith(db, "sales.write"), ...usersWith(db, "admin")], { kind: "job", title: `Job ${job.number} made from ${x.party_name}'s PO ${x.reference}`, body: `${x.lines.length} item(s) read from the PO${m.source === "email" ? " email" : ""}. Check the rates; Operations has it.`, link: `/jobs/${jobId}` });
+  notify(db, usersWith(db, "ops.write"), { kind: "job", title: `New Job ${job.number}: ${x.party_name}`, body: `${x.lines.length} item(s) to arrange`, link: `/jobs/${jobId}` });
+  return true;
+}
+
+// the paper it came from goes with the Job / document as evidence (the customer's PO, the supplier's bill)
+function attachSource(db, m, entity, entityId, userId) {
+  const label = m.doc_type === "supplier_bill" ? "Supplier bill" : "Customer PO";
+  for (const f of db.prepare("SELECT * FROM inbox_files WHERE inbox_id = ?").all(m.id)) {
+    if (db.prepare("SELECT 1 FROM attachments WHERE entity = ? AND entity_id = ? AND path = ?").get(entity, entityId, f.path)) continue;
+    db.prepare("INSERT INTO attachments (entity, entity_id, filename, mime, size, path, label, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(entity, entityId, f.filename, f.mime, f.size, f.path, label, userId);
   }
 }
 
@@ -130,15 +168,7 @@ export function markHandled(db, user, id, { status, result_kind = null, result_i
     if (contactId) rememberLines(db, contactId, lines);
   }
   db.prepare("UPDATE inbox_messages SET status = ?, result_kind = ?, result_id = ?, handled_by = ?, handled_at = datetime('now') WHERE id = ?").run(status, result_kind, result_id, user.id, id);
-  // the paper it came from goes with the Job / document as evidence (the customer's PO, the supplier's bill)
-  if (status === "done" && result_id && ["job", "quote", "bill", "invoice"].includes(result_kind)) {
-    const entity = result_kind === "job" ? "job" : "document";
-    const label = m.doc_type === "supplier_bill" ? "Supplier bill" : "Customer PO";
-    for (const f of db.prepare("SELECT * FROM inbox_files WHERE inbox_id = ?").all(id)) {
-      if (db.prepare("SELECT 1 FROM attachments WHERE entity = ? AND entity_id = ? AND path = ?").get(entity, result_id, f.path)) continue;
-      db.prepare("INSERT INTO attachments (entity, entity_id, filename, mime, size, path, label, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(entity, result_id, f.filename, f.mime, f.size, f.path, label, user.id);
-    }
-  }
+  if (status === "done" && result_id && ["job", "quote", "bill", "invoice"].includes(result_kind)) attachSource(db, m, result_kind === "job" ? "job" : "document", result_id, user.id);
 }
 
 // ---- email: check the orders mailbox every few minutes (IMAP). Settings come from the server environment.

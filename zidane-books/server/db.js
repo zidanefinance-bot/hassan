@@ -81,6 +81,8 @@ export const DEFAULT_SETTINGS = {
   nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1, receipt: 1, payment: 1, credit_note: 1, vendor_credit: 1, refund: 1 },
   paymentTermsDays: 15,
   // every item sits in one of these (Items page opens by category)
+  // a PO we're sure about (known customer, PO #, every item matched) becomes a Job without anyone touching it
+  autoJobFromPo: true,
   itemCategories: ["General", "Mechanical", "Electrical", "Furniture", "Furniture & Fittings", "Stationery", "House Keeping", "Grocery", "Service"],
   jobExpenseCategories: ["Freight", "Loading / Unloading", "Packing", "Labour", "Vehicle", "Market expense", "Other direct cost"],
   expenseCategories: ["Rent", "Salaries", "Fuel & Transport", "Utilities", "Packaging", "Loading & Labour", "Office", "Marketing", "Bank Charges", "Other"],

@@ -138,6 +138,11 @@ export default function Settings() {
             <button className="btn ghost sm" onClick={() => setS({ ...s, taxes: [...s.taxes, { name: "New tax", rate: 0 }] })}>+ Add tax rate</button>
           </section>
           <section className="card form">
+            <h3>Orders inbox</h3>
+            <label className="check"><input type="checkbox" checked={s.autoJobFromPo !== false} onChange={(e) => setS({ ...s, autoJobFromPo: e.target.checked })} /> Make the Job by itself when a PO is certain</label>
+            <p className="muted small">Certain = a customer we have, a PO number, and every item already one of ours (e.g. Texmark's second PO onwards). Sales and Operations are told. Anything new or unclear waits in the Orders Inbox. The same PO sent again never makes a second Job.</p>
+          </section>
+          <section className="card form">
             <h3>Item categories</h3>
             <Field label="One per line. Every item must be in one; the Items page opens by category" hint="Renaming one here doesn't move its items: open them and pick the new name"><textarea rows={9} value={(s.itemCategories || []).join("\n")} onChange={(e) => setS({ ...s, itemCategories: e.target.value.split("\n") })} /></Field>
           </section>

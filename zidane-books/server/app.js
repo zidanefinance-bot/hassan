@@ -128,7 +128,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json(out);
   });
   api.put("/settings", requirePerm("admin"), (req, res) => {
-    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "itemCategories", "invoiceFooter", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
+    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "itemCategories", "invoiceFooter", "autoJobFromPo", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
     if ("itemCategories" in (req.body || {})) {
       const cats = [...new Set((req.body.itemCategories || []).map((c) => String(c).trim()).filter(Boolean))];
       if (!cats.length) throw httpError(400, "Keep at least one item category");

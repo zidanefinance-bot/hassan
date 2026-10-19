@@ -830,6 +830,21 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
     assert.equal(m.extraction.lines[0].item_match_id, ids[1]);
     assert.equal(m.extraction.lines[0].match_confidence, "high");
     assert.notEqual(m.extraction.lines[1].item_match_id, ids[1], "6202 and 628-8 are different bearings");
+    assert.equal(m.status, "ready", "a new item on it: a person checks it first");
+    // the first PO emailed again: it's already a Job, nothing new is made
+    m = await call("POST", "/inbox", { files: [{ filename: "po.pdf", mime: "application/pdf", data: po1.toString("base64") }], wait: true });
+    assert.deepEqual([m.status, m.result_kind, m.result_id], ["done", "job", job]);
+    // a PO where we know the customer and every item: it becomes a Job by itself, with the PO attached
+    const jobsBefore = db.prepare("SELECT COUNT(*) n FROM jobs").get().n;
+    const po3 = await fakeErpPo({ po: "POP-P1400-2610-00051", plant: 1400, lines: [["00200500020050", "BEARING - 6202 - NTN", null, 20, "PC", 245], ["00200500050173", "WD - 40 (SPRAY) 330ml", null, 2, "CAN", 1100]] });
+    m = await call("POST", "/inbox", { files: [{ filename: "po3.pdf", mime: "application/pdf", data: po3.toString("base64") }], wait: true });
+    assert.equal(m.status, "done");
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM jobs").get().n, jobsBefore + 1);
+    const auto = db.prepare("SELECT * FROM jobs WHERE id = ?").get(m.result_id);
+    assert.equal(auto.customer_po_number, "POP-P1400-2610-00051");
+    assert.equal(auto.delivery_location, "WH-CONSUMABLE-1400, PLANT-1400");
+    assert.deepEqual(db.prepare("SELECT item_id, qty, sale_rate FROM job_items WHERE job_id = ? ORDER BY id").all(auto.id).map((r) => [r.item_id, r.qty, r.sale_rate]), [[ids[1], 20, 245], [ids[2], 2, 1100]]);
+    assert.ok(db.prepare("SELECT 1 FROM attachments WHERE entity = 'job' AND entity_id = ?").get(auto.id));
     // a photo with AI off says so instead of guessing
     const png = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
     m = await call("POST", "/inbox", { files: [{ filename: "photo.png", mime: "image/png", data: png }], wait: true });
