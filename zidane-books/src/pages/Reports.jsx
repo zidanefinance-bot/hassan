@@ -13,10 +13,18 @@ function csv(name, header, rows) {
   URL.revokeObjectURL(a.href);
 }
 
+const EXP = [["late", "Late"], ["today", "Today"], ["1-10", "1–10 days"], ["11-20", "11–20 days"], ["21-30", "21–30 days"], ["30+", "30+ days"]];
 function Aging({ d, kind }) {
   const b = ["current", "1-30", "31-60", "61-90", "90+"];
   return (
     <>
+      <h3>Expected {kind === "invoice" ? "from customers" : "to suppliers"}, by due date</h3>
+      <div className="card flush"><table className="table">
+        <thead><tr><th>{kind === "invoice" ? "Customer" : "Supplier"}</th>{EXP.map(([k, l]) => <th key={k} className={`r ${k === "late" ? "neg" : ""}`}>{l}</th>)}<th className="r">Total</th></tr></thead>
+        <tbody>{d.contacts.map((c) => <tr key={c.contact_id}><td><Link to={`/contacts/${c.contact_id}`}>{c.name}</Link></td>{EXP.map(([k]) => <td key={k} className={`r ${k === "late" && c.expected[k] ? "neg" : ""}`}>{c.expected[k] ? money(c.expected[k]) : "—"}</td>)}<td className="r"><b>{money(c.total)}</b></td></tr>)}</tbody>
+        <tfoot><tr><td>Total</td>{EXP.map(([k]) => <td key={k} className="r">{money(d.expected[k])}</td>)}<td className="r">{money(d.total)}</td></tr></tfoot>
+      </table></div>
+      <h3>How late</h3>
       <div className="stats">{b.map((k) => <div key={k} className="stat"><small>{k === "current" ? "Within credit days (not late)" : `${k} days late`}</small><b className={k !== "current" && d.buckets[k] ? "neg" : ""}>{money(d.buckets[k])}</b></div>)}</div>
       <div className="card flush"><table className="table">
         <thead><tr><th>{kind === "invoice" ? "Customer" : "Supplier"}</th>{b.map((k) => <th key={k} className="r">{k}</th>)}<th className="r">Total</th></tr></thead>
@@ -25,8 +33,9 @@ function Aging({ d, kind }) {
       </table></div>
       <h3>Open {kind === "invoice" ? "invoices" : "bills"}</h3>
       <div className="card flush"><table className="table">
-        <thead><tr><th>Number</th><th>{kind === "invoice" ? "Customer" : "Supplier"}</th><th>Due</th><th className="r">Total</th><th className="r">Balance</th></tr></thead>
-        <tbody>{d.documents.map((x) => <tr key={x.id}><td><Link to={`/${KIND[kind].path}/${x.id}`}>{x.number}</Link></td><td>{x.contact_name}</td><td>{fmtDate(x.due_date)}</td><td className="r">{money(x.total)}</td><td className="r">{money(x.balance)}</td></tr>)}</tbody>
+        <thead><tr><th>Number</th><th>{kind === "invoice" ? "Customer" : "Supplier"}</th><th>Due</th><th>Days</th><th className="r">Total</th><th className="r">Balance</th></tr></thead>
+        <tbody>{d.documents.map((x) => <tr key={x.id}><td><Link to={`/${KIND[kind].path}/${x.id}`}>{x.number}</Link></td><td>{x.contact_name}</td><td>{fmtDate(x.due_date)}</td>
+          <td className={x.due_in < 0 ? "neg" : "muted"}>{x.due_in < 0 ? `${-x.due_in} day${x.due_in === -1 ? "" : "s"} late` : x.due_in === 0 ? "today" : `in ${x.due_in} day${x.due_in === 1 ? "" : "s"}`}</td><td className="r">{money(x.total)}</td><td className="r">{money(x.balance)}</td></tr>)}</tbody>
       </table></div>
     </>
   );
@@ -91,7 +100,7 @@ function Report({ tab, data: d }) {
 
 function toCsv(tab, d) {
   if (tab === "pnl") return [["Line", "Amount"], [["Sales", d.revenue], ["COGS", d.cogs], ["Gross profit", d.gross_profit], ...d.expense_breakdown.map((e) => [e.category, e.amount]), ["Expenses", d.expenses], ["Net profit", d.net_profit]]];
-  if (tab === "receivables" || tab === "payables") return [["Contact", "Current", "1-30", "31-60", "61-90", "90+", "Total"], d.contacts.map((c) => [c.name, c.current, c["1-30"], c["31-60"], c["61-90"], c["90+"], c.total])];
+  if (tab === "receivables" || tab === "payables") return [["Contact", ...EXP.map(([, l]) => `Due: ${l}`), "Late 1-30", "Late 31-60", "Late 61-90", "Late 90+", "Total"], d.contacts.map((c) => [c.name, ...EXP.map(([k]) => c.expected[k]), c["1-30"], c["31-60"], c["61-90"], c["90+"], c.total])];
   if (tab === "inventory") return [["Item", "SKU", "Stock", "Unit", "Cost", "Value", "Sale rate"], d.items.map((i) => [i.name, i.sku, i.stock_qty, i.unit, i.purchase_rate, i.stock_value, i.sale_rate])];
   if (tab === "sales-by-customer") return [["Customer", "Invoices", "Sales", "Total"], d.map((r) => [r.name, r.invoices, r.sales, r.total])];
   if (tab === "sales-by-item") return [["Item", "Qty", "Sales", "Cost", "Profit"], d.map((r) => [r.name, r.qty, r.sales, r.cost, r.profit])];

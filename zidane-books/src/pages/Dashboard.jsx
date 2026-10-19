@@ -38,6 +38,22 @@ function Bars({ rows, value, label }) {
   );
 }
 
+// money still to come in / go out, by when it falls due
+const EXPECTED = [["late", "Already late"], ["today", "Due today"], ["1-10", "In 1–10 days"], ["11-20", "In 11–20 days"], ["21-30", "In 21–30 days"], ["30+", "After 30 days"]];
+function Expected({ inn, out }) {
+  return (
+    <section className="card">
+      <div className="card-head"><h3>Payments expected</h3><Link className="btn sm ghost" to="/reports?tab=receivables">Details</Link></div>
+      <table className="table compact"><thead><tr><th>When due</th>{inn && <th className="r">From customers</th>}{out && <th className="r">To suppliers</th>}</tr></thead>
+        <tbody>{EXPECTED.map(([k, l]) => (
+          <tr key={k}><td className={k === "late" ? "neg" : ""}>{l}</td>
+            {inn && <td className={`r ${k === "late" && inn[k] ? "neg" : ""}`}>{inn[k] ? money(inn[k]) : "—"}</td>}
+            {out && <td className={`r ${k === "late" && out[k] ? "neg" : ""}`}>{out[k] ? money(out[k]) : "—"}</td>}</tr>
+        ))}</tbody></table>
+    </section>
+  );
+}
+
 const AGE = [["current", "Within credit days"], ["1-30", "1–30 days late"], ["31-60", "31–60"], ["61-90", "61–90"], ["90+", "90+"]];
 function AgingBar({ buckets }) {
   const total = AGE.reduce((a, [k]) => a + (buckets[k] || 0), 0);
@@ -132,6 +148,7 @@ export default function Dashboard() {
               </div>
             ))}
             <div className="grid-2">
+              {(k.expected_in || k.expected_out) && <Expected inn={k.expected_in} out={k.expected_out} />}
               {k.aging && (
                 <section className="card">
                   <div className="card-head"><h3>Who owes us, and how late</h3><Link className="btn sm ghost" to="/reports?tab=receivables">Details</Link></div>

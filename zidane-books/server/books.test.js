@@ -393,6 +393,11 @@ test("API: comments, @mentions and notifications respect who can see a record", 
     assert.equal(dh.kpis.orders_in_hand.value, Math.round(want * 100) / 100);
     assert.equal(dh.kpis.orders_in_hand.jobs, db.prepare("SELECT COUNT(*) n FROM jobs WHERE closed = 0").get().n);
     assert.ok(dh.kpis.orders_in_hand.to_invoice <= dh.kpis.orders_in_hand.value);
+    // payments expected by due date add up to what's outstanding, both ways
+    const sum = (o) => Math.round(Object.values(o).reduce((a, b) => a + b, 0) * 100) / 100;
+    assert.equal(sum(dh.kpis.expected_in), dh.kpis.receivables);
+    assert.equal(sum(dh.kpis.expected_out), dh.kpis.payables);
+    assert.deepEqual(Object.keys(dh.kpis.expected_in), ["late", "today", "1-10", "11-20", "21-30", "30+"]);
 
     // Operations' home never carries money figures
     const oh = (await call(ops, "/reports/home")).body;

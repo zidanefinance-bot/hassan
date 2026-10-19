@@ -11,18 +11,27 @@ function balances(db, kind, on = today()) {
     .filter((d) => d.balance > 0.001);
 }
 
+// expected: money not late yet, by when it falls due (late = already overdue, any age)
+export const EXPECTED = ["late", "today", "1-10", "11-20", "21-30", "30+"];
+const expectedBucket = (daysAhead) => (daysAhead < 0 ? "late" : daysAhead === 0 ? "today" : daysAhead <= 10 ? "1-10" : daysAhead <= 20 ? "11-20" : daysAhead <= 30 ? "21-30" : "30+");
+
 function aging(rows, on = today()) {
   const buckets = { current: 0, "1-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
+  const expected = Object.fromEntries(EXPECTED.map((k) => [k, 0]));
   const byContact = {};
   for (const r of rows) {
     const days = r.due_date ? Math.floor((Date.parse(on) - Date.parse(r.due_date)) / 864e5) : 0;
     const b = days <= 0 ? "current" : days <= 30 ? "1-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
     buckets[b] = round2(buckets[b] + r.balance);
-    const c = (byContact[r.contact_id] ||= { contact_id: r.contact_id, name: r.contact_name, total: 0, current: 0, "1-30": 0, "31-60": 0, "61-90": 0, "90+": 0 });
+    const e = expectedBucket(-days);
+    expected[e] = round2(expected[e] + r.balance);
+    r.due_in = -days;
+    const c = (byContact[r.contact_id] ||= { contact_id: r.contact_id, name: r.contact_name, total: 0, current: 0, "1-30": 0, "31-60": 0, "61-90": 0, "90+": 0, expected: Object.fromEntries(EXPECTED.map((k) => [k, 0])) });
     c[b] = round2(c[b] + r.balance);
+    c.expected[e] = round2(c.expected[e] + r.balance);
     c.total = round2(c.total + r.balance);
   }
-  return { buckets, total: round2(Object.values(buckets).reduce((a, b) => a + b, 0)), contacts: Object.values(byContact).sort((a, b) => b.total - a.total), documents: rows };
+  return { buckets, expected, total: round2(Object.values(buckets).reduce((a, b) => a + b, 0)), contacts: Object.values(byContact).sort((a, b) => b.total - a.total), documents: rows };
 }
 
 // unused advances plus unused credit notes / vendor credits
@@ -202,6 +211,7 @@ export function home(db, user, can, { from, to } = {}) {
   if (can("sales.read")) {
     const r = receivables(db);
     kpis.aging = { buckets: r.buckets, top: r.contacts.slice(0, 5) };
+    kpis.expected_in = r.expected;
     kpis.today = { sales: sum("SELECT COALESCE(SUM(total), 0) AS v FROM documents WHERE kind = 'invoice' AND status = 'open' AND date = ?", t) };
     kpis.top_customers = salesByCustomer(db, from, to).slice(0, 5);
     kpis.sales_trend = salesTrend(db, 6);
@@ -216,6 +226,7 @@ export function home(db, user, can, { from, to } = {}) {
     const p = payables(db);
     kpis.payables = p.total;
     kpis.payables_aging = p.buckets;
+    kpis.expected_out = p.expected;
     kpis.period = { from, to, ...profitAndLoss(db, from, to) };
     const days = Math.round((Date.parse(to) - Date.parse(from)) / 864e5) + 1;
     const pTo = new Date(Date.parse(from) - 864e5).toISOString().slice(0, 10), pFrom = new Date(Date.parse(from) - days * 864e5).toISOString().slice(0, 10);
