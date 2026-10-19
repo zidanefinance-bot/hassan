@@ -726,7 +726,7 @@ test("audit fixes: role leaks and workflow holes stay closed", async () => {
     assert.equal((await call(pur, "POST", `/job-items/${covered}/procurement`, { status: "to_buy" })).status, 400);
     // 16. a Job with drafts can't be closed; a closed Job can't be edited
     assert.equal((await call(dir, "POST", `/jobs/${job2}/close`, {})).status, 400);
-    // walkthrough: once ready, a bought item can't become "not available"
+    // an ordered item is always supplied: "not available" isn't a choice
     const ji2 = one("SELECT id FROM job_items WHERE job_id = ?", job2).id;
     assert.equal((await call(ops, "POST", `/job-items/${ji2}/procurement`, { status: "not_available" })).status, 400);
   } finally {
@@ -835,6 +835,8 @@ test("item categories arrive: old items get one, customers' codes saved as our S
   const own = Number(db.prepare("INSERT INTO items (name, sku, category) VALUES ('Atta 10kg', 'ATTA-10', ' grocery')").run().lastInsertRowid);
   db.prepare("INSERT INTO item_aliases (contact_id, code, name_norm, item_id) VALUES (?, '00200500020050', 'bearing 6202 ntn', ?)").run(c, a);
   db.prepare("INSERT INTO inbox_messages (source, extraction) VALUES ('upload', ?)").run(JSON.stringify({ lines: [{ code: "00200500020124", description: "GMSA ELFY - 50GM" }] }));
+  const job = Number(db.prepare("INSERT INTO jobs (number, customer_id) VALUES ('JOB-1', ?)").run(c).lastInsertRowid);
+  db.prepare("INSERT INTO job_items (job_id, item_id, qty, procurement_status) VALUES (?, ?, 5, 'not_available')").run(job, a);
   db.prepare("DELETE FROM settings WHERE key = 'itemCategories'").run(); // as a database from before categories
   db.close();
   db = openDb(file);
@@ -845,6 +847,7 @@ test("item categories arrive: old items get one, customers' codes saved as our S
   const list = JSON.parse(db.prepare("SELECT value FROM settings WHERE key = 'itemCategories'").get().value);
   assert.ok(list.includes("Mechanical") && list.includes("Lubricants"), "a category already in use is kept on the list");
   assert.equal(db.prepare("SELECT code FROM item_aliases").get().code, null);
+  assert.equal(db.prepare("SELECT procurement_status s FROM job_items").get().s, "to_buy", "an ordered item is always supplied");
   db.close();
 });
 

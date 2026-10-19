@@ -29,11 +29,9 @@ export default function Procurement() {
                     <td><Link to={`/jobs/${j.job_id}`}>{j.job_number}</Link> <span className="muted">{j.customer_name}</span>{j.fulfilment_type === "direct" && <span className="badge blue sm">direct</span>}</td>
                     <td className="r">{num(j.qty)}</td>
                     <td className="r nowrap">
-                      {j.status === "not_available" ? <span className="badge red">not available</span> : null}
                       <button className="btn sm" onClick={() => mark(j.job_item_id, "bought")}>Bought</button>
                       <button className="btn sm ghost" onClick={() => mark(j.job_item_id, "partial")}>Partial</button>
                       <button className="btn sm ghost" onClick={() => mark(j.job_item_id, "from_stock")}>From stock</button>
-                      <button className="btn sm ghost danger" onClick={() => mark(j.job_item_id, "not_available")}>N/A</button>
                     </td>
                   </tr>
                 ))}

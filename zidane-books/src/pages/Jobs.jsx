@@ -13,7 +13,7 @@ import NewItems from "../components/NewItems.jsx";
 
 const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey" };
 // buying status of a Job line, in words everyone understands (not invoice words like "paid" / "overdue")
-const PROC = { to_buy: ["To buy", "amber"], partial: ["Partly bought", "amber"], bought: ["Bought", "green"], from_stock: ["From our stock", "green"], not_available: ["Not available", "red"] };
+const PROC = { to_buy: ["To buy", "amber"], partial: ["Partly bought", "amber"], bought: ["Bought", "green"], from_stock: ["From our stock", "green"] };
 const ProcBadge = ({ s }) => <span className={`badge ${PROC[s]?.[1] || "grey"}`}>{PROC[s]?.[0] || label(s)}</span>;
 
 export default function Jobs() {

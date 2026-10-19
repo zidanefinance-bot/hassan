@@ -21,6 +21,8 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
     db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(k, JSON.stringify(v));
   }
   if (!hadCategories) tidyItems(db);
+  // "not available" was dropped: whatever was marked so is still to buy
+  db.prepare("UPDATE job_items SET procurement_status = 'to_buy' WHERE procurement_status = 'not_available'").run();
   return db;
 }
 

@@ -5,7 +5,7 @@ const ROLE_INFO = {
   director: "Everything: approvals, profit, all departments, users and settings",
   sales: "Customers, enquiries, quotes, Jobs, customer DCs and invoices. Can't see purchase costs, supplier bills or margins",
   operations: "Jobs to fulfil, procurement, suppliers, purchases, supplier bills, freight and direct costs. Can't see selling rates or customer invoices",
-  purchaser: "What to buy today, mark bought / not available, record purchases. No customer rates, no money",
+  purchaser: "What to buy today, mark bought / from stock, record purchases. No customer rates, no money",
   accounts: "Verify invoices and bills, receive payments, pay suppliers, expenses and financial reports. Doesn't re-enter Sales or Operations data",
 };
 const ROLE_LABEL = { director: "Director", sales: "Sales", operations: "Operations", purchaser: "Field Purchaser", accounts: "Accounts" };

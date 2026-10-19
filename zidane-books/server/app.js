@@ -313,7 +313,6 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const ji = db.prepare("SELECT ji.job_id, ji.procurement_status, COALESCE(i.name, ji.description) AS name FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.id = ?").get(id(req));
     const before = ji && db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(ji.job_id)?.ops_status;
     J.setItemProcurement(db, req.user.id, id(req), req.body.status);
-    if (ji && req.body.status === "not_available" && ji.procurement_status !== "not_available") C.notifyEvent(db, req.user.id, "job.not_available", { jobId: ji.job_id, itemName: ji.name });
     if (ji && before !== "material_ready" && db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(ji.job_id)?.ops_status === "material_ready") C.notifyEvent(db, req.user.id, "job.ready", { jobId: ji.job_id });
     res.json({ ok: true });
   });

@@ -6,7 +6,8 @@ import { getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument,
 import { DOC_READ } from "./collab.js";
 
 export const OPS_STATUSES = ["new", "procurement_started", "partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"];
-export const PROCUREMENT_STATUSES = ["to_buy", "partial", "bought", "not_available", "from_stock"];
+// an ordered item is always supplied: there is no "not available" (the old value is turned back into to_buy at start-up)
+export const PROCUREMENT_STATUSES = ["to_buy", "partial", "bought", "from_stock"];
 const ACTIVE = "j.closed = 0";
 
 export function createJob(db, userId, input) {
@@ -54,7 +55,7 @@ export function setOpsStatus(db, userId, id, status) {
   if (status === job.ops_status) return;
   const items = db.prepare("SELECT procurement_status FROM job_items WHERE job_id = ?").all(id).map((r) => r.procurement_status);
   if (step(status) >= step("material_ready") && step(job.ops_status) < step("material_ready") && items.some((s) => s === "to_buy" || s === "partial")) {
-    throw httpError(400, "Some items are still to buy. Mark each item bought, from stock or not available first.");
+    throw httpError(400, "Some items are still to buy. Mark each item bought or from stock first.");
   }
   if (step(status) >= step("material_ready") && items.length && items.every((s) => s === "not_available")) throw httpError(400, "Nothing on this Job is available to deliver");
   if (step(status) < step("dispatched") && issuedDcs(db, id)) throw httpError(400, "A delivery challan has already gone out for this Job, so it can't move back before dispatched");
@@ -66,6 +67,7 @@ export function setOpsStatus(db, userId, id, status) {
 }
 
 export function setItemProcurement(db, userId, jobItemId, status) {
+  if (status === "not_available") throw httpError(400, "An ordered item has to be supplied: mark it to buy, partly bought, bought or from stock");
   if (!PROCUREMENT_STATUSES.includes(status)) throw httpError(400, "Unknown procurement status");
   const it = db.prepare("SELECT ji.*, j.number, j.ops_status, j.closed FROM job_items ji JOIN jobs j ON j.id = ji.job_id WHERE ji.id = ?").get(jobItemId);
   if (!it) throw httpError(404, "Not found");
