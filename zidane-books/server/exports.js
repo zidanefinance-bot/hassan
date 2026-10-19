@@ -1,0 +1,59 @@
+// Excel downloads. "What to buy": every line still to buy, with the item, customer, Job and qty,
+// stamped with when it was downloaded (Karachi time) so an old printout is easy to spot.
+import ExcelJS from "exceljs";
+import { procurementList } from "./jobs.js";
+
+const TZ = "Asia/Karachi";
+const stamp = (d) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ, day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(d);
+const fileStamp = (d) => new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(d).replace(" ", "-").replace(":", "");
+const day = (s) => (s ? new Date(`${s}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "");
+const STATUS = { to_buy: "To buy", partial: "Partly bought", not_available: "Not available" };
+
+export async function procurementXlsx(db, user, { canCost = false } = {}) {
+  const now = new Date();
+  const groups = procurementList(db);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Zidane Books";
+  wb.created = now;
+  const head = (ws, title, width) => {
+    ws.mergeCells(1, 1, 1, width);
+    ws.getCell(1, 1).value = title;
+    ws.getCell(1, 1).font = { bold: true, size: 14 };
+    ws.mergeCells(2, 1, 2, width);
+    ws.getCell(2, 1).value = `Downloaded: ${stamp(now)}${user?.name ? ` · by ${user.name}` : ""}`;
+    ws.getCell(2, 1).font = { color: { argb: "FF6B7587" } };
+  };
+  const header = (ws, row, names) => {
+    const r = ws.getRow(row);
+    names.forEach((n, i) => { const c = r.getCell(i + 1); c.value = n; c.font = { bold: true, color: { argb: "FFFFFFFF" } }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC22A2F" } }; c.alignment = { vertical: "middle" }; });
+    ws.views = [{ state: "frozen", ySplit: row }];
+    ws.autoFilter = { from: { row, column: 1 }, to: { row, column: names.length } };
+  };
+
+  // 1. every customer line, grouped by item (the same item sits together, shaded alike)
+  const ws = wb.addWorksheet("What to buy");
+  const cols = ["#", "Item", "Category", "Customer", "Job", "Qty", "Unit", "Needed by", "Priority", "Status", "Bought qty", "Notes"];
+  head(ws, "What to buy", cols.length);
+  header(ws, 4, cols);
+  [5, 42, 16, 30, 13, 9, 8, 14, 10, 14, 12, 28].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  let n = 0;
+  groups.forEach((g, gi) => {
+    for (const j of g.jobs) {
+      const r = ws.addRow([++n, g.name, g.category, j.customer_name, j.job_number, j.qty, g.unit, day(j.required_date), j.priority || "", STATUS[j.status] || j.status, null, null]);
+      if (gi % 2) r.eachCell({ includeEmpty: true }, (c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F6F9" } }; });
+      if (j.status === "not_available") r.getCell(10).font = { color: { argb: "FFC22A2F" } };
+    }
+  });
+  if (!n) ws.addRow(["", "Nothing to buy right now"]);
+
+  // 2. one line per item: how much in all, what's in stock, the earliest date
+  const tot = wb.addWorksheet("Totals by item");
+  const tcols = ["Item", "Category", "Total qty", "Unit", "In stock", "Earliest needed", "Customers", ...(canCost ? ["Last cost (Rs)"] : [])];
+  head(tot, "What to buy: totals by item", tcols.length);
+  header(tot, 4, tcols);
+  [42, 16, 11, 8, 10, 16, 50, 14].forEach((w, i) => { tot.getColumn(i + 1).width = w; });
+  for (const g of groups) {
+    tot.addRow([g.name, g.category, g.total_qty, g.unit, g.stock_qty ?? "", day(g.earliest), [...new Set(g.jobs.map((j) => j.customer_name))].join(", "), ...(canCost ? [g.purchase_rate || ""] : [])]);
+  }
+  return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), filename: `what-to-buy-${fileStamp(now)}.xlsx` };
+}

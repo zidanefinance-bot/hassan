@@ -62,6 +62,38 @@ export function Password() {
   );
 }
 
+// remove every record (Jobs, quotes, invoices, bills, payments, stock, inbox …) to begin real entries
+function StartFresh() {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ confirm: "", keepContacts: false, keepItems: false });
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const run = async () => {
+    setBusy(true);
+    try {
+      await api("/admin/start-fresh", { method: "POST", body: f });
+      toast("All records removed. A backup was saved on the server first.");
+      setTimeout(() => window.location.assign("/"), 1200);
+    } catch (x) { toast(x.message, "err"); setBusy(false); }
+  };
+  return (
+    <section className="card danger-zone">
+      <h3>Start fresh</h3>
+      <p className="muted">Delete all test entries and begin real ones: Jobs, enquiries, quotes, POs, DCs, invoices, bills, credit notes, payments, expenses, stock, orders inbox, comments and notifications. Numbers start again from 1.
+        Users, logins and these settings stay. A full copy of the database is saved on the server first.</p>
+      {!open ? <button className="btn danger" onClick={() => setOpen(true)}>Start fresh…</button> : (
+        <div className="form">
+          <label className="check"><input type="checkbox" checked={f.keepContacts} onChange={(e) => setF({ ...f, keepContacts: e.target.checked })} /> Keep customers & suppliers</label>
+          <label className="check"><input type="checkbox" checked={f.keepItems} onChange={(e) => setF({ ...f, keepItems: e.target.checked })} /> Keep items (stock goes to 0)</label>
+          <Field label="Type DELETE to confirm"><input value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} placeholder="DELETE" /></Field>
+          <div className="form-actions"><button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn primary" disabled={busy || f.confirm !== "DELETE"} onClick={run}>{busy ? "Deleting…" : `Delete everything${f.keepContacts || f.keepItems ? " else" : ""}`}</button></div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Settings() {
   const state = useLoad("/settings");
   const [s, setS] = useState(null);
@@ -136,6 +168,7 @@ export default function Settings() {
             <p className="muted">Download a full copy of all your data (one file). Keep it somewhere safe, for example Google Drive, at least once a week.</p>
             <a className="btn" href="/api/admin/backup">Download backup</a>
           </section>
+          <StartFresh />
         </div>
       )}
     </>

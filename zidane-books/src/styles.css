@@ -433,3 +433,5 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .new-items select { min-width: 170px; }
 @media (max-width: 600px) { .cat-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
 .new-items select.need { border-color: var(--amber); }
+.danger-zone { border-color: #f0c4c6; }
+.danger-zone h3 { color: var(--red); }

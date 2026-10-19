@@ -11,6 +11,8 @@ import * as PUSH from "./push.js";
 import * as B from "./books.js";
 import * as J from "./jobs.js";
 import * as I from "./items.js";
+import { procurementXlsx } from "./exports.js";
+import { startFresh } from "./reset.js";
 import * as R from "./reports.js";
 import * as C from "./collab.js";
 import * as IN from "./inbox.js";
@@ -84,6 +86,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   });
 
   // ---- users (director)
+  // director only: wipe the records and start real entries (a backup is saved first)
+  api.post("/admin/start-fresh", requirePerm("admin"), (req, res) => res.json(startFresh(db, req.user.id, req.body || {})));
   api.get("/users", requirePerm("admin"), (_req, res) => res.json(db.prepare("SELECT id, name, email, role, active, created_at FROM users ORDER BY id").all()));
   api.post("/users", requirePerm("admin"), (req, res) => {
     const { name, email, role, password } = req.body;
@@ -314,6 +318,11 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json({ ok: true });
   });
   api.get("/procurement", (req, res) => { need(req.user, ["buy", "ops.read"]); res.json(J.procurementList(db)); });
+  api.get("/procurement.xlsx", async (req, res) => {
+    need(req.user, ["buy", "ops.read"]);
+    const { buffer, filename } = await procurementXlsx(db, req.user, { canCost: can(req.user, "cost.view") });
+    res.set({ "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="${filename}"`, "Cache-Control": "no-store" }).send(buffer);
+  });
 
   // ---- documents (quotes/enquiries, invoices, customer DCs, purchase orders, supplier bills)
   api.get("/documents", (req, res) => {

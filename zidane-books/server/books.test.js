@@ -839,3 +839,46 @@ test("item categories arrive: old items get one, customers' codes saved as our S
   assert.equal(db.prepare("SELECT code FROM item_aliases").get().code, null);
   db.close();
 });
+
+test("start fresh removes the records, keeps users and settings, and backs up first; what-to-buy downloads as Excel", async () => {
+  const { mkdtempSync, existsSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const ExcelJS = (await import("exceljs")).default;
+  const { procurementXlsx } = await import("./exports.js");
+  const { startFresh } = await import("./reset.js");
+  const file = join(mkdtempSync(join(tmpdir(), "zb-fresh-")), "books.db");
+  const db = openDb(file);
+  ensureAdmin(db);
+  seedDemo(db);
+  // the Excel list: title, download time, then item / customer / qty lines
+  const { buffer, filename } = await procurementXlsx(db, { name: "Imran" });
+  assert.match(filename, /^what-to-buy-\d{4}-\d{2}-\d{2}-\d{4}\.xlsx$/);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+  const ws = wb.getWorksheet("What to buy");
+  assert.match(String(ws.getCell("A2").value), /^Downloaded: \d+ \w+ \d{4}, .* · by Imran$/);
+  assert.deepEqual(ws.getRow(4).values.slice(1, 7), ["#", "Item", "Category", "Customer", "Job", "Qty"]);
+  const lines = J.procurementList(db).flatMap((g) => g.jobs.map((j) => [g.name, j.customer_name, j.qty]));
+  assert.ok(lines.length > 0, "the demo has something to buy");
+  assert.deepEqual([ws.getCell("B5").value, ws.getCell("D5").value, ws.getCell("F5").value], lines[0]);
+  assert.ok(!wb.getWorksheet("Totals by item").getRow(4).values.includes("Last cost (Rs)"), "no costs unless allowed");
+
+  assert.throws(() => startFresh(db, 1, { confirm: "yes" }, file), /Type DELETE/);
+  const users = db.prepare("SELECT COUNT(*) n FROM users").get().n;
+  const r = startFresh(db, 1, { confirm: "DELETE", keepItems: true }, file);
+  assert.ok(existsSync(r.backup), "a copy is saved first");
+  for (const t of ["documents", "jobs", "payments", "expenses", "stock_moves", "contacts"]) assert.equal(db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n, 0, t);
+  assert.ok(db.prepare("SELECT COUNT(*) n FROM items").get().n > 0, "items kept");
+  assert.equal(db.prepare("SELECT SUM(stock_qty) s FROM items").get().s, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM users").get().n, users);
+  assert.equal(JSON.parse(db.prepare("SELECT value FROM settings WHERE key = 'nextNumbers'").get().value).invoice, 1);
+  const c = Number(db.prepare("INSERT INTO contacts (type, name) VALUES ('customer', 'Texmark')").run().lastInsertRowid);
+  const doc = B.saveDocument(db, 1, { kind: "invoice", contact_id: c, date: "2026-10-19", status: "draft", lines: [{ description: "x", qty: 1, rate: 10 }] });
+  assert.equal(db.prepare("SELECT number FROM documents WHERE id = ?").get(doc.id ?? doc).number, "INV-00001", "numbers start again");
+  // the backup still has everything
+  const old = openDb(r.backup);
+  assert.ok(old.prepare("SELECT COUNT(*) n FROM documents").get().n > 0);
+  old.close();
+  db.close();
+});

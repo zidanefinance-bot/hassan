@@ -12,6 +12,7 @@ export default function Procurement() {
   return (
     <>
       <PageHead title="What to buy" sub="Everything still to buy across active Jobs, soonest first. The same item is totalled across Jobs.">
+        <a className="btn" href="/api/procurement.xlsx" download>⬇ Download Excel</a>
         <Link className="btn primary" to="/bills/new">+ Record purchase / bill</Link>
       </PageHead>
       <Loading state={state}>{(groups) => groups.length === 0 ? <div className="empty">Nothing to buy right now. ✓</div> : (
@@ -19,7 +20,7 @@ export default function Procurement() {
           {groups.map((g) => (
             <section key={g.key} className={`card buy ${g.urgent ? "urgent" : ""}`}>
               <header>
-                <div><h3>{g.name}</h3><span className="muted small">{g.stock_qty !== null && g.stock_qty !== undefined ? `In stock ${num(g.stock_qty)} ${g.unit}` : "Not in item list"}{g.purchase_rate ? ` · last cost ${money(g.purchase_rate)}` : ""}</span></div>
+                <div><h3>{g.name}</h3><span className="muted small">{g.category ? `${g.category} · ` : ""}{g.stock_qty !== null && g.stock_qty !== undefined ? `In stock ${num(g.stock_qty)} ${g.unit}` : "Not in item list"}{g.purchase_rate ? ` · last cost ${money(g.purchase_rate)}` : ""}</span></div>
                 <div className="r"><b className="big-num">{num(g.total_qty)}</b> <span className="muted">{g.unit}</span>{g.earliest && <div className={`small ${g.earliest <= today() ? "neg" : "muted"}`}>by {fmtDate(g.earliest)}</div>}</div>
               </header>
               <table className="table compact"><tbody>

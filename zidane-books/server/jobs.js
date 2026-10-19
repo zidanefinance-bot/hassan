@@ -169,17 +169,17 @@ export function jobList(db, { q = "", status = "", scope = "" } = {}) {
 // What Operations must buy: open lines of active Jobs, grouped by item across Jobs (master procurement list)
 export function procurementList(db) {
   const rows = db.prepare(`SELECT ji.id, ji.job_id, ji.item_id, ji.description, ji.qty, ji.procurement_status, j.number AS job_number, j.required_date, j.priority, j.fulfilment_type,
-      c.name AS customer_name, i.name AS item_name, i.unit, i.stock_qty, i.purchase_rate
+      c.name AS customer_name, i.name AS item_name, i.unit, i.category, i.stock_qty, i.purchase_rate
     FROM job_items ji JOIN jobs j ON j.id = ji.job_id JOIN contacts c ON c.id = j.customer_id LEFT JOIN items i ON i.id = ji.item_id
     WHERE ${ACTIVE} AND ji.procurement_status IN ('to_buy','partial','not_available') ORDER BY COALESCE(j.required_date, '9999'), j.id`).all();
   const groups = new Map();
   for (const r of rows) {
     const key = r.item_id ? `i${r.item_id}` : `d${(r.description || "").toLowerCase()}`;
-    const g = groups.get(key) || { key, item_id: r.item_id, name: r.item_name || r.description, unit: r.unit || "", stock_qty: r.stock_qty, purchase_rate: r.purchase_rate, total_qty: 0, earliest: null, urgent: false, jobs: [] };
+    const g = groups.get(key) || { key, item_id: r.item_id, name: r.item_name || r.description, unit: r.unit || "", category: r.category || "", stock_qty: r.stock_qty, purchase_rate: r.purchase_rate, total_qty: 0, earliest: null, urgent: false, jobs: [] };
     g.total_qty = round2(g.total_qty + r.qty);
     if (r.required_date && (!g.earliest || r.required_date < g.earliest)) g.earliest = r.required_date;
     g.urgent ||= r.priority === "urgent" || (r.required_date && r.required_date <= today());
-    g.jobs.push({ job_item_id: r.id, job_id: r.job_id, job_number: r.job_number, customer_name: r.customer_name, qty: r.qty, required_date: r.required_date, status: r.procurement_status, fulfilment_type: r.fulfilment_type });
+    g.jobs.push({ job_item_id: r.id, job_id: r.job_id, job_number: r.job_number, customer_name: r.customer_name, qty: r.qty, required_date: r.required_date, priority: r.priority, status: r.procurement_status, fulfilment_type: r.fulfilment_type });
     groups.set(key, g);
   }
   return [...groups.values()].sort((a, b) => (a.earliest || "9999").localeCompare(b.earliest || "9999"));

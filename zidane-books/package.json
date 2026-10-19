@@ -17,6 +17,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
     "cookie-parser": "^1.4.7",
+    "exceljs": "^4.4.0",
     "express": "^5.3.0",
     "imapflow": "^2.5.2",
     "mailparser": "^3.9.40",
