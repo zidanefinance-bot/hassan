@@ -16,6 +16,9 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   if (hasTables && version > SCHEMA_VERSION) throw new Error(`${file} was made by a newer version of Zidane Books (schema ${version}). Update the app first.`);
   db.exec(SCHEMA);
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  // tax withheld at source on a payment (income tax / sales tax), added after schema 5
+  const payCols = db.prepare("PRAGMA table_info(payments)").all().map((c) => c.name);
+  if (!payCols.includes("wht_income")) db.exec("ALTER TABLE payments ADD COLUMN wht_income REAL NOT NULL DEFAULT 0; ALTER TABLE payments ADD COLUMN wht_sales REAL NOT NULL DEFAULT 0;");
   const hadCategories = db.prepare("SELECT 1 FROM settings WHERE key = 'itemCategories'").get();
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
     db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(k, JSON.stringify(v));
@@ -24,6 +27,7 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   // "delivered" only comes from a signed DC: a Job whose signed DC was removed earlier steps back
   db.prepare(`UPDATE jobs SET ops_status = CASE WHEN EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'issued') THEN 'dispatched' ELSE 'material_ready' END
     WHERE closed = 0 AND ops_status = 'delivered' AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'signed')`).run();
+  db.prepare(`UPDATE settings SET value = '"Thank you for your business."' WHERE key = 'invoiceFooter' AND value = '"Thank you for your business. Groceries for business."'`).run();
   // "not available" was dropped: whatever was marked so is still to buy
   db.prepare("UPDATE job_items SET procurement_status = 'to_buy' WHERE procurement_status = 'not_available'").run();
   return db;
@@ -80,7 +84,7 @@ export const DEFAULT_SETTINGS = {
   itemCategories: ["General", "Mechanical", "Electrical", "Furniture", "Furniture & Fittings", "Stationery", "House Keeping", "Grocery", "Service"],
   jobExpenseCategories: ["Freight", "Loading / Unloading", "Packing", "Labour", "Vehicle", "Market expense", "Other direct cost"],
   expenseCategories: ["Rent", "Salaries", "Fuel & Transport", "Utilities", "Packaging", "Loading & Labour", "Office", "Marketing", "Bank Charges", "Other"],
-  invoiceFooter: "Thank you for your business. Groceries for business.",
+  invoiceFooter: "Thank you for your business.",
   salesTargetMonthly: 0,
   expenseBudgets: {},
   lowMarginPct: 8,
@@ -148,7 +152,8 @@ CREATE TABLE IF NOT EXISTS payments (
   id INTEGER PRIMARY KEY, number TEXT NOT NULL UNIQUE, direction TEXT NOT NULL CHECK (direction IN ('in','out')),
   contact_id INTEGER NOT NULL REFERENCES contacts(id),
   date TEXT NOT NULL, amount REAL NOT NULL CHECK (amount > 0), mode TEXT NOT NULL DEFAULT 'cash', reference TEXT, notes TEXT,
-  created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  wht_income REAL NOT NULL DEFAULT 0, wht_sales REAL NOT NULL DEFAULT 0
 );
 -- Money applied to an invoice/bill comes from a payment or from a credit note / vendor credit (credit_id).
 CREATE TABLE IF NOT EXISTS payment_allocations (

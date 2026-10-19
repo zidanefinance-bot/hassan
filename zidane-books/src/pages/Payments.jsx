@@ -24,7 +24,7 @@ export default function Payments({ direction }) {
           <tbody>{rows.map((p) => (
             <tr key={p.id} className="click" onClick={() => nav(`/payments/${p.id}`)}>
               <td>{fmtDate(p.date)}</td><td><b>{p.number}</b></td><td>{p.contact_name}</td><td className="muted small">{p.applied_to || "—"}</td><td>{p.mode}</td>
-              <td className="r">{money(p.amount)}</td><td className={`r ${p.unused > 0 ? "pos" : "muted"}`}>{p.unused > 0 ? money(p.unused) : "—"}</td>
+              <td className="r">{money(p.amount)}{p.wht_income + p.wht_sales > 0 && <div className="muted small">+ {money(p.wht_income + p.wht_sales)} tax withheld</div>}</td><td className={`r ${p.unused > 0 ? "pos" : "muted"}`}>{p.unused > 0 ? money(p.unused) : "—"}</td>
             </tr>
           ))}</tbody>
           <tfoot><tr><td colSpan={5}>{rows.length} payments</td><td className="r">{money(rows.reduce((a, p) => a + p.amount, 0))}</td><td className="r">{money(rows.reduce((a, p) => a + p.unused, 0))}</td></tr></tfoot>
@@ -68,7 +68,7 @@ export function RecordPayment() {
   const direction = params.get("direction") === "out" ? "out" : "in";
   const type = isIn(direction) ? "customer" : "supplier";
   const contacts = useLoad(`/contacts?type=${type}`);
-  const [p, setP] = useState({ contact_id: params.get("contact") || "", amount: "", date: today(), mode: "bank", reference: "", notes: "" });
+  const [p, setP] = useState({ contact_id: params.get("contact") || "", amount: "", wht_income: "", wht_sales: "", date: today(), mode: "bank", reference: "", notes: "" });
   const [docs, setDocs] = useState([]);
   const [values, setValues] = useState({});
   const [err, setErr] = useState("");
@@ -80,7 +80,9 @@ export function RecordPayment() {
     api(`/contacts/${p.contact_id}/open-documents`).then(setDocs).catch(() => setDocs([]));
   }, [p.contact_id]);
   const applied = r2(Object.values(values).reduce((a, v) => a + (Number(v) || 0), 0));
-  const advance = r2((Number(p.amount) || 0) - applied);
+  // what the payment settles: the money plus any tax withheld at source
+  const settles = r2((Number(p.amount) || 0) + (Number(p.wht_income) || 0) + (Number(p.wht_sales) || 0));
+  const advance = r2(settles - applied);
   const bind = (k) => ({ value: p[k], onChange: (e) => setP({ ...p, [k]: e.target.value }) });
   const save = async (e) => {
     e.preventDefault(); setErr("");
@@ -103,10 +105,15 @@ export function RecordPayment() {
           <Field label="Date"><input type="date" {...bind("date")} /></Field>
           <Field label="Mode"><select {...bind("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
         </div>
-        <div className="row-2"><Field label="Reference"><input {...bind("reference")} placeholder="Bank / cheque # / transaction ID" /></Field><Field label="Notes"><input {...bind("notes")} /></Field></div>
-        {p.contact_id && <AllocationTable docs={docs} values={values} setValues={setValues} max={Number(p.amount) || 0} />}
+        <div className="row-4">
+          <Field label={isIn(direction) ? "Income tax they withheld (Rs)" : "Income tax we withheld (Rs)"} hint="WHT deducted at source"><input type="number" step="0.01" min="0" {...bind("wht_income")} /></Field>
+          <Field label={isIn(direction) ? "Sales tax they withheld (Rs)" : "Sales tax we withheld (Rs)"}><input type="number" step="0.01" min="0" {...bind("wht_sales")} /></Field>
+          <Field label="Reference"><input {...bind("reference")} placeholder="Bank / cheque # / transaction ID" /></Field><Field label="Notes"><input {...bind("notes")} /></Field>
+        </div>
+        {p.contact_id && <AllocationTable docs={docs} values={values} setValues={setValues} max={settles} />}
         <dl className="totals pay-sum">
-          <dt>Amount</dt><dd>{money(p.amount)}</dd>
+          <dt>Amount received</dt><dd>{money(p.amount)}</dd>
+          {settles > (Number(p.amount) || 0) && <><dt>Tax withheld</dt><dd>{money(settles - (Number(p.amount) || 0))}</dd></>}
           <dt>Applied to {isIn(direction) ? "invoices" : "bills"}</dt><dd>{money(applied)}</dd>
           <dt className="grand">{advance >= 0 ? "Kept as advance" : "Over-applied"}</dt><dd className={`grand ${advance < 0 ? "neg" : advance > 0 ? "pos" : ""}`}>{money(Math.abs(advance))}</dd>
         </dl>
@@ -154,7 +161,8 @@ export function PaymentView() {
         </PageHead>
         <div className="stats">
           <div className="stat"><small>Amount</small><b>{money(p.amount)}</b><span className="muted">{p.mode}{p.reference ? ` · ${p.reference}` : ""}</span></div>
-          <div className="stat"><small>Applied</small><b>{money(p.amount - p.unused)}</b></div>
+          {p.wht_income + p.wht_sales > 0 && <div className="stat"><small>Tax withheld</small><b>{money(p.wht_income + p.wht_sales)}</b><span className="muted">{[p.wht_income > 0 && `income tax ${money(p.wht_income)}`, p.wht_sales > 0 && `sales tax ${money(p.wht_sales)}`].filter(Boolean).join(" · ")}</span></div>}
+          <div className="stat"><small>Applied</small><b>{money(p.amount + p.wht_income + p.wht_sales - p.unused)}</b></div>
           <div className="stat"><small>Unused (advance)</small><b className={p.unused > 0 ? "pos" : ""}>{money(p.unused)}</b></div>
         </div>
         <section className="card flush">

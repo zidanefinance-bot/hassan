@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
@@ -9,7 +9,15 @@ const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.wr
 const ATTACH_LABELS = { quote: ["Customer enquiry", "Customer PO"], invoice: ["Customer PO", "Submission receipt"], dc: ["Signed DC", "Gate pass"], credit_note: ["Return note"], po: ["Supplier quotation"], bill: ["Supplier bill photo", "Delivery note"], vendor_credit: ["Return note"] };
 
 export function PaymentModal({ doc, onClose, onSaved }) {
-  const [p, setP] = useState({ amount: doc.balance, date: today(), mode: "bank", reference: "", notes: "" });
+  const [p, setP] = useState({ amount: doc.balance, wht_income: "", wht_sales: "", date: today(), mode: "bank", reference: "", notes: "" });
+  const withheld = (Number(p.wht_income) || 0) + (Number(p.wht_sales) || 0);
+  const settles = Math.round(((Number(p.amount) || 0) + withheld) * 100) / 100;
+  // the customer kept some tax: what reaches the bank is the balance less that
+  const setTax = (k, v) => setP((x) => {
+    const next = { ...x, [k]: v };
+    const w = (Number(next.wht_income) || 0) + (Number(next.wht_sales) || 0);
+    return Number(x.amount) + ((Number(x.wht_income) || 0) + (Number(x.wht_sales) || 0)) === doc.balance ? { ...next, amount: Math.round((doc.balance - w) * 100) / 100 } : next;
+  });
   const [err, setErr] = useState("");
   const save = async (e) => {
     e.preventDefault();
@@ -19,8 +27,12 @@ export function PaymentModal({ doc, onClose, onSaved }) {
   return (
     <Modal title={doc.kind === "invoice" ? `Receive payment · ${doc.number}` : `Pay supplier · ${doc.number}`} onClose={onClose}>
       <form className="form" onSubmit={save}>
-        <p className="muted">Balance due: <b>{money(doc.balance)}</b>{Number(p.amount) > doc.balance && <><br /><span className="pos">{money(Number(p.amount) - doc.balance)} extra will be kept as {doc.kind === "invoice" ? "the customer's" : "an"} advance.</span></>}</p>
-        <div className="row-2"><Field label="Amount (Rs)"><input type="number" step="0.01" {...bind("amount")} required autoFocus /></Field><Field label="Date"><input type="date" {...bind("date")} /></Field></div>
+        <p className="muted">Balance due: <b>{money(doc.balance)}</b>{settles > doc.balance && <><br /><span className="pos">{money(settles - doc.balance)} extra will be kept as {doc.kind === "invoice" ? "the customer's" : "an"} advance.</span></>}</p>
+        <div className="row-2">
+          <Field label={doc.kind === "invoice" ? "Income tax they withheld (Rs)" : "Income tax we withheld (Rs)"} hint="WHT deducted at source"><input type="number" step="0.01" min="0" value={p.wht_income} onChange={(e) => setTax("wht_income", e.target.value)} /></Field>
+          <Field label={doc.kind === "invoice" ? "Sales tax they withheld (Rs)" : "Sales tax we withheld (Rs)"}><input type="number" step="0.01" min="0" value={p.wht_sales} onChange={(e) => setTax("wht_sales", e.target.value)} /></Field>
+        </div>
+        <div className="row-2"><Field label={withheld ? "Received in bank / cash (Rs)" : "Amount (Rs)"} hint={withheld ? `Settles ${money(settles)} of the invoice` : null}><input type="number" step="0.01" {...bind("amount")} required autoFocus /></Field><Field label="Date"><input type="date" {...bind("date")} /></Field></div>
         <div className="row-2">
           <Field label="Mode"><select {...bind("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
           <Field label="Reference"><input {...bind("reference")} placeholder="Bank / cheque # / transaction ID" /></Field>
@@ -139,7 +151,8 @@ export default function DocumentView({ kind }) {
           </PageHead>
           {d.credit_status?.over && <div className="form-error no-print">Over credit limit: customer owes {money(d.credit_status.owed)}, limit {money(d.credit_status.limit)}. Only a director can issue this invoice.</div>}
           <p className="muted links">
-            {d.job && <>Job <Link to={`/jobs/${d.job.id}`}>{d.job.number}</Link>. </>}
+            {d.job && <>Job <Link to={`/jobs/${d.job.id}`}>{d.job.number}</Link>{d.job.customer_po_number && !["po", "bill", "vendor_credit"].includes(kind) ? ` (PO ${d.job.customer_po_number})` : ""}. </>}
+            {d.related?.length > 0 && <>Same Job: {d.related.map((r, i) => <React.Fragment key={r.id}>{i > 0 && ", "}<Link to={`/${KIND[r.kind].path}/${r.id}`}>{r.number}</Link> <span className="small">({label(r.status)})</span></React.Fragment>)}. </>}
             {d.source && <>Created from <Link to={`/${KIND[d.source.kind].path}/${d.source.id}`}>{d.source.number}</Link>. </>}
             {d.children.map((c) => <span key={c.id}>Converted to <Link to={`/${KIND[c.kind].path}/${c.id}`}>{c.number}</Link>. </span>)}
             {d.verified_at && <>Verified by {d.verified_by_name}. </>}

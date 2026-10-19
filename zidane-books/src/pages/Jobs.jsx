@@ -204,7 +204,8 @@ export function JobView() {
       // Sales: what's in hand and not delivered yet (a part delivery is fine), and what's delivered but not invoiced
       const canDeliver = j.items.some((it) => (it.ready_qty ?? 0) - it.delivered_qty > 0.001);
       const toDeliverLeft = j.items.some((it) => it.qty - it.delivered_qty > 0.001);
-      const canInvoice = j.items.some((it) => it.delivered_qty - (it.invoiced_qty ?? 0) > 0.001) || can("admin");
+      // an invoice can come before or after the DC: whatever isn't invoiced yet
+      const canInvoice = j.items.some((it) => it.qty - (it.invoiced_qty ?? 0) > 0.001);
       return (
         <>
           <PageHead title={<>{j.number}{j.customer_po_number && <span className="po-tag">PO {j.customer_po_number}</span>} <Badge status={j.ops_status} /></>} sub={`${j.customer_name}${j.customer_po_date ? ` · PO dated ${fmtDate(j.customer_po_date)}` : ""} · created by ${j.created_by_name || "—"}`}>

@@ -60,7 +60,11 @@ export function profitAndLoss(db, from, to) {
 export function taxSummary(db, from, to) {
   const q = (kind) => round2(db.prepare(`SELECT COALESCE(SUM(tax_total), 0) AS v FROM documents WHERE kind = ? AND ${ISSUED} AND date BETWEEN ? AND ?`).get(kind, from, to).v);
   const collected = q("invoice"), paid = q("bill");
-  return { from, to, output_tax: collected, input_tax: paid, net_payable: round2(collected - paid) };
+  // tax withheld at source: by customers on their payments to us (we claim it), and by us on supplier payments (we deposit it)
+  const wht = (dir) => db.prepare("SELECT COALESCE(SUM(wht_income), 0) AS income, COALESCE(SUM(wht_sales), 0) AS sales FROM payments WHERE direction = ? AND date BETWEEN ? AND ?").get(dir, from, to);
+  const byCustomers = wht("in"), byUs = wht("out");
+  return { from, to, output_tax: collected, input_tax: paid, net_payable: round2(collected - paid),
+    withheld_by_customers: { income: round2(byCustomers.income), sales: round2(byCustomers.sales) }, withheld_by_us: { income: round2(byUs.income), sales: round2(byUs.sales) } };
 }
 
 export function inventory(db) {

@@ -94,6 +94,12 @@ function Report({ tab, data: d }) {
       <dt>Output tax (on sales invoices)</dt><dd>{money(d.output_tax)}</dd>
       <dt>Input tax (on supplier bills)</dt><dd>− {money(d.input_tax)}</dd>
       <dt className="grand">Net tax payable</dt><dd className="grand">{money(d.net_payable)}</dd>
+      {d.withheld_by_customers && <>
+        <dt className="sub">Withheld by customers on their payments (claim it)</dt><dd className="sub">{money(d.withheld_by_customers.income + d.withheld_by_customers.sales)}</dd>
+        <dt className="indent">Income tax</dt><dd className="muted">{money(d.withheld_by_customers.income)}</dd>
+        <dt className="indent">Sales tax</dt><dd className="muted">{money(d.withheld_by_customers.sales)}</dd>
+        <dt className="sub">Withheld by us on supplier payments (deposit it)</dt><dd className="sub">{money(d.withheld_by_us.income + d.withheld_by_us.sales)}</dd>
+      </>}
     </dl><p className="muted small">A summary from your documents, to help with filing. Check figures with your tax advisor.</p></div>
   );
   return null;

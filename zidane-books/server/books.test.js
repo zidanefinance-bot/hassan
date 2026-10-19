@@ -953,8 +953,6 @@ test("QA round: buying, delivering and invoicing follow the real paperwork", asy
     assert.equal((await call(pur, "POST", `/job-items/${ji(b).id}/procurement`, { status: "from_stock" })).status, 200);
     assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job).ops_status, "purchase_complete");
 
-    // no invoice before goods go out on a DC (a director can invoice in advance)
-    assert.match((await call(sales, "POST", `/jobs/${job}/invoice`)).body.error, /DC first/);
     // what's bought can go out before Operations marks the whole Job ready; a part delivery isn't "delivered"
     const dc = (await call(sales, "POST", `/jobs/${job}/dc`)).body.id;
     assert.ok(dc, "bought goods can go out");
@@ -968,6 +966,10 @@ test("QA round: buying, delivering and invoicing follow the real paperwork", asy
     const inv = (await call(sales, "POST", `/jobs/${job}/invoice`)).body.id;
     assert.deepEqual(db.prepare("SELECT item_id, qty FROM document_lines WHERE document_id = ?").all(inv).map((l) => [l.item_id, l.qty]), [[a, 10]], "only what was delivered");
     assert.equal((await call(sales, "POST", `/documents/${inv}/status`, { status: "open" })).status, 200);
+    // the Job's DC and invoice point at each other
+    const invView = (await call(sales, "GET", `/documents/${inv}`)).body;
+    assert.ok(invView.related.some((r) => r.id === dc && r.kind === "dc"));
+    assert.ok(!invView.related.some((r) => r.kind === "bill"), "Sales doesn't see the supplier bills of the Job");
     // an issued invoice is voided, not deleted (unless a director does it)
     assert.equal((await call(sales, "DELETE", `/documents/${inv}`)).status, 400);
     // the rest still shows as to deliver
@@ -1052,4 +1054,21 @@ test("an Oracle-style PO (headings on several lines, names around the numbers) i
   assert.equal(x.party_ntn, null, "the NTN in the supplier block is ours");
   assert.deepEqual(x.lines.map((l) => [l.description, l.qty, l.unit, l.rate, l.tax_rate]), [
     ["MUSLIM SHOWER.", 4, "SET", 800, 5], ["LED TUBE LIGHT 20W", 10, "NOS", 450, 0]]);
+});
+
+test("tax withheld by the customer settles the invoice and shows in the tax report", () => {
+  const { db, c, i } = fresh();
+  const inv = B.saveDocument(db, 1, { kind: "invoice", contact_id: c, date: "2026-10-10", status: "open", lines: [{ item_id: i, qty: 10, rate: 1000, tax_rate: 18 }] });
+  // Rs 11,800 invoice: customer keeps 4.5% income tax on the gross and 1/5 of the sales tax, pays the rest
+  const it = 531, st = 360;
+  const pay = B.recordPayment(db, 1, { direction: "in", document_id: inv, amount: 11800 - it - st, wht_income: it, wht_sales: st, date: "2026-10-15" });
+  assert.equal(B.paidAmount(db, inv), 11800, "fully settled");
+  assert.equal(B.unusedAmount(db, pay), 0);
+  const t = R.taxSummary(db, "2026-10-01", "2026-10-31");
+  assert.deepEqual(t.withheld_by_customers, { income: it, sales: st });
+  const s = B.statement(db, c);
+  assert.equal(s.rows.at(-1).payment, 11800);
+  assert.equal(s.closing, 0);
+  assert.match(s.rows.at(-1).details, /tax withheld Rs 891/);
+  assert.throws(() => B.recordPayment(db, 1, { direction: "in", contact_id: c, amount: 10, wht_income: -1 }), /negative/);
 });

@@ -267,13 +267,12 @@ export function checkDcIssue(db, doc, lines = null, { admin = false } = {}) {
     if (!admin && (want[key(it)] || 0) > inHand + 0.001) throw httpError(400, inHand > 0 ? `Only ${inHand} of ${it.name} is bought / in hand so far` : `${it.name} isn't bought yet. Operations marks it bought (or the material ready) first.`);
   }
 }
-export function checkInvoiceQty(db, doc, lines, { admin = false } = {}) {
+// an invoice may come before or after the DC; either way it can't bill more than was ordered / delivered
+export function checkInvoiceQty(db, doc, lines) {
   if (!doc.job_id) return;
   const { items, key, sumOther, want } = jobLineLimits(db, doc, lines);
   const delivered = sumOther("dc", ["issued", "signed"]);
   const anyDc = Object.keys(delivered).length > 0;
-  // goods go out on a DC first, then they're invoiced (a director can invoice in advance)
-  if (!anyDc && !admin) throw httpError(400, "Nothing on this Job has gone out on a DC yet. Make the DC first, then the invoice.");
   const billed = sumOther("invoice", ["open", "draft"]);
   for (const it of items) {
     const cap = round2((anyDc ? delivered[key(it)] || 0 : it.qty) - (billed[key(it)] || 0));
@@ -321,8 +320,8 @@ export function dcFromJob(db, userId, jobId, { admin = false } = {}) {
   return saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, notes: job.delivery_location ? `Deliver to: ${job.delivery_location}` : null, lines });
 }
 
-// Sales: draft invoice for delivered-but-not-invoiced quantities (a director may invoice the whole Job in advance)
-export function invoiceFromJob(db, userId, jobId, { admin = false } = {}) {
+// Sales: draft invoice for delivered-but-not-invoiced quantities (or the whole Job when nothing has a DC yet)
+export function invoiceFromJob(db, userId, jobId) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
   const draft = db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'draft'").get(jobId);
@@ -332,7 +331,6 @@ export function invoiceFromJob(db, userId, jobId, { admin = false } = {}) {
   const invoiced = lineTotals(db, jobId, "invoice", ["open", "draft"]);
   const anyDc = items.some((i) => delivered(i).qty > 0);
   if (job.closed) throw httpError(400, "This Job is closed");
-  if (!anyDc && !admin) throw httpError(400, "Nothing on this Job has gone out on a DC yet. Make the DC first, then the invoice.");
   const lines = items
     .map((i) => ({ item_id: i.item_id, description: i.description, qty: round2((anyDc ? delivered(i).qty : i.qty) - invoiced(i).qty), rate: i.sale_rate, tax_rate: i.tax_rate }))
     .filter((l) => l.qty > 0);

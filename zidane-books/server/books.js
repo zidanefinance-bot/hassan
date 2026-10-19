@@ -228,7 +228,8 @@ export function convertDocument(db, userId, id) {
 // SQL for "how much has been applied to document d" (use with a documents alias d)
 export const PAID_SQL = "COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.document_id = d.id), 0)";
 // SQL for "how much of payment p is still unused" (alias p): not applied and not refunded
-export const UNUSED_SQL = "(p.amount - COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.payment_id = p.id), 0) - COALESCE((SELECT SUM(r.amount) FROM refunds r WHERE r.payment_id = p.id), 0))";
+// a payment settles its cash plus any tax the customer (or we) withheld at source
+export const UNUSED_SQL = "(p.amount + p.wht_income + p.wht_sales - COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.payment_id = p.id), 0) - COALESCE((SELECT SUM(r.amount) FROM refunds r WHERE r.payment_id = p.id), 0))";
 // SQL for "how much of credit note / vendor credit d is still unused" (alias d)
 export const CREDIT_UNUSED_SQL = "(d.total - COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.credit_id = d.id), 0) - COALESCE((SELECT SUM(r.amount) FROM refunds r WHERE r.credit_id = d.id), 0))";
 export const CREDIT_KINDS = { credit_note: "in", vendor_credit: "out" }; // which side of the business each credit belongs to
@@ -280,6 +281,9 @@ function allocate(db, userId, source, documentId, amount, date) {
 export function recordPayment(db, userId, p) {
   const amount = round2(p.amount);
   if (!(amount > 0)) throw httpError(400, "Amount must be more than zero");
+  const whtIncome = round2(Number(p.wht_income) || 0), whtSales = round2(Number(p.wht_sales) || 0);
+  if (whtIncome < 0 || whtSales < 0) throw httpError(400, "Tax withheld can't be negative");
+  const settled = round2(amount + whtIncome + whtSales);
   if (!["in", "out"].includes(p.direction)) throw httpError(400, "Direction must be in or out");
   return tx(db, () => {
     let contactId = p.contact_id;
@@ -288,19 +292,19 @@ export function recordPayment(db, userId, p) {
       const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(p.document_id);
       if (!doc) throw httpError(404, "Document not found");
       contactId = doc.contact_id;
-      allocations = [{ document_id: doc.id, amount: Math.min(amount, round2(doc.total - paidAmount(db, doc.id))) }];
+      allocations = [{ document_id: doc.id, amount: Math.min(settled, round2(doc.total - paidAmount(db, doc.id))) }];
     }
     if (!contactId) throw httpError(400, "Contact is required");
     const totalAlloc = round2(allocations.reduce((a, x) => a + (Number(x.amount) || 0), 0));
-    if (totalAlloc > amount + 0.001) throw httpError(400, "You've applied more than the payment amount");
+    if (totalAlloc > settled + 0.001) throw httpError(400, "You've applied more than the payment amount (plus tax withheld)");
     const number = nextNumber(db, p.direction === "in" ? "receipt" : "payment");
-    const r = db.prepare("INSERT INTO payments (number, direction, contact_id, date, amount, mode, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .run(number, p.direction, contactId, p.date || today(), amount, p.mode || "cash", p.reference || null, p.notes || null, userId ?? null);
+    const r = db.prepare("INSERT INTO payments (number, direction, contact_id, date, amount, mode, reference, notes, created_by, wht_income, wht_sales) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(number, p.direction, contactId, p.date || today(), amount, p.mode || "cash", p.reference || null, p.notes || null, userId ?? null, whtIncome, whtSales);
     const id = Number(r.lastInsertRowid);
     const source = loadSource(db, { payment_id: id });
     for (const a of allocations) allocate(db, userId, source, a.document_id, a.amount, p.date || today());
-    const left = round2(amount - totalAlloc);
-    log(db, userId, p.direction === "in" ? "received payment" : "paid supplier", "payment", id, `${number} · ${amount}${left > 0 ? ` (${left} kept as advance)` : ""}`);
+    const left = round2(settled - totalAlloc);
+    log(db, userId, p.direction === "in" ? "received payment" : "paid supplier", "payment", id, `${number} · ${amount}${settled > amount ? ` + ${round2(settled - amount)} tax withheld` : ""}${left > 0 ? ` (${left} kept as advance)` : ""}`);
     return id;
   });
 }
@@ -366,13 +370,13 @@ export function statement(db, contactId, from = "0000-01-01", to = "9999-12-31")
   const cust = c.type === "customer";
   const docKind = cust ? "invoice" : "bill", creditKind = cust ? "credit_note" : "vendor_credit", dir = cust ? "in" : "out";
   const docs = db.prepare("SELECT id, kind, number, date, due_date, total, reference FROM documents WHERE contact_id = ? AND kind IN (?, ?) AND status = 'open'").all(contactId, docKind, creditKind);
-  const pays = db.prepare("SELECT id, number, date, amount, mode, reference FROM payments WHERE contact_id = ? AND direction = ?").all(contactId, dir);
+  const pays = db.prepare("SELECT id, number, date, amount, wht_income, wht_sales, mode, reference FROM payments WHERE contact_id = ? AND direction = ?").all(contactId, dir);
   const refunds = db.prepare("SELECT id, number, date, amount, mode, reference, payment_id, credit_id FROM refunds WHERE contact_id = ?").all(contactId);
   const entries = [
     ...docs.map((d) => d.kind === creditKind
       ? { date: d.date, type: d.kind, id: d.id, number: d.number, details: cust ? "Credit note" : "Vendor credit", charge: 0, payment: round2(d.total) }
       : { date: d.date, type: d.kind, id: d.id, number: d.number, details: d.reference ? `Ref ${d.reference}` : d.due_date ? `Due ${d.due_date}` : "", charge: round2(d.total), payment: 0 }),
-    ...pays.map((p) => ({ date: p.date, type: "payment", id: p.id, number: p.number, details: [p.mode, p.reference].filter(Boolean).join(" · "), charge: 0, payment: round2(p.amount) })),
+    ...pays.map((p) => ({ date: p.date, type: "payment", id: p.id, number: p.number, details: [p.mode, p.reference, p.wht_income + p.wht_sales > 0 && `incl. tax withheld Rs ${round2(p.wht_income + p.wht_sales)}`].filter(Boolean).join(" · "), charge: 0, payment: round2(p.amount + p.wht_income + p.wht_sales) })),
     ...refunds.map((r) => ({ date: r.date, type: "refund", id: r.payment_id || r.credit_id, source: r.payment_id ? "payment" : "credit", number: r.number, details: `Refund · ${r.mode}${r.reference ? ` · ${r.reference}` : ""}`, charge: round2(r.amount), payment: 0 })),
   ].sort((a, b) => a.date.localeCompare(b.date) || (a.payment > 0) - (b.payment > 0));
   let opening = round2(c.opening_balance || 0);

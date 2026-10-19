@@ -15,8 +15,14 @@ export function documentPdf(db, docId) {
   const job = d.job_id ? db.prepare("SELECT number, customer_po_number, delivery_location FROM jobs WHERE id = ?").get(d.job_id) : null;
   const lines = db.prepare("SELECT l.*, i.name AS item_name, i.unit FROM document_lines l LEFT JOIN items i ON i.id = l.item_id WHERE document_id = ? ORDER BY l.id").all(docId);
   const co = getSetting(db, "company") || {};
-  const footer = getSetting(db, "invoiceFooter") || "";
   const isDc = d.kind === "dc";
+  const supplierSide = ["po", "bill", "vendor_credit"].includes(d.kind);
+  // the thank-you line is for customers' quotes / invoices / credit notes, not DCs or our supplier paperwork
+  const footer = ["quote", "invoice", "credit_note"].includes(d.kind) ? getSetting(db, "invoiceFooter") || "" : "";
+  // the customer's DCs and invoices of the same Job are named on each other
+  const linked = d.job_id && (d.kind === "invoice" || isDc) ? db.prepare(`SELECT number FROM documents WHERE job_id = ? AND kind = ? AND status IN (${isDc ? "'open'" : "'issued','signed'"}) ORDER BY id`).all(d.job_id, isDc ? "invoice" : "dc").map((x) => x.number) : [];
+  // a supplier never sees which customer's PO the goods are for
+  const ref = supplierSide ? d.reference : job?.customer_po_number || d.reference;
 
   const pdf = new PDFDocument({ size: "A4", margin: 48, info: { Title: `${TITLE[d.kind]} ${d.number}`, Author: co.name } });
   const chunks = [];
@@ -30,7 +36,7 @@ export function documentPdf(db, docId) {
   const headBottom = pdf.y;
   pdf.fillColor(RED).font("Helvetica-Bold").fontSize(18).text(TITLE[d.kind], L, 48, { width: W, align: "right" });
   pdf.fillColor(INK).font("Helvetica-Bold").fontSize(11).text(d.number, { width: W, align: "right" });
-  pdf.font("Helvetica").fontSize(9).fillColor(MUTED).text([`Date: ${date(d.date)}`, d.due_date && !isDc && `Due: ${date(d.due_date)}`, job && `Job: ${job.number}`, (job?.customer_po_number || d.reference) && `Ref: ${job?.customer_po_number || d.reference}`].filter(Boolean).join("\n"), { width: W, align: "right" });
+  pdf.font("Helvetica").fontSize(9).fillColor(MUTED).text([`Date: ${date(d.date)}`, d.due_date && !isDc && `Due: ${date(d.due_date)}`, job && !supplierSide && `Job: ${job.number}`, ref && `${!supplierSide && job?.customer_po_number ? "Your PO" : "Ref"}: ${ref}`, linked.length && `${isDc ? "Invoice" : "DC"}: ${linked.join(", ")}`].filter(Boolean).join("\n"), { width: W, align: "right" });
   let y = Math.max(headBottom, pdf.y) + 18;
 
   // bill to / deliver to
