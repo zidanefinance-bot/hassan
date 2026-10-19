@@ -46,7 +46,8 @@ function Report({ tab, data: d }) {
     <div className="card pnl">
       <p className="muted">{fmtDate(d.from)} – {fmtDate(d.to)}</p>
       <dl className="statement">
-        <dt>Sales (excl. tax)</dt><dd>{money(d.revenue)}</dd>
+        <dt>Sales (excl. tax{d.returns ? ", after credit notes" : ""})</dt><dd>{money(d.revenue)}</dd>
+        {d.returns > 0 && <><dt className="indent">Credit notes / returns</dt><dd className="muted">− {money(d.returns)} (included above)</dd></>}
         <dt>Cost of goods sold</dt><dd>− {money(d.cogs)}</dd>
         <dt className="sub">Gross profit <span className="muted">({d.gross_margin}%)</span></dt><dd className="sub">{money(d.gross_profit)}</dd>
         {d.expense_breakdown.map((e) => <React.Fragment key={e.category}><dt className="indent">{e.category}</dt><dd className="muted">− {money(e.amount)}</dd></React.Fragment>)}

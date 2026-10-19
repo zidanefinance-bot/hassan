@@ -13,9 +13,12 @@ const PERIODS = {
   year: ["This year", () => [today().slice(0, 4) + "-01-01", today()]],
 };
 const change = (now, before) => (before ? Math.round(((now - before) / Math.abs(before)) * 100) : null);
+// a loss is never shown as good news, whatever it did against last time
 const Delta = ({ now, before }) => {
   const c = change(now, before);
-  return c === null ? null : <span className={c >= 0 ? "pos" : "neg"}>{c >= 0 ? "▲" : "▼"} {Math.abs(c)}% vs previous</span>;
+  if (c === null) return null;
+  const good = c >= 0 && now >= 0;
+  return <span className={good ? "pos" : "neg"}>{c >= 0 ? "▲" : "▼"} {Math.abs(c)}% vs previous period{now < 0 ? " · loss" : ""}</span>;
 };
 
 // a KPI card; with `to` the whole card opens the detail

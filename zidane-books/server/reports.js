@@ -42,12 +42,19 @@ export const payables = (db) => ({ ...aging(balances(db, "bill")), advances: adv
 
 export function profitAndLoss(db, from, to) {
   const sales = db.prepare(`SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v, COALESCE(SUM(tax_total), 0) AS tax FROM documents WHERE kind = 'invoice' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to);
-  const cogs = db.prepare(`SELECT COALESCE(SUM(l.qty * l.cost_rate), 0) AS v FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.kind = 'invoice' AND d.${ISSUED} AND d.date BETWEEN ? AND ?`).get(from, to).v;
+  const cogsSold = db.prepare(`SELECT COALESCE(SUM(l.qty * l.cost_rate), 0) AS v FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.kind = 'invoice' AND d.${ISSUED} AND d.date BETWEEN ? AND ?`).get(from, to).v;
+  // credit notes take the sale back, and the cost too when the goods came back into stock
+  const returns = db.prepare(`SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v FROM documents WHERE kind = 'credit_note' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to).v;
+  const returnedCost = db.prepare(`SELECT COALESCE(SUM(l.qty * l.cost_rate), 0) AS v FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.kind = 'credit_note' AND d.${ISSUED} AND d.return_stock = 1 AND d.date BETWEEN ? AND ?`).get(from, to).v;
+  const cogs = cogsSold - returnedCost;
   const exp = db.prepare("SELECT category, SUM(amount) AS amount FROM expenses WHERE date BETWEEN ? AND ? GROUP BY category ORDER BY amount DESC").all(from, to)
     .map((e) => ({ ...e, amount: round2(e.amount) }));
+  // freight / other charges added on supplier bills are a cost as well
+  const billCharges = round2(db.prepare(`SELECT COALESCE(SUM(charges), 0) AS v FROM documents WHERE kind = 'bill' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to).v);
+  if (billCharges) exp.push({ category: "Freight & charges on supplier bills", amount: billCharges });
   const expenses = round2(exp.reduce((a, e) => a + e.amount, 0));
-  const revenue = round2(sales.v), gross = round2(revenue - cogs);
-  return { from, to, revenue, cogs: round2(cogs), gross_profit: gross, gross_margin: revenue ? round2((gross / revenue) * 100) : 0, expenses, expense_breakdown: exp, net_profit: round2(gross - expenses), tax_collected: round2(sales.tax) };
+  const revenue = round2(sales.v - returns), gross = round2(revenue - cogs);
+  return { from, to, revenue, returns: round2(returns), cogs: round2(cogs), gross_profit: gross, gross_margin: revenue ? round2((gross / revenue) * 100) : 0, expenses, expense_breakdown: exp, net_profit: round2(gross - expenses), tax_collected: round2(sales.tax) };
 }
 
 export function taxSummary(db, from, to) {
@@ -230,8 +237,15 @@ export function home(db, user, can, { from, to } = {}) {
     kpis.payables_aging = p.buckets;
     kpis.expected_out = p.expected;
     kpis.period = { from, to, ...profitAndLoss(db, from, to) };
+    // compare like with like: a month-to-date is set against the same days of last month, other ranges against the range before
     const days = Math.round((Date.parse(to) - Date.parse(from)) / 864e5) + 1;
-    const pTo = new Date(Date.parse(from) - 864e5).toISOString().slice(0, 10), pFrom = new Date(Date.parse(from) - days * 864e5).toISOString().slice(0, 10);
+    let pTo = new Date(Date.parse(from) - 864e5).toISOString().slice(0, 10), pFrom = new Date(Date.parse(from) - days * 864e5).toISOString().slice(0, 10);
+    if (from.endsWith("-01") && from.slice(0, 7) === to.slice(0, 7)) {
+      const prev = new Date(Date.UTC(Number(from.slice(0, 4)), Number(from.slice(5, 7)) - 2, 1));
+      const last = new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() + 1, 0)).getUTCDate();
+      pFrom = prev.toISOString().slice(0, 10);
+      pTo = `${pFrom.slice(0, 8)}${String(Math.min(Number(to.slice(8, 10)), last)).padStart(2, "0")}`;
+    }
     kpis.previous = { from: pFrom, to: pTo, ...profitAndLoss(db, pFrom, pTo) };
     const inv = inventory(db);
     kpis.stock_value = inv.total_value;

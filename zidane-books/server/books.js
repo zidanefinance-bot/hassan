@@ -169,7 +169,8 @@ export function saveDocument(db, userId, input, id = null) {
       id = Number(r.lastInsertRowid);
     }
     for (const l of calc.lines) {
-      const cost = kind === "invoice" && l.item_id ? db.prepare("SELECT purchase_rate FROM items WHERE id = ?").get(l.item_id)?.purchase_rate ?? 0 : 0;
+      // cost of what's sold (and of what a credit note brings back), for profit
+      const cost = (kind === "invoice" || kind === "credit_note") && l.item_id ? db.prepare("SELECT purchase_rate FROM items WHERE id = ?").get(l.item_id)?.purchase_rate ?? 0 : 0;
       db.prepare("INSERT INTO document_lines (document_id, item_id, description, qty, rate, discount_pct, tax_rate, cost_rate, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .run(id, l.item_id || null, l.description || null, l.qty, l.rate, l.discount_pct, l.tax_rate, cost, l.amount);
     }

@@ -978,3 +978,18 @@ test("QA round: buying, delivering and invoicing follow the real paperwork", asy
     server.close();
   }
 });
+
+test("P&L: credit notes take back the sale (and the cost when goods return); bill charges are a cost", () => {
+  const { db, c, s: sup, i } = fresh();
+  db.prepare("UPDATE items SET purchase_rate = 60, stock_qty = 100 WHERE id = ?").run(i);
+  const d = "2026-10-10";
+  B.saveDocument(db, 1, { kind: "invoice", contact_id: c, date: d, status: "open", lines: [{ item_id: i, qty: 10, rate: 100 }] });
+  B.saveDocument(db, 1, { kind: "credit_note", contact_id: c, date: d, status: "open", return_stock: 1, lines: [{ item_id: i, qty: 2, rate: 100 }] });
+  B.saveDocument(db, 1, { kind: "bill", contact_id: sup, date: d, status: "open", charges: 500, lines: [{ item_id: i, qty: 5, rate: 60 }] });
+  const p = R.profitAndLoss(db, "2026-10-01", "2026-10-31");
+  assert.equal(p.revenue, 800);
+  assert.equal(p.returns, 200);
+  assert.equal(p.cogs, 8 * 60);
+  assert.ok(p.expense_breakdown.some((e) => e.amount === 500 && /supplier bills/.test(e.category)));
+  assert.equal(p.net_profit, 800 - 480 - 500);
+});
