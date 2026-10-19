@@ -3,7 +3,7 @@
 // qty × rate = amount. Scanned papers and photos have no text layer; those still go to AI (if it is set up).
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
-const num = (s) => { const v = Number(String(s ?? "").replace(/,/g, "").replace(/[^\d.\-]/g, "")); return Number.isFinite(v) ? v : null; };
+const num = (s) => { const t = String(s ?? "").replace(/,/g, "").replace(/[^\d.\-]/g, ""); if (!/\d/.test(t)) return null; const v = Number(t); return Number.isFinite(v) ? v : null; };
 const isNum = (s) => /^-?[\d,]+(\.\d+)?$/.test(String(s).trim());
 const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
 export function parseDate(s) {
@@ -37,51 +37,77 @@ export async function pdfRows(buffer) {
 }
 
 const COLS = [
-  ["sno", /^(s\.?\s*#|s\.?\s*no\.?|sr\.?\s*(no\.?|#)?|#|line)$/i],
-  ["code", /(item\s*code|product\s*code|code|sku|part\s*(no|#))/i],
-  ["name", /(item\s*name|description|item|product|particulars|material)/i],
+  ["sno", /^(s\.?\s*#|s\.?\s*no\.?|sr\.?\s*(no\.?|#)?|#|line(\s*no\.?)?)$/i],
+  ["code", /(item\s*code|product\s*code|^code$|sku|part\s*(no|#))/i],
+  ["name", /(item\s*name|description|^item$|product|particulars|material)/i],
   ["note", /(narration|remarks?|specification|spec|brand|make)/i],
   ["qty", /^(qty|quantity|qnty|order\s*qty)/i],
-  ["unit", /^(uom|unit|u\/m|pack)/i],
+  ["unit", /^(uom|unit|u\/m|pack)$/i],
   ["rate", /^(rate|price|unit\s*price|u\.?\s*price)/i],
   ["amount", /^(amount|total|value|net\s*amount|line\s*total)/i],
+  ["tax", /^(tax|gst|s\.?\s*tax|sales\s*tax)\s*(%|rate)/i],
 ];
+
+// Headings are often printed on 2-4 lines ("Amount / Excluding / Tax"): the rows of a heading band are joined
+// column by column (pieces stacked at about the same x), and every column is kept, also ones we don't use
+// (Location, Cost Center …), so their numbers and words don't end up in ours.
+function headerBand(rows, i) {
+  let a = i, b = i;
+  while (a > 0 && rows[a - 1].y - rows[a].y <= 6) a--;
+  while (b < rows.length - 1 && rows[b].y - rows[b + 1].y <= 6) b++;
+  const cells = rows.slice(a, b + 1).flatMap((r) => r.cells.map((c) => ({ ...c, y: r.y }))).sort((p, q) => p.x - q.x);
+  const groups = [];
+  for (const c of cells) {
+    const g = groups.find((x) => Math.abs(x.x0 - c.x) <= 12);
+    if (g) g.cells.push(c); else groups.push({ x0: c.x, cells: [c] });
+  }
+  const cols = groups.map((g) => {
+    const title = g.cells.sort((p, q) => q.y - p.y || p.x - q.x).map((c) => c.s).join(" ").replace(/\s+/g, " ").trim();
+    return { title, x: g.cells.reduce((t, c) => t + c.x, 0) / g.cells.length };
+  });
+  const used = new Set();
+  for (const c of cols) {
+    const hit = COLS.find(([key, re]) => !used.has(key) && re.test(c.title));
+    c.key = hit ? hit[0] : "other";
+    if (hit) used.add(hit[0]);
+  }
+  return { end: b, cols: cols.sort((p, q) => p.x - q.x) };
+}
 
 function findHeader(rows) {
   for (let i = 0; i < rows.length; i++) {
-    const cells = rows[i].cells;
-    const cols = [];
-    for (const c of cells) {
-      const hit = COLS.find(([key, re]) => re.test(c.s) && !cols.some((x) => x.key === key));
-      if (hit) cols.push({ key: hit[0], x: c.x, w: c.w });
-    }
-    if (cols.some((c) => c.key === "qty") && cols.some((c) => c.key === "rate" || c.key === "amount") && cols.some((c) => c.key === "name" || c.key === "code")) {
-      return { index: i, cols: cols.sort((a, b) => a.x - b.x) };
+    const keys = new Set();
+    for (const c of rows[i].cells) { const hit = COLS.find(([, re]) => re.test(c.s)); if (hit) keys.add(hit[0]); }
+    if (keys.has("qty") && (keys.has("rate") || keys.has("amount")) && (keys.has("name") || keys.has("code"))) {
+      const band = headerBand(rows, i);
+      if (band.cols.some((c) => c.key === "qty")) return { index: band.end, cols: band.cols };
     }
   }
   return null;
 }
 
-// Numbers on the right (qty, unit, rate, amount) sit close to their headers, so they go to the nearest one.
-// Text on the left is often centred under its header, so it is sorted by what it looks like instead:
-// a small number first is the line number, a long code with digits is the item code, the rest is the name,
-// and text far to the right of the name (under "Narration"/"Remarks") is a note.
-const NUMERIC = ["qty", "unit", "rate", "amount"];
+// Numbers on the right (qty, rate, amount, tax …) sit close to their headings, so they go to the nearest column.
+// Text on the left is often centred under its heading, so it is sorted by what it looks like instead:
+// a small number first is the line number, a long code with digits is their item code, the rest is the name,
+// and text far to the right of the name (under "Narration"/"Remarks") is a note. Text right under a column we
+// don't use (Location, Requester …) or the unit column goes there.
 const looksLikeCode = (s) => /^[A-Z0-9][A-Z0-9\-\/.]{4,}$/i.test(s) && /\d{3,}/.test(s) && !/\s/.test(s);
+const longCode = (s) => /^[A-Z0-9][A-Z0-9\-\/.]{7,}$/i.test(s) && (s.match(/\d/g) || []).length >= 6;
+const nearest = (list, x) => list.reduce((best, c) => (Math.abs(c.x - x) < Math.abs(best.x - x) ? c : best), list[0]);
 function splitRow(cols, cells) {
   const rec = {};
-  const right = cols.filter((c) => NUMERIC.includes(c.key));
-  const firstNumX = Math.min(...right.map((c) => c.x));
+  const firstNumX = Math.min(...cols.filter((c) => ["qty", "rate", "amount"].includes(c.key)).map((c) => c.x));
+  const right = cols.filter((c) => c.x >= firstNumX - 40);
   const note = cols.find((c) => c.key === "note");
-  const add = (k, v) => { rec[k] = rec[k] ? `${rec[k]} ${v}` : v; };
+  const hasCode = cols.some((c) => c.key === "code");
+  const add = (k, v) => { if (k !== "other") rec[k] = rec[k] ? `${rec[k]} ${v}` : v; };
   cells.forEach((cell, i) => {
-    if (cell.x >= firstNumX - 20) {
-      let best = right[0], dist = Infinity;
-      for (const c of right) { const d = Math.abs(cell.x - c.x); if (d < dist) { dist = d; best = c; } }
-      return add(best.key, cell.s);
-    }
+    if (cell.x >= firstNumX - 20) return add(nearest(right, cell.x).key, cell.s);
+    const near = nearest(cols, cell.x);
+    if (["unit", "other", "tax"].includes(near.key) && Math.abs(near.x - cell.x) <= 25) return add(near.key, cell.s);
     if (i === 0 && /^\d{1,3}\.?$/.test(cell.s)) return add("sno", cell.s);
-    if (!rec.code && !rec.name && looksLikeCode(cell.s) && cols.some((c) => c.key === "code")) return add("code", cell.s);
+    if (!rec.code && !rec.name && looksLikeCode(cell.s) && hasCode) return add("code", cell.s);
+    if (longCode(cell.s)) return add("code", cell.s); // their own item number, printed with the name
     if (note && rec.name && cell.x >= note.x - 40) return add("note", cell.s);
     add("name", cell.s);
   });
@@ -91,30 +117,45 @@ function splitRow(cols, cells) {
 export function tableFromRows(rows) {
   const head = findHeader(rows);
   if (!head) return null;
-  const lines = [];
+  const items = [], texts = [], sections = [];
   for (const r of rows.slice(head.index + 1)) {
     const text = r.cells.map((c) => c.s).join(" ");
     if (/^(grand\s*)?(sub\s*)?total\b/i.test(r.cells[0].s) || /^total\s*amount/i.test(text)) break;
     const rec = splitRow(head.cols, r.cells);
     // "15.00 PC" in the qty column: number plus unit
     if (rec.qty && !isNum(rec.qty)) { const m = rec.qty.match(/^([\d,]+(?:\.\d+)?)\s+(.+)$/); if (m) { rec.qty = m[1]; rec.unit ||= m[2]; } }
+    // a group's total ("Mechanical Items Total"): skip it, and its heading row above
+    if (/\btotal\b/i.test(text) && !rec.sno) { sections.push(text.replace(/\s*\btotal\b.*$/i, "").trim().toLowerCase()); continue; }
     const hasNumbers = num(rec.qty) !== null && (num(rec.rate) !== null || num(rec.amount) !== null);
-    if (!hasNumbers) {
-      // a wrapped description line continues the previous item
-      if (lines.length && (rec.name || rec.note) && !rec.sno) lines.at(-1).description += ` ${[rec.name, rec.note].filter(Boolean).join(" ")}`;
-      else if (lines.length && !rec.name && !rec.code) break;
-      continue;
-    }
-    const qty = num(rec.qty), rate = num(rec.rate), amount = num(rec.amount);
-    const name = (rec.name || rec.code || "").trim();
+    if (hasNumbers) items.push({ y: r.y, rec, parts: [{ y: r.y, name: rec.name, note: rec.note }] });
+    else if (rec.name || rec.note) texts.push({ y: r.y, name: rec.name, note: rec.note, tax: rec.tax, unit: rec.unit });
+    else if (items.length && !texts.length && !rec.tax) break;
+  }
+  if (!items.length) return null;
+  // words printed above or below an item's numbers (wrapped names) belong to the closest item
+  for (const t of texts) {
+    if (sections.includes([t.name, t.note].filter(Boolean).join(" ").toLowerCase())) continue;
+    const it = items.reduce((best, x) => (Math.abs(x.y - t.y) < Math.abs(best.y - t.y) ? x : best), items[0]);
+    if (Math.abs(it.y - t.y) > 16) continue;
+    it.parts.push(t);
+    if (t.tax && !it.rec.tax) it.rec.tax = t.tax;
+    if (t.unit && !it.rec.unit) it.rec.unit = t.unit;
+  }
+  const lines = [];
+  for (const { rec, parts } of items) {
+    parts.sort((a, b) => b.y - a.y);
+    const name = parts.map((p) => p.name).filter(Boolean).join(" ").replace(/\s+/g, " ").trim() || rec.code || "";
+    const note = parts.map((p) => p.note).filter(Boolean).join(" ").trim();
     if (!name) continue;
+    const qty = num(rec.qty), rate = num(rec.rate), amount = num(rec.amount);
     lines.push({
       code: rec.code?.trim() || null,
       description: name,
-      note: rec.note?.trim() || null,
+      note: note || null,
       qty, unit: rec.unit?.trim() || null,
       rate: rate ?? (amount !== null && qty ? Math.round((amount / qty) * 100) / 100 : null),
       amount,
+      tax_rate: rec.tax ? num(rec.tax) : null,
       checks: rate !== null && amount !== null ? Math.abs(qty * rate - amount) <= Math.max(1, amount * 0.001) : true,
     });
   }
@@ -151,6 +192,36 @@ function signedBy(rows, re) {
   }
   return null;
 }
+// a labelled value that wraps onto the next line(s), right under where it started ("Description: CS # 13531 …")
+function wrapped(rows, re) {
+  const i = rows.findIndex((r) => r.cells.some((c, k) => re.test(c.s.replace(/:$/, "")) && r.cells[k + 1]));
+  if (i < 0) return null;
+  const k = rows[i].cells.findIndex((c) => re.test(c.s.replace(/:$/, "")));
+  const v = rows[i].cells[k + 1];
+  const out = [v.s];
+  for (const r of rows.slice(i + 1, i + 4)) {
+    const c = r.cells.find((x) => Math.abs(x.x - v.x) <= 4);
+    if (!c || r.cells.some((x) => x.x > v.x - 90 && x.x < v.x - 4)) break;
+    out.push(c.s);
+  }
+  return out.join(" ");
+}
+
+// a "SHIP TO" block (its own column of Name: / Address: lines) is where the goods go
+function shipTo(rows) {
+  const i = rows.findIndex((r) => r.cells.some((c) => /^(ship|deliver)\s*to:?$/i.test(c.s)));
+  if (i < 0) return null;
+  const x0 = rows[i].cells.find((c) => /^(ship|deliver)\s*to:?$/i.test(c.s)).x - 5;
+  const out = [];
+  for (const r of rows.slice(i + 1, i + 6)) {
+    const cells = r.cells.filter((c) => c.x >= x0);
+    if (!cells.length) continue;
+    const label = cells[0].s.replace(/:$/, "").toLowerCase();
+    if (/phone|fax|email|payment|description|terms/.test(label)) break;
+    if (/^(name|address|location|site|store)$/.test(label)) out.push(cells.slice(1).map((c) => c.s).join(" "));
+  }
+  return out.filter(Boolean).join(", ") || null;
+}
 const termsDays = (t) => { const m = String(t || "").match(/(\d{1,3})\s*days?/i); return m ? Number(m[1]) : /cash|advance|immediate/i.test(t || "") ? 0 : null; };
 const pick = (f, res) => { for (const re of res) for (const [k, v] of Object.entries(f)) if (re.test(k) && v && v !== "-") return v; return null; };
 
@@ -164,7 +235,7 @@ export async function parseOrderPdf(buffer, { ourName = "zidane" } = {}) {
   const all = rows.map((r) => r.cells.map((c) => c.s).join(" ")).join("\n");
   const f = fields(rows);
   const isPo = /purchase\s*order|\bP\.?\s?O\.?\s*(#|no)/i.test(all);
-  const supplierField = pick(f, [/^supplier$/, /^vendor$/, /^to$/]);
+  const supplierField = pick(f, [/^supplier(\s*name)?$/, /^vendor(\s*name)?$/, /^to$/]);
   // a PO addressed to us is a customer order; a bill/invoice addressed to us is a supplier bill
   const docType = isPo && (!supplierField || supplierField.toLowerCase().includes(ourName)) ? "customer_order"
     : /invoice|bill|challan/i.test(all) ? "supplier_bill" : isPo ? "customer_order" : "other";
@@ -177,7 +248,7 @@ export async function parseOrderPdf(buffer, { ourName = "zidane" } = {}) {
   const date = parseDate(pick(f, [/^p\.?\s?o\.?\s*date$/, /^(invoice|bill|order)\s*date$/, /^date$/]));
   const required = parseDate(pick(f, docType === "customer_order" ? [/^delivery\s*date$/, /^required\s*(by|date)$/, /^due\s*date$/] : [/^due\s*date$/]));
   // where to deliver: their address / store / warehouse, plus the plant or branch printed in the letterhead
-  const location = pick(f, [/^(dlv\.?|delivery)\s*(location|address)$/, /^ship\s*to$/, /^deliver\s*to$/, /^(store|warehouse|site)$/]);
+  const location = pick(f, [/^(dlv\.?|delivery)\s*(location|address)$/, /^ship\s*to$/, /^deliver\s*to$/, /^(store|warehouse|site)$/]) || shipTo(rows);
   const plant = rows.slice(0, 3).flatMap((r) => r.cells.map((c) => c.s)).find((s) => /^(plant|unit|branch|site|factory)\b/i.test(s)) || null;
   const terms = pick(f, [/^payment\s*terms$/, /^terms\s*of\s*payment$/, /^credit\s*terms$/, /^terms$/]);
   // the person on their side: named contact / buyer, else whoever prepared the PO
@@ -194,9 +265,9 @@ export async function parseOrderPdf(buffer, { ourName = "zidane" } = {}) {
     party_name: top, party_match_id: null, reference, date, required_date: required,
     delivery_location: [location, plant && !(location || "").includes(plant) ? plant : null].filter(Boolean).join(", ") || null, total,
     buyer_name: buyer, contact_phone: phone, payment_terms: terms, payment_terms_days: termsDays(terms), party_ntn: ntn, party_strn: strn, party_address: null,
-    notes: bad ? `${bad} line(s) don't add up (qty × rate ≠ amount). Check them.` : null,
+    notes: [wrapped(rows, /^(description|subject|remarks?)$/i), bad ? `${bad} line(s) don't add up (qty × rate ≠ amount). Check them.` : null].filter(Boolean).join(". ") || null,
     // their item code column is read only to keep it out of the name: it is their numbering, not ours, so it isn't kept
-    lines: lines.map((l) => ({ description: l.note ? `${l.description} (${l.note})` : l.description, qty: l.qty, unit: l.unit, rate: l.rate, tax_rate: null, item_match_id: null, match_confidence: "none" })),
+    lines: lines.map((l) => ({ description: l.note ? `${l.description} (${l.note})` : l.description, qty: l.qty, unit: l.unit, rate: l.rate, tax_rate: l.tax_rate ?? null, item_match_id: null, match_confidence: "none" })),
     reader: "pdf-text",
   };
 }

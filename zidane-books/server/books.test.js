@@ -993,3 +993,63 @@ test("P&L: credit notes take back the sale (and the cost when goods return); bil
   assert.ok(p.expense_breakdown.some((e) => e.amount === 500 && /supplier bills/.test(e.category)));
   assert.equal(p.net_profit, 800 - 480 - 500);
 });
+
+// an Oracle-style PO like Rajby's: headings on several lines, the item's name above and below its numbers,
+// group headings with their own totals, a tax % per line, and a SHIP TO block
+async function fakeOraclePo() {
+  const PDFDocument = (await import("pdfkit")).default;
+  const pdf = new PDFDocument({ size: "A4", margin: 10 });
+  const chunks = []; pdf.on("data", (c) => chunks.push(c));
+  const done = new Promise((ok) => pdf.on("end", () => ok(Buffer.concat(chunks))));
+  const t = (s, x, y) => pdf.text(s, x, y, { lineBreak: false });
+  pdf.font("Helvetica").fontSize(7);
+  t("RAJBY INDUSTRIES (PRIVATE) LIMITED", 159, 72); t("Operating Unit:", 401, 72); t("CUT TO PACK - PVT", 482, 72);
+  t("PO Number:", 401, 92); t("23552", 482, 92); t("PURCHASE ORDER", 213, 112); t("Date:", 401, 112); t("12-OCT-2026 09:35:21 AM", 482, 112);
+  t("Buyer:", 401, 124); t("Muhammad Tayyab", 482, 124);
+  t("SUPPLIER INFORMATION", 23, 184); t("SHIP TO", 361, 184);
+  t("Supplier Name:", 23, 193); t("Zidane Corporation", 118, 193); t("Name:", 361, 193); t("MAIN STORE", 442, 193);
+  t("Address:", 23, 203); t("B-55 PNT", 118, 203); t("Address:", 361, 203); t("Plot # 8 Sector 27", 442, 203);
+  t("NTN:", 23, 240); t("5795308-1", 118, 240); t("Payment Terms:", 361, 250); t("30 Days", 442, 250);
+  t("Description:", 361, 259); t("Plumbing", 442, 259); t("work. Withholding Tax Is Applied.", 442, 269);
+  // heading on several lines
+  t("Tol", 391, 345); t("Tax", 558, 345); t("Amount", 580, 345);
+  t("Line", 12, 349); t("Note to", 228, 349); t("Requester/", 272, 349); t("Cost", 363, 349); t("Amount", 483, 349); t("Tax", 529, 349);
+  t("Item Description", 63, 353); t("UOM", 161, 353); t("EDA", 197, 353); t("Location", 323, 353); t("Quantity", 407, 353); t("Rate", 448, 353); t("%", 562, 353); t("Including", 578, 353);
+  t("No.", 15, 357); t("Supplier", 227, 357); t("Req#", 282, 357); t("Center", 360, 357); t("%", 393, 357); t("Excluding Tax", 475, 357); t("Amount", 523, 357);
+  t("Tax", 587, 360);
+  let y = 372;
+  const item = (no, code, name, unit, qty, rate, tax) => {
+    t(code, 33, y); t("CONST", 359, y);
+    t("Imdad /", 265, y + 5); t("MAIN", 328, y + 5);
+    t(String(no), 18, y + 9); t(unit, 162, y + 9); t("-", 240, y + 9); t("5", 394, y + 9); t(String(qty), 419, y + 9); t(rate.toFixed(2), 444, y + 9);
+    t((qty * rate).toLocaleString("en-US", { minimumFractionDigits: 2 }), 481, y + 9); t((qty * rate * tax / 100).toFixed(2), 525, y + 9);
+    t(name, 33, y + 13); t("31267", 281, y + 13); t("STORE", 325, y + 13); t(`${tax}%`, 560, y + 13);
+    y += 30;
+  };
+  t("Mechanical Items", 33, y); y += 10;
+  item(1, "515-00018795-00000-01", "MUSLIM SHOWER.", "SET", 4, 800, 5);
+  t("Mechanical Items Total", 70, y); t("4", 419, y); t("3,200.00", 482, y); y += 20;
+  t("Electrical Items", 33, y); y += 10;
+  item(2, "515-00020001-00000-01", "LED TUBE LIGHT 20W", "NOS", 10, 450, 0);
+  t("Electrical Items Total", 70, y); t("10", 419, y); t("4,500.00", 482, y); y += 30;
+  t("TOTAL:", 379, y); t("7,700.00", 566, y); t("GRAND TOTAL:", 379, y + 18); t("PKR", 511, y + 18); t("7,860.00", 566, y + 18);
+  pdf.end();
+  return done;
+}
+
+test("an Oracle-style PO (headings on several lines, names around the numbers) is read without AI", async () => {
+  const { parseOrderPdf } = await import("./poparse.js");
+  const x = await parseOrderPdf(await fakeOraclePo());
+  assert.equal(x.doc_type, "customer_order");
+  assert.equal(x.party_name, "RAJBY INDUSTRIES (PRIVATE) LIMITED");
+  assert.equal(x.reference, "23552");
+  assert.equal(x.date, "2026-10-12");
+  assert.equal(x.buyer_name, "Muhammad Tayyab");
+  assert.equal(x.payment_terms_days, 30);
+  assert.equal(x.delivery_location, "MAIN STORE, Plot # 8 Sector 27");
+  assert.equal(x.notes, "Plumbing work. Withholding Tax Is Applied.");
+  assert.equal(x.total, 7860);
+  assert.equal(x.party_ntn, null, "the NTN in the supplier block is ours");
+  assert.deepEqual(x.lines.map((l) => [l.description, l.qty, l.unit, l.rate, l.tax_rate]), [
+    ["MUSLIM SHOWER.", 4, "SET", 800, 5], ["LED TUBE LIGHT 20W", 10, "NOS", 450, 0]]);
+});
