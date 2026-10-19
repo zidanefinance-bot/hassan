@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { addDays, api, Field, KIND, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
+import { addDays, api, Field, KIND, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import Picker from "../components/Picker.jsx";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import { readFiles } from "./Inbox.jsx";
 
 const ISSUE_STATUS = { quote: "sent", invoice: "open", po: "issued", bill: "open", dc: "issued", credit_note: "open", vendor_credit: "open" };
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const CONTACT_WRITE = { customer: "sales.write", supplier: "ops.write" };
+export const contactOptions = (list) => (list || []).map((c) => ({ id: c.id, label: c.name, sub: [c.company, c.phone].filter(Boolean).join(" · "), search: `${c.company || ""} ${c.phone || ""}` }));
+export const itemOptions = (list) => (list || []).map((x) => ({ id: x.id, label: x.name, sub: [x.sku, x.track_stock ? `${num(x.stock_qty)} ${x.unit} in stock` : x.unit].filter(Boolean).join(" · "), search: `${x.sku || ""} ${x.category || ""}` }));
 const blankLine = () => ({ key: Math.random(), item_id: "", description: "", qty: 1, rate: 0, discount_pct: 0, tax_rate: 0 });
 
 export default function DocumentForm({ kind }) {
@@ -15,6 +19,7 @@ export default function DocumentForm({ kind }) {
   const [params] = useSearchParams();
   const nav = useNavigate();
   const toast = useToast();
+  const { can } = useAuth();
   const isSale = K.contact === "customer";
   const isDc = kind === "dc";
   const isPurchase = ["po", "bill"].includes(kind);
@@ -25,8 +30,9 @@ export default function DocumentForm({ kind }) {
   const settings = useLoad("/settings");
   const existing = useLoad(id ? `/documents/${id}` : null);
   const [doc, setDoc] = useState(null);
-  const [addingContact, setAddingContact] = useState(false);
-  const [addingItem, setAddingItem] = useState(false);
+  const [addingContact, setAddingContact] = useState(null); // null, or the name typed in the picker
+  const [addingItem, setAddingItem] = useState(null); // null, or { line, name, preset }
+  const [aiParty, setAiParty] = useState(null); // customer/supplier named on the paper that isn't in our contacts yet
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   // AI draft: from the orders inbox (?inbox=ID) or a bill photo read on this page
@@ -63,6 +69,7 @@ export default function DocumentForm({ kind }) {
   useEffect(() => {
     if (!draft || !doc || !items.data) return;
     const x = draft;
+    setAiParty(!x.party_match_id && x.party_name ? x.party_name : null);
     setDoc((d) => ({
       ...d,
       contact_id: x.party_match_id ? String(x.party_match_id) : d.contact_id,
@@ -73,7 +80,7 @@ export default function DocumentForm({ kind }) {
       lines: x.lines.length ? x.lines.map((l) => {
         const it = items.data.find((i) => i.id === l.item_match_id);
         return { ...blankLine(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty,
-          rate: l.rate ?? (it ? (isSale ? it.sale_rate : it.purchase_rate) ?? 0 : 0), tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description };
+          rate: l.rate ?? (it ? (isSale ? it.sale_rate : it.purchase_rate) ?? 0 : 0), tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description, ai_unit: l.unit, ai_rate: l.rate };
       }) : d.lines,
     }));
     setDraft(null);
@@ -113,7 +120,7 @@ export default function DocumentForm({ kind }) {
   };
   const save = async (issue, asEnquiry = false) => {
     setErr("");
-    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ai, ai_text, ...l }) => ({ ...l, item_id: l.item_id || null }));
+    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ai, ai_text, ai_unit, ai_rate, ...l }) => ({ ...l, item_id: l.item_id || null }));
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
@@ -148,6 +155,10 @@ export default function DocumentForm({ kind }) {
           <input ref={photo} type="file" accept="image/*,application/pdf" capture="environment" hidden onChange={(e) => e.target.files.length && readPhoto([...e.target.files])} />
         </>}
       </PageHead>
+      {aiParty && !doc.contact_id && (
+        <div className="ai-banner">The paper says <b>{aiParty}</b>, who isn't in your {K.contact}s yet.{" "}
+          {can(CONTACT_WRITE[K.contact]) ? <button className="btn sm" onClick={() => setAddingContact(aiParty)}>+ Add {aiParty} as a new {K.contact}</button> : `Pick the right ${K.contact}, or ask someone to add them.`}</div>
+      )}
       {inboxId && !id && doc.lines.some((l) => l.ai) && (
         <div className="ai-banner">✨ Filled by AI. Lines marked <span className="ai-flag">check</span> weren't matched to an item for sure. Fix them, then save.</div>
       )}
@@ -155,11 +166,9 @@ export default function DocumentForm({ kind }) {
         <div className="row-4">
           <Field label={`${K.contact === "customer" ? "Customer" : "Supplier"} *`}>
             <div className="with-btn">
-              <select value={doc.contact_id} onChange={(e) => pickContact(e.target.value)}>
-                <option value="">Select…</option>
-                {(contacts.data || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <button type="button" className="btn sm" onClick={() => setAddingContact(true)}>+</button>
+              <Picker options={contactOptions(contacts.data)} value={doc.contact_id} onChange={(v) => pickContact(String(v))} placeholder={`Type ${K.contact} name…`}
+                createLabel={K.contact} onCreate={can(CONTACT_WRITE[K.contact]) ? (name) => setAddingContact(name) : null} />
+              {can(CONTACT_WRITE[K.contact]) && <button type="button" className="btn sm" title={`New ${K.contact}`} onClick={() => setAddingContact("")}>+</button>}
             </div>
           </Field>
           <Field label="Date"><input type="date" value={doc.date} onChange={(e) => set("date", e.target.value)} /></Field>
@@ -190,11 +199,10 @@ export default function DocumentForm({ kind }) {
               return (
                 <tr key={l.key} className={l.ai && l.ai !== "high" ? "ai-check" : ""}>
                   <td>
-                    {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”</small>}
-                    <select value={l.item_id} onChange={(e) => pickItem(i, e.target.value)}>
-                      <option value="">— custom line —</option>
-                      {(items.data || []).map((x) => <option key={x.id} value={x.id}>{x.name}{x.track_stock ? ` (${x.stock_qty} ${x.unit})` : ""}</option>)}
-                    </select>
+                    {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”
+                      {!l.item_id && <> · <button type="button" className="link-btn" onClick={() => setAddingItem({ line: i, name: l.ai_text, preset: { unit: l.ai_unit || "pcs", [isSale ? "sale_rate" : "purchase_rate"]: l.ai_rate ?? "" } })}>+ add as new item</button></>}</small>}
+                    <Picker options={itemOptions(items.data)} value={l.item_id} onChange={(v) => pickItem(i, v)} emptyLabel="— custom line (not an item) —" placeholder="Type item name or SKU…"
+                      createLabel="item" onCreate={(name) => setAddingItem({ line: i, name })} />
                     {!l.item_id && <input className="mt" placeholder="Description" value={l.description || ""} onChange={(e) => setLine(i, { description: e.target.value })} />}
                     {it && isSale && it.track_stock && Number(l.qty) > it.stock_qty && <small className="neg">Only {it.stock_qty} in stock</small>}
                   </td>
@@ -212,7 +220,7 @@ export default function DocumentForm({ kind }) {
             })}</tbody>
           </table>
           <button type="button" className="btn ghost" onClick={() => setDoc((d) => ({ ...d, lines: [...d.lines, blankLine()] }))}>+ Add line</button>
-          <button type="button" className="btn ghost" onClick={() => setAddingItem(true)}>+ New item (not in list)</button>
+          <button type="button" className="btn ghost" onClick={() => setAddingItem({ line: -1, name: "" })}>+ New item (not in list)</button>
         </div>
 
         <div className="doc-bottom">
@@ -240,16 +248,19 @@ export default function DocumentForm({ kind }) {
           <button className="btn primary" disabled={busy} onClick={() => save(!id || ["draft", "enquiry"].includes(doc.status))}>{id && !["draft", "enquiry"].includes(doc.status) ? "Save" : kind === "quote" ? "Save & mark sent" : kind === "dc" ? "Save & issue DC" : kind === "po" || isCredit ? "Save & issue" : `Save & ${kind === "invoice" ? "issue" : "record"}`}</button>
         </div>
       </div>
-      {addingItem && <ItemForm onClose={() => setAddingItem(false)} onSaved={async (newId) => {
-        setAddingItem(false);
+      {addingItem && <ItemForm presetName={addingItem.name} preset={addingItem.preset} onClose={() => setAddingItem(null)} onSaved={async (newId) => {
+        const target = addingItem.line;
+        setAddingItem(null);
         const list = await api("/items");
         items.reload();
-        const empty = doc.lines.findIndex((l) => !l.item_id && !l.description);
+        // the line it was typed on, else the first empty line, else a new line
+        const empty = target >= 0 ? target : doc.lines.findIndex((l) => !l.item_id && !l.description);
         if (empty < 0) setDoc((d) => ({ ...d, lines: [...d.lines, blankLine()] }));
         const at = empty < 0 ? doc.lines.length : empty;
-        setTimeout(() => pickItem(at, newId, list), 0);
+        const keepQty = target >= 0 ? doc.lines[at]?.qty : null;
+        setTimeout(() => { pickItem(at, newId, list); if (keepQty) setLine(at, { qty: keepQty, ai: null }); }, 0);
       }} />}
-      {addingContact && <ContactForm type={K.contact} onClose={() => setAddingContact(false)} onSaved={(cid) => { setAddingContact(false); contacts.reload(); set("contact_id", String(cid)); }} />}
+      {addingContact !== null && <ContactForm type={K.contact} presetName={addingContact} onClose={() => setAddingContact(null)} onSaved={(cid) => { setAddingContact(null); setAiParty(null); contacts.reload(); pickContact(String(cid)); }} />}
     </>
   );
 }

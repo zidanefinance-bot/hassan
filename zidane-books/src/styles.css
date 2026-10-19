@@ -376,3 +376,19 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .offline-screen img { width: 72px; border-radius: 16px; }
 .offline-screen h1 { font-size: 20px; margin: 14px 0 4px; }
 .offline-screen p { color: var(--muted); margin: 0 0 14px; }
+
+/* type-to-search picker */
+.picker { position: relative; flex: 1; min-width: 0; }
+.picker input { width: 100%; }
+.picker input.invalid { border-color: var(--red); }
+.picker.open input { border-color: var(--red); box-shadow: 0 0 0 3px rgba(194, 42, 47, .12); }
+.picker-list { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; min-width: 260px; max-height: 300px; overflow: auto; margin: 0; padding: 4px; list-style: none; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 14px 40px rgba(20, 25, 40, .16); }
+.picker-list li { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: 7px; cursor: pointer; font-size: 14px; }
+.picker-list li small { color: var(--muted); font-size: 12px; }
+.picker-list li.hi { background: #F3F4F7; }
+.picker-list li.blank { color: var(--muted); font-style: italic; }
+.picker-list li.create { display: block; color: var(--red); font-weight: 600; }
+.picker-list li.create, .picker-list li.blank { border-top: 1px solid var(--line); margin-top: 2px; }
+.picker-list li.create.hi { background: #FDF0F0; }
+.picker-list li.none { color: var(--muted); cursor: default; }
+.lines-table td .picker-list { min-width: 320px; }

@@ -6,6 +6,8 @@ import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
+import Picker from "../components/Picker.jsx";
+import { contactOptions, itemOptions } from "./DocumentForm.jsx";
 
 const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey" };
 
@@ -52,8 +54,9 @@ export function JobForm() {
   const items = useLoad("/items");
   const settings = useLoad("/settings");
   const [f, setF] = useState({ customer_id: params.get("customer") || "", order_source: "call", customer_po_number: "", customer_po_date: "", required_date: "", delivery_location: "", priority: "normal", fulfilment_type: "stock", instructions: "", items: [blank()] });
-  const [adding, setAdding] = useState(false);
-  const [addingItem, setAddingItem] = useState(false);
+  const [adding, setAdding] = useState(null); // null, or the customer name typed in the picker
+  const [addingItem, setAddingItem] = useState(null); // null, or { line, name, preset }
+  const [aiParty, setAiParty] = useState(null);
   const [err, setErr] = useState("");
   // a customer PO read by AI in the orders inbox (?inbox=ID)
   const inboxId = params.get("inbox");
@@ -69,9 +72,10 @@ export function JobForm() {
         instructions: [!x.party_match_id && x.party_name ? `Customer on paper: ${x.party_name}` : null, x.notes].filter(Boolean).join("\n"),
         items: x.lines.length ? x.lines.map((l) => {
           const it = items.data.find((i) => i.id === l.item_match_id);
-          return { ...blank(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty, sale_rate: l.rate ?? it?.sale_rate ?? 0, tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description };
+          return { ...blank(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty, sale_rate: l.rate ?? it?.sale_rate ?? 0, tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description, ai_unit: l.unit, ai_rate: l.rate };
         }) : s.items,
       }));
+      setAiParty(!x.party_match_id && x.party_name ? x.party_name : null);
       setAiFilled(true);
     }).catch(() => {});
   }, [inboxId, items.data]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -80,7 +84,7 @@ export function JobForm() {
   const save = async () => {
     setErr("");
     try {
-      const r = await api("/jobs", { method: "POST", body: { ...f, items: f.items.map(({ key, ai, ai_text, ...x }) => ({ ...x, item_id: x.item_id || null })) } });
+      const r = await api("/jobs", { method: "POST", body: { ...f, items: f.items.map(({ key, ai, ai_text, ai_unit, ai_rate, ...x }) => ({ ...x, item_id: x.item_id || null })) } });
       if (inboxId) await api(`/inbox/${inboxId}/status`, { method: "POST", body: { status: "done", result_kind: "job", result_id: r.id } }).catch(() => {});
       toast("Job created and sent to Operations");
       nav(`/jobs/${r.id}`);
@@ -89,10 +93,11 @@ export function JobForm() {
   return (
     <>
       <PageHead title="New Job" sub="For a confirmed order. Customer PO is optional; Operations gets only what it needs to fulfil." />
+      {aiParty && !f.customer_id && <div className="ai-banner">The PO is from <b>{aiParty}</b>, who isn't in your customers yet. <button className="btn sm" onClick={() => setAdding(aiParty)}>+ Add {aiParty} as a new customer</button></div>}
       {aiFilled && <div className="ai-banner">✨ Filled by AI from the customer's PO. Lines marked <span className="ai-flag">check</span> weren't matched to an item for sure. Fix them, then create the Job.</div>}
       <div className="card form">
         <div className="row-4">
-          <Field label="Customer *"><div className="with-btn"><select {...set("customer_id")}><option value="">Select…</option>{(customers.data || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button type="button" className="btn sm" onClick={() => setAdding(true)}>+</button></div></Field>
+          <Field label="Customer *"><div className="with-btn"><Picker options={contactOptions(customers.data)} value={f.customer_id} onChange={(v) => setF((s) => ({ ...s, customer_id: String(v) }))} placeholder="Type customer name…" createLabel="customer" onCreate={(name) => setAdding(name)} /><button type="button" className="btn sm" title="New customer" onClick={() => setAdding("")}>+</button></div></Field>
           <Field label="Order came by"><select {...set("order_source")}>{["call", "whatsapp", "email", "verbal", "repeat order", "tender", "contract", "formal PO", "walk-in"].map((s) => <option key={s}>{s}</option>)}</select></Field>
           <Field label="Customer PO # (optional)"><input {...set("customer_po_number")} /></Field>
           <Field label="PO date"><input type="date" {...set("customer_po_date")} /></Field>
@@ -110,10 +115,11 @@ export function JobForm() {
           <tbody>{f.items.map((l, i) => (
             <tr key={l.key} className={l.ai && l.ai !== "high" ? "ai-check" : ""}>
               <td>
-                {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”</small>}
-                <select value={l.item_id} onChange={(e) => { const it = items.data?.find((x) => String(x.id) === e.target.value); setItem(i, it ? { item_id: it.id, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate } : { item_id: "" }); }}>
-                  <option value="">— item not in list —</option>{(items.data || []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                </select>
+                {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”
+                  {!l.item_id && <> · <button type="button" className="link-btn" onClick={() => setAddingItem({ line: i, name: l.ai_text, preset: { unit: l.ai_unit || "pcs", sale_rate: l.ai_rate ?? "" } })}>+ add as new item</button></>}</small>}
+                <Picker options={itemOptions(items.data)} value={l.item_id} emptyLabel="— not in the item list (describe below) —" placeholder="Type item name or SKU…" createLabel="item"
+                  onChange={(v) => { const it = items.data?.find((x) => String(x.id) === String(v)); setItem(i, it ? { item_id: it.id, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate, ai: null } : { item_id: "" }); }}
+                  onCreate={(name) => setAddingItem({ line: i, name })} />
                 {!l.item_id && <input className="mt" placeholder="Describe the item (e.g. Harpic 500ml)" value={l.description} onChange={(e) => setItem(i, { description: e.target.value })} />}
               </td>
               <td><input type="number" step="0.01" value={l.qty} onChange={(e) => setItem(i, { qty: e.target.value })} /></td>
@@ -125,22 +131,24 @@ export function JobForm() {
           ))}</tbody>
         </table>
         <div><button type="button" className="btn ghost" onClick={() => setF((s) => ({ ...s, items: [...s.items, blank()] }))}>+ Add item</button>
-          <button type="button" className="btn ghost" onClick={() => setAddingItem(true)}>+ New item (not in list)</button></div>
+          <button type="button" className="btn ghost" onClick={() => setAddingItem({ line: -1, name: "" })}>+ New item (not in list)</button></div>
         <Field label="Instructions for Operations"><textarea rows={2} {...set("instructions")} placeholder="Packing, delivery timing, gate pass…" /></Field>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button className="btn ghost" onClick={() => nav(-1)}>Cancel</button><button className="btn primary" onClick={save}>Create Job</button></div>
       </div>
-      {addingItem && <ItemForm onClose={() => setAddingItem(false)} onSaved={async (newId) => {
-        setAddingItem(false);
+      {addingItem && <ItemForm presetName={addingItem.name} preset={addingItem.preset} onClose={() => setAddingItem(null)} onSaved={async (newId) => {
+        const target = addingItem.line;
+        setAddingItem(null);
         const it = await api(`/items/${newId}`);
         items.reload();
         setF((s) => {
-          const empty = s.items.findIndex((x) => !x.item_id && !x.description);
-          const line = { ...blank(), item_id: it.id, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate };
-          return { ...s, items: empty < 0 ? [...s.items, line] : s.items.map((x, j) => (j === empty ? line : x)) };
+          // the line it was typed on (keeping its qty), else the first empty line, else a new line
+          const at = target >= 0 ? target : s.items.findIndex((x) => !x.item_id && !x.description);
+          const line = { ...blank(), item_id: it.id, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate, ...(at >= 0 && target >= 0 ? { key: s.items[at].key, qty: s.items[at].qty } : {}) };
+          return { ...s, items: at < 0 ? [...s.items, line] : s.items.map((x, j) => (j === at ? line : x)) };
         });
       }} />}
-      {adding && <ContactForm type="customer" onClose={() => setAdding(false)} onSaved={(id) => { setAdding(false); customers.reload(); setF((s) => ({ ...s, customer_id: String(id) })); }} />}
+      {adding !== null && <ContactForm type="customer" presetName={adding} onClose={() => setAdding(null)} onSaved={(id) => { setAdding(null); setAiParty(null); customers.reload(); setF((s) => ({ ...s, customer_id: String(id) })); }} />}
     </>
   );
 }

@@ -3,10 +3,10 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 import Comments from "../components/Comments.jsx";
 
-export function ItemForm({ initial, onClose, onSaved, presetName = "" }) {
+export function ItemForm({ initial, onClose, onSaved, presetName = "", preset = {} }) {
   const settings = useLoad("/settings");
   const { can } = useAuth();
-  const [f, bind] = useForm(initial ? { ...initial, track_stock: !!initial.track_stock } : { name: presetName, sku: "", unit: "pcs", category: "", purchase_rate: "", sale_rate: "", tax_rate: 0, reorder_level: "", opening_stock: "", track_stock: true });
+  const [f, bind] = useForm(initial ? { ...initial, track_stock: !!initial.track_stock } : { name: presetName, sku: "", unit: "pcs", category: "", purchase_rate: "", sale_rate: "", tax_rate: 0, reorder_level: "", opening_stock: "", track_stock: true, ...preset });
   const [err, setErr] = useState("");
   const toast = useToast();
   const margin = Number(f.sale_rate) ? (((f.sale_rate - f.purchase_rate) / f.sale_rate) * 100).toFixed(1) : null;

@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api, Field, fmtDate, KIND, Loading, Modal, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
+import Picker from "../components/Picker.jsx";
 
 const isIn = (d) => d === "in";
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -83,6 +84,7 @@ export function RecordPayment() {
   const bind = (k) => ({ value: p[k], onChange: (e) => setP({ ...p, [k]: e.target.value }) });
   const save = async (e) => {
     e.preventDefault(); setErr("");
+    if (!p.contact_id) return setErr(`Choose the ${isIn(direction) ? "customer" : "supplier"}`);
     try {
       const allocations = Object.entries(values).filter(([, v]) => Number(v) > 0).map(([document_id, amount]) => ({ document_id: Number(document_id), amount: Number(amount) }));
       const r = await api("/payments", { method: "POST", body: { ...p, direction, contact_id: Number(p.contact_id), allocations } });
@@ -95,7 +97,8 @@ export function RecordPayment() {
       <PageHead title={isIn(direction) ? "Receive payment" : "Pay supplier"} sub={isIn(direction) ? "Apply it to one or more invoices. Anything not applied is kept as the customer's advance." : "Apply it to one or more bills. Anything not applied is kept as an advance to the supplier."} />
       <form className="card form" onSubmit={save}>
         <div className="row-4">
-          <Field label={isIn(direction) ? "Customer *" : "Supplier *"}><select {...bind("contact_id")} required><option value="">Select…</option>{(contacts.data || []).map((c) => <option key={c.id} value={c.id}>{c.name}{c.outstanding > 0 ? ` (owes ${money(c.outstanding)})` : ""}</option>)}</select></Field>
+          <Field label={isIn(direction) ? "Customer *" : "Supplier *"}><Picker options={(contacts.data || []).map((c) => ({ id: c.id, label: c.name, sub: c.outstanding > 0 ? `${isIn(direction) ? "owes" : "we owe"} ${money(c.outstanding)}` : c.company || "", search: `${c.company || ""} ${c.phone || ""}` }))}
+            value={p.contact_id} onChange={(v) => setP((x) => ({ ...x, contact_id: String(v) }))} placeholder={`Type ${isIn(direction) ? "customer" : "supplier"} name…`} invalid={err && !p.contact_id} /></Field>
           <Field label="Amount (Rs) *"><input type="number" step="0.01" {...bind("amount")} required /></Field>
           <Field label="Date"><input type="date" {...bind("date")} /></Field>
           <Field label="Mode"><select {...bind("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
