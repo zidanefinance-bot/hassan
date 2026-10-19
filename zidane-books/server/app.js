@@ -418,7 +418,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   const afterSave = (req, docId, beforeStatus) => {
     const d = db.prepare("SELECT kind, status, job_id FROM documents WHERE id = ?").get(docId);
     if (d?.status === "open" && beforeStatus !== "open") C.notifyEvent(db, req.user.id, "doc.issued", { docId });
-    if (d?.kind === "dc" && d.job_id && ["issued", "signed"].includes(d.status)) J.markDispatched(db, d.job_id);
+    const out = (s) => ["issued", "signed"].includes(s);
+    if (d?.kind === "dc" && d.job_id) J.syncJobDelivery(db, d.job_id, { removed: out(beforeStatus) && !out(d.status) });
   };
   api.post("/documents/:id/status", docAction(DOC_WRITE, (req, d) => {
     // the credit limit applies whenever an invoice becomes open, from whatever status
@@ -468,6 +469,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (d.kind === "quote" && d.status === "converted") throw httpError(400, "This quote is already a Job");
     if (d.kind === "dc") J.checkDcRemoval(db, d);
     B.deleteDocument(db, req.user.id, d.id);
+    if (d.kind === "dc" && d.job_id) J.syncJobDelivery(db, d.job_id, { removed: ["issued", "signed"].includes(d.status) });
   }));
 
   // ---- payments (Accounts): receipts and supplier payments, split across documents; leftovers are advances

@@ -729,6 +729,17 @@ test("audit fixes: role leaks and workflow holes stay closed", async () => {
     // an ordered item is always supplied: "not available" isn't a choice
     const ji2 = one("SELECT id FROM job_items WHERE job_id = ?", job2).id;
     assert.equal((await call(ops, "POST", `/job-items/${ji2}/procurement`, { status: "not_available" })).status, 400);
+    // the Job's status follows its DCs, also when one is removed
+    assert.equal((await call(sales, "POST", `/documents/${dcA}/sign`, { name: "Store" })).status, 200);
+    assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job2).ops_status, "delivered");
+    assert.equal((await call(sales, "DELETE", `/documents/${inv2}`)).status, 200);
+    assert.equal((await call(dir, "DELETE", `/documents/${dcA}`)).status, 200);
+    assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job2).ops_status, "material_ready", "no DC out any more: back to material ready");
+    const dcB = (await call(sales, "POST", `/jobs/${job2}/dc`)).body.id;
+    assert.equal((await call(sales, "POST", `/documents/${dcB}/status`, { status: "issued" })).status, 200);
+    assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job2).ops_status, "dispatched");
+    assert.equal((await call(sales, "POST", `/documents/${dcB}/status`, { status: "void" })).status, 200);
+    assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job2).ops_status, "material_ready", "a voided DC takes the Job back too");
   } finally {
     server.close();
   }

@@ -284,10 +284,19 @@ export function invoiceFromJob(db, userId, jobId) {
   return saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: due, reference: job.customer_po_number || job.number, lines });
 }
 
-// a DC that has gone out means the goods left: move the Job along to dispatched (never backwards)
-export function markDispatched(db, jobId) {
-  const job = db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(jobId);
-  if (job && step(job.ops_status) < step("dispatched")) db.prepare("UPDATE jobs SET ops_status = 'dispatched' WHERE id = ?").run(jobId);
+// The Job's delivery status follows its DCs: a signed DC = delivered, an issued one = dispatched.
+// When a DC is deleted, voided or taken back to draft (removed), the Job steps back too (to material ready if no DC is out).
+// Operations may also mark a Job dispatched by hand before any DC exists; that is left alone unless a DC was removed.
+export function syncJobDelivery(db, jobId, { removed = false } = {}) {
+  const job = db.prepare("SELECT ops_status, closed FROM jobs WHERE id = ?").get(jobId);
+  if (!job || job.closed) return;
+  const n = (status) => db.prepare("SELECT COUNT(*) AS n FROM documents WHERE job_id = ? AND kind = 'dc' AND status = ?").get(jobId, status).n;
+  const signed = n("signed"), issued = n("issued");
+  let next = job.ops_status;
+  if (signed) next = "delivered";
+  else if (issued) next = step(job.ops_status) < step("dispatched") || job.ops_status === "delivered" ? "dispatched" : job.ops_status;
+  else if (job.ops_status === "delivered" || (removed && job.ops_status === "dispatched")) next = "material_ready";
+  if (next !== job.ops_status) db.prepare("UPDATE jobs SET ops_status = ? WHERE id = ?").run(next, jobId);
 }
 
 export function signDc(db, userId, id, { name, date }) {
@@ -295,7 +304,7 @@ export function signDc(db, userId, id, { name, date }) {
   if (!d) throw httpError(404, "DC not found");
   if (d.status !== "issued") throw httpError(400, "Issue the DC before marking it signed");
   db.prepare("UPDATE documents SET status = 'signed', signed_at = ?, signed_by_name = ? WHERE id = ?").run(date || today(), name || null, id);
-  if (d.job_id) db.prepare("UPDATE jobs SET ops_status = 'delivered' WHERE id = ? AND ops_status != 'delivered'").run(d.job_id);
+  if (d.job_id) syncJobDelivery(db, d.job_id);
   log(db, userId, "received signed DC", "dc", id, d.number);
 }
 

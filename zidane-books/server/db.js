@@ -21,6 +21,9 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
     db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(k, JSON.stringify(v));
   }
   if (!hadCategories) tidyItems(db);
+  // "delivered" only comes from a signed DC: a Job whose signed DC was removed earlier steps back
+  db.prepare(`UPDATE jobs SET ops_status = CASE WHEN EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'issued') THEN 'dispatched' ELSE 'material_ready' END
+    WHERE closed = 0 AND ops_status = 'delivered' AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'signed')`).run();
   // "not available" was dropped: whatever was marked so is still to buy
   db.prepare("UPDATE job_items SET procurement_status = 'to_buy' WHERE procurement_status = 'not_available'").run();
   return db;
