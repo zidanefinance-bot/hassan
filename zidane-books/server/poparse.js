@@ -195,7 +195,8 @@ export async function parseOrderPdf(buffer, { ourName = "zidane" } = {}) {
     delivery_location: [location, plant && !(location || "").includes(plant) ? plant : null].filter(Boolean).join(", ") || null, total,
     buyer_name: buyer, contact_phone: phone, payment_terms: terms, payment_terms_days: termsDays(terms), party_ntn: ntn, party_strn: strn, party_address: null,
     notes: bad ? `${bad} line(s) don't add up (qty × rate ≠ amount). Check them.` : null,
-    lines: lines.map((l) => ({ description: l.note ? `${l.description} (${l.note})` : l.description, code: l.code, qty: l.qty, unit: l.unit, rate: l.rate, tax_rate: null, item_match_id: null, match_confidence: "none" })),
+    // their item code column is read only to keep it out of the name: it is their numbering, not ours, so it isn't kept
+    lines: lines.map((l) => ({ description: l.note ? `${l.description} (${l.note})` : l.description, qty: l.qty, unit: l.unit, rate: l.rate, tax_rate: null, item_match_id: null, match_confidence: "none" })),
     reader: "pdf-text",
   };
 }

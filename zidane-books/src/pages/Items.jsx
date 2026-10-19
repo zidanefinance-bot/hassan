@@ -1,7 +1,10 @@
 import React, { useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 import Comments from "../components/Comments.jsx";
+
+// the category list, plus an item's own category if it was later taken off the list
+export const withCurrent = (list = [], current) => (current && !list.includes(current) ? [...list, current] : list);
 
 export function ItemForm({ initial, onClose, onSaved, presetName = "", preset = {} }) {
   const settings = useLoad("/settings");
@@ -22,7 +25,11 @@ export function ItemForm({ initial, onClose, onSaved, presetName = "", preset = 
     <Modal title={initial ? `Edit ${initial.name}` : "New item"} onClose={onClose}>
       <form onSubmit={save} className="form">
         <Field label="Name *"><input {...bind("name")} required autoFocus placeholder="e.g. Super Fine Atta 10kg" /></Field>
-        <div className="row-3"><Field label="SKU"><input {...bind("sku")} /></Field><Field label="Unit"><input {...bind("unit")} placeholder="bag, kg, tin…" /></Field><Field label="Category"><input {...bind("category")} /></Field></div>
+        <div className="row-3">
+          <Field label="Category *"><select {...bind("category")} required><option value="">Choose…</option>{withCurrent(settings.data?.itemCategories, initial?.category).map((c) => <option key={c}>{c}</option>)}</select></Field>
+          <Field label="Unit"><input {...bind("unit")} placeholder="pcs, kg, can, box…" /></Field>
+          <Field label="Our SKU (optional)"><input {...bind("sku")} /></Field>
+        </div>
         <div className="row-3">
           {can("cost.view") && <Field label="Purchase rate (Rs)"><input type="number" step="0.01" {...bind("purchase_rate")} /></Field>}
           {can("price.view") && <Field label="Default selling rate (Rs)" hint={margin !== null && can("profit.view") ? `Margin ${margin}%` : null}><input type="number" step="0.01" {...bind("sale_rate")} /></Field>}
@@ -98,31 +105,56 @@ function ImportItems({ onClose, onDone }) {
 
 export default function Items() {
   const [q, setQ] = useState("");
-  const [lowOnly, setLowOnly] = useState(() => new URLSearchParams(window.location.search).has("low"));
+  const [params, setParams] = useSearchParams();
+  const cat = params.get("cat");
+  const [lowOnly, setLowOnly] = useState(() => params.has("low"));
   const [modal, setModal] = useState(null);
   const { can } = useAuth();
   const state = useLoad(`/items?q=${encodeURIComponent(q)}`);
+  const settings = useLoad("/settings");
   const nav = useNavigate();
+  const openCat = (c) => { setQ(""); setParams(c ? { cat: c } : {}); };
   const exportCsv = () => downloadCsv("zidane-items.csv",
     ["Item Name", "SKU", "Unit", "Category", ...(can("price.view") ? ["Rate"] : []), ...(can("cost.view") ? ["Purchase Rate"] : []), "Tax %", "Reorder Level", "Stock On Hand"],
     state.data.map((i) => [i.name, i.sku, i.unit, i.category, ...(can("price.view") ? [i.sale_rate] : []), ...(can("cost.view") ? [i.purchase_rate] : []), i.tax_rate, i.reorder_level, i.stock_qty]));
+  // same rule as the dashboard: only items with a reorder level can run low
+  const isLow = (i) => i.track_stock && i.reorder_level > 0 && i.stock_qty <= i.reorder_level;
+  // first the categories; open one to see its items. Searching or "low stock only" looks across all of them.
+  const browsing = !cat && !q && !lowOnly;
   return (
     <>
-      <PageHead title="Items" sub="Products, rates and stock on hand. Open an item for its full history.">
-        <Search value={q} onChange={setQ} placeholder="Search items…" />
+      <PageHead title={cat ? <><Link to="/items" onClick={(e) => { e.preventDefault(); openCat(null); }} className="crumb">Items</Link> › {cat}</> : "Items"} sub={cat ? `Everything in ${cat}. Open an item for its full history.` : "Pick a category, or search all items. Open an item for its full history."}>
+        <Search value={q} onChange={setQ} placeholder={cat ? `Search in ${cat}…` : "Search all items…"} />
         <label className="check"><input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} /> Low stock only</label>
         {can("items.write") && <button className="btn" onClick={() => setModal("import")}>Import CSV</button>}
         <button className="btn" disabled={!state.data?.length} onClick={exportCsv}>Export CSV</button>
         {["items.write", "sales.write", "buy"].some(can) && <button className="btn primary" onClick={() => setModal("new")}>+ New Item</button>}
       </PageHead>
-      <Loading state={state}>{(all) => { const rows = lowOnly ? all.filter((i) => i.track_stock && i.stock_qty <= i.reorder_level) : all; return rows.length === 0 ? (lowOnly ? <div className="empty">No item is at or below its reorder level. ✓</div> : <div className="empty">No items yet. Add one, or import your list from Zoho / Excel.</div>) : (
+      <Loading state={state}>{(all) => {
+        if (browsing) {
+          const cats = withCurrent(settings.data?.itemCategories || [], null);
+          const extra = [...new Set(all.map((i) => i.category).filter((c) => c && !cats.includes(c)))];
+          return (
+            <div className="cat-grid">{[...cats, ...extra].map((c) => {
+              const inCat = all.filter((i) => i.category === c), low = inCat.filter(isLow).length;
+              return (
+                <button key={c} className="cat-tile" onClick={() => openCat(c)}>
+                  <b>{c}</b><span className="muted">{inCat.length} item{inCat.length === 1 ? "" : "s"}</span>
+                  {low > 0 && <span className="badge red sm">{low} low</span>}
+                </button>
+              );
+            })}</div>
+          );
+        }
+        const rows = all.filter((i) => (!cat || i.category === cat) && (!lowOnly || isLow(i)));
+        return rows.length === 0 ? (lowOnly ? <div className="empty">No item is at or below its reorder level. ✓</div> : <div className="empty">{q ? "Nothing matches that search." : `No items in ${cat} yet.`}</div>) : (
         <div className="card flush"><table className="table">
-          <thead><tr><th>Item</th><th>Category</th>{can("cost.view") && <th className="r">Buy</th>}{can("price.view") && <th className="r">Sell</th>}{can("profit.view") && <th className="r">Margin</th>}<th className="r">In stock</th></tr></thead>
+          <thead><tr><th>Item</th>{!cat && <th>Category</th>}{can("cost.view") && <th className="r">Buy</th>}{can("price.view") && <th className="r">Sell</th>}{can("profit.view") && <th className="r">Margin</th>}<th className="r">In stock</th></tr></thead>
           <tbody>{rows.map((i) => {
-            const low = i.track_stock && i.stock_qty <= i.reorder_level;
+            const low = isLow(i);
             return (
               <tr key={i.id} className="click" onClick={() => nav(`/items/${i.id}`)}>
-                <td><b>{i.name}</b><div className="muted small">{i.sku}</div></td><td className="muted">{i.category}</td>
+                <td><b>{i.name}</b><div className="muted small">{i.sku}</div></td>{!cat && <td className="muted">{i.category}</td>}
                 {can("cost.view") && <td className="r">{money(i.purchase_rate)}</td>}{can("price.view") && <td className="r">{money(i.sale_rate)}</td>}
                 {can("profit.view") && <td className="r">{i.sale_rate ? (((i.sale_rate - i.purchase_rate) / i.sale_rate) * 100).toFixed(1) + "%" : "—"}</td>}
                 <td className={`r ${low ? "neg" : ""}`}>{i.track_stock ? `${num(i.stock_qty)} ${i.unit}` : "—"}{low && <span className="badge red sm">low</span>}</td>
@@ -131,7 +163,7 @@ export default function Items() {
           })}</tbody>
         </table></div>
       ); }}</Loading>
-      {modal === "new" && <ItemForm onClose={() => setModal(null)} onSaved={(id) => nav(`/items/${id}`)} />}
+      {modal === "new" && <ItemForm preset={cat ? { category: cat } : {}} onClose={() => setModal(null)} onSaved={(id) => nav(`/items/${id}`)} />}
       {modal === "import" && <ImportItems onClose={() => setModal(null)} onDone={() => { setModal(null); state.reload(); }} />}
     </>
   );
@@ -168,7 +200,7 @@ export function ItemView() {
             </>}
           </PageHead>
           <div className="stats">
-            <div className="stat"><small>In stock</small><b className={i.track_stock && i.stock_qty <= i.reorder_level ? "neg" : ""}>{num(i.stock_qty)} {i.unit}</b><span className="muted">reorder at {num(i.reorder_level)}</span></div>
+            <div className="stat"><small>In stock</small><b className={i.track_stock && i.reorder_level > 0 && i.stock_qty <= i.reorder_level ? "neg" : ""}>{num(i.stock_qty)} {i.unit}</b><span className="muted">reorder at {num(i.reorder_level)}</span></div>
             {i.purchase_rate !== undefined && <div className="stat"><small>Purchase rate</small><b>{money(i.purchase_rate)}</b>{r.purchase?.avg_90 && <span className="muted">90-day avg {money(r.purchase.avg_90)}</span>}</div>}
             {i.sale_rate !== undefined && <div className="stat"><small>Selling rate</small><b>{money(i.sale_rate)}</b><span className="muted">{i.tax_rate}% tax{r.sales?.last ? ` · last sold ${money(r.sales.last.rate)}` : ""}</span></div>}
             {i.purchase_rate !== undefined && <div className="stat"><small>Stock value (at cost)</small><b>{money(i.stock_qty * i.purchase_rate)}</b></div>}

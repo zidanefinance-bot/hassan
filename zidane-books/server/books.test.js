@@ -773,8 +773,9 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
   assert.equal(x.party_ntn, "5064360-6", "their NTN from the letterhead, not the '-' in our supplier block");
   assert.equal(x.party_strn, "3277876153757");
   assert.equal(x.total, 18000 + 10080 + 6600);
+  // the customer's own item codes are left out
   assert.deepEqual(x.lines.map((l) => [l.code, l.description, l.qty, l.unit, l.rate]), [
-    ["00200400020642", "BEARING - 60/20 (WITH COLLAR)", 15, "PC", 1200], ["00200500020050", "BEARING - 6202 - NTN", 42, "PC", 240], ["00200500050173", "WD - 40 (SPRAY) 330ml", 6, "CAN", 1100]]);
+    [undefined, "BEARING - 60/20 (WITH COLLAR)", 15, "PC", 1200], [undefined, "BEARING - 6202 - NTN", 42, "PC", 240], [undefined, "WD - 40 (SPRAY) 330ml", 6, "CAN", 1100]]);
 
   const db = openDb(":memory:");
   ensureAdmin(db);
@@ -792,10 +793,13 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
     assert.equal(m.extraction.party_match_id, tex, "Texmark (Pvt) Ltd = TEXMARK (PVT) LTD");
     assert.ok(m.extraction.lines.every((l) => l.item_match_id === null), "nothing to match yet");
     const ids = [];
-    for (const l of m.extraction.lines) ids.push((await call("POST", "/items", { name: l.description, unit: "pcs", sale_rate: l.rate })).id);
+    assert.match((await call("POST", "/items", { name: "No category", unit: "pcs" })).error, /category/i, "every item needs a category");
+    assert.match((await call("POST", "/items", { name: "Odd", category: "Toys" })).error, /not one of the item categories/);
+    for (const l of m.extraction.lines) ids.push((await call("POST", "/items", { name: l.description, unit: "pcs", sale_rate: l.rate, category: "mechanical" })).id);
+    assert.equal((await call("GET", `/items/${ids[0]}`)).category, "Mechanical", "written as in the list");
     const job = (await call("POST", "/jobs", { customer_id: tex, customer_po_number: m.extraction.reference, items: ids.map((id, i) => ({ item_id: id, qty: m.extraction.lines[i].qty, sale_rate: m.extraction.lines[i].rate })) })).id;
-    await call("POST", `/inbox/${m.id}/status`, { status: "done", result_kind: "job", result_id: job, lines: m.extraction.lines.map((l, i) => ({ code: l.code, description: l.description, item_id: ids[i] })) });
-    // second PO from another plant: the bearing they ordered before is now matched by its code
+    await call("POST", `/inbox/${m.id}/status`, { status: "done", result_kind: "job", result_id: job, lines: m.extraction.lines.map((l, i) => ({ description: l.description, item_id: ids[i] })) });
+    // second PO from another plant: the bearing they ordered before is now matched by what was chosen last time
     const po2 = await fakeErpPo({ po: "POP-P2100-2610-00038", plant: 2100, lines: [["00200500020050", "BEARING - 6202 - NTN", null, 100, "PC", 240], ["00200500020472", "BEARING - 628-8 - ZZ", null, 100, "PC", 550]] });
     m = await call("POST", "/inbox", { files: [{ filename: "po2.pdf", mime: "application/pdf", data: po2.toString("base64") }], wait: true });
     assert.equal(m.extraction.lines[0].item_match_id, ids[1]);
@@ -809,4 +813,29 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
   } finally {
     server.close();
   }
+});
+
+test("item categories arrive: old items get one, customers' codes saved as our SKU are removed", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const file = join(mkdtempSync(join(tmpdir(), "zb-cat-")), "books.db");
+  let db = openDb(file);
+  const c = Number(db.prepare("INSERT INTO contacts (type, name) VALUES ('customer', 'Texmark')").run().lastInsertRowid);
+  const a = Number(db.prepare("INSERT INTO items (name, sku) VALUES ('BEARING - 6202 - NTN', '00200500020050')").run().lastInsertRowid);
+  const b = Number(db.prepare("INSERT INTO items (name, sku, category) VALUES ('GMSA ELFY - 50GM', '00200500020124', 'Lubricants')").run().lastInsertRowid);
+  const own = Number(db.prepare("INSERT INTO items (name, sku, category) VALUES ('Atta 10kg', 'ATTA-10', ' grocery')").run().lastInsertRowid);
+  db.prepare("INSERT INTO item_aliases (contact_id, code, name_norm, item_id) VALUES (?, '00200500020050', 'bearing 6202 ntn', ?)").run(c, a);
+  db.prepare("INSERT INTO inbox_messages (source, extraction) VALUES ('upload', ?)").run(JSON.stringify({ lines: [{ code: "00200500020124", description: "GMSA ELFY - 50GM" }] }));
+  db.prepare("DELETE FROM settings WHERE key = 'itemCategories'").run(); // as a database from before categories
+  db.close();
+  db = openDb(file);
+  const item = (id) => db.prepare("SELECT sku, category FROM items WHERE id = ?").get(id);
+  assert.deepEqual({ ...item(a) }, { sku: null, category: "General" });
+  assert.deepEqual({ ...item(b) }, { sku: null, category: "Lubricants" });
+  assert.deepEqual({ ...item(own) }, { sku: "ATTA-10", category: "Grocery" }, "our own SKU stays");
+  const list = JSON.parse(db.prepare("SELECT value FROM settings WHERE key = 'itemCategories'").get().value);
+  assert.ok(list.includes("Mechanical") && list.includes("Lubricants"), "a category already in use is kept on the list");
+  assert.equal(db.prepare("SELECT code FROM item_aliases").get().code, null);
+  db.close();
 });

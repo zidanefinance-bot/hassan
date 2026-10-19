@@ -16,10 +16,31 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   if (hasTables && version > SCHEMA_VERSION) throw new Error(`${file} was made by a newer version of Zidane Books (schema ${version}). Update the app first.`);
   db.exec(SCHEMA);
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  const hadCategories = db.prepare("SELECT 1 FROM settings WHERE key = 'itemCategories'").get();
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
     db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(k, JSON.stringify(v));
   }
+  if (!hadCategories) tidyItems(db);
   return db;
+}
+
+// Once, when item categories arrive: every item gets a category (categories already typed on items are kept
+// and added to the list), and customers' own item codes that an earlier version saved as our SKU are removed.
+function tidyItems(db) {
+  const list = JSON.parse(db.prepare("SELECT value FROM settings WHERE key = 'itemCategories'").get().value);
+  const lower = new Map(list.map((c) => [c.toLowerCase(), c]));
+  for (const { category } of db.prepare("SELECT DISTINCT TRIM(category) AS category FROM items WHERE TRIM(IFNULL(category, '')) <> ''").all()) {
+    if (lower.has(category.toLowerCase())) db.prepare("UPDATE items SET category = ? WHERE TRIM(category) = ?").run(lower.get(category.toLowerCase()), category);
+    else { list.push(category); lower.set(category.toLowerCase(), category); }
+  }
+  db.prepare("UPDATE settings SET value = ? WHERE key = 'itemCategories'").run(JSON.stringify(list));
+  db.prepare("UPDATE items SET category = 'General' WHERE TRIM(IFNULL(category, '')) = ''").run();
+  const codes = new Set(db.prepare("SELECT code FROM item_aliases WHERE code IS NOT NULL").all().map((r) => r.code));
+  for (const { extraction } of db.prepare("SELECT extraction FROM inbox_messages WHERE extraction IS NOT NULL").all()) {
+    try { for (const l of JSON.parse(extraction).lines || []) if (l.code) codes.add(l.code); } catch { /* not ours to fix */ }
+  }
+  for (const c of codes) db.prepare("UPDATE items SET sku = NULL WHERE sku = ?").run(c);
+  db.prepare("UPDATE item_aliases SET code = NULL").run();
 }
 
 // run fn inside a transaction; rolls back on throw
@@ -50,6 +71,8 @@ export const DEFAULT_SETTINGS = {
   prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-", receipt: "RCPT-", payment: "PMT-", credit_note: "CN-", vendor_credit: "VC-", refund: "RF-" },
   nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1, receipt: 1, payment: 1, credit_note: 1, vendor_credit: 1, refund: 1 },
   paymentTermsDays: 15,
+  // every item sits in one of these (Items page opens by category)
+  itemCategories: ["General", "Mechanical", "Electrical", "Furniture", "Furniture & Fittings", "Stationery", "House Keeping", "Grocery", "Service"],
   jobExpenseCategories: ["Freight", "Loading / Unloading", "Packing", "Labour", "Vehicle", "Market expense", "Other direct cost"],
   expenseCategories: ["Rent", "Salaries", "Fuel & Transport", "Utilities", "Packaging", "Loading & Labour", "Office", "Marketing", "Bank Charges", "Other"],
   invoiceFooter: "Thank you for your business. Groceries for business.",

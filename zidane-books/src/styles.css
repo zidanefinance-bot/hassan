@@ -421,3 +421,15 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 }
 .signout .so-icon { display: none; }
 @media (max-width: 720px) { .signout .so-text { display: none; } .signout .so-icon { display: inline; font-size: 18px; } .signout { padding: 6px 8px; } }
+
+/* Items page: categories first */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.cat-tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; font: inherit; color: var(--text); }
+.cat-tile:hover { border-color: var(--red); box-shadow: 0 2px 8px rgba(29, 36, 51, 0.08); }
+.cat-tile b { font-size: 16px; color: var(--ink); }
+.crumb { color: var(--muted); text-decoration: none; }
+.crumb:hover { color: var(--red); }
+.new-items td { vertical-align: middle; }
+.new-items select { min-width: 170px; }
+@media (max-width: 600px) { .cat-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
+.new-items select.need { border-color: var(--amber); }

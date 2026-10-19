@@ -68,7 +68,7 @@ export default function Settings() {
   const toast = useToast();
   useEffect(() => { if (state.data) setS(state.data); }, [state.data]);
   const save = async () => {
-    try { await api("/settings", { method: "PUT", body: { ...s, expenseCategories: s.expenseCategories.map((x) => x.trim()).filter(Boolean), jobExpenseCategories: (s.jobExpenseCategories || []).map((x) => x.trim()).filter(Boolean) } }); toast("Settings saved"); state.reload(); } catch (x) { toast(x.message, "err"); }
+    try { await api("/settings", { method: "PUT", body: { ...s, expenseCategories: s.expenseCategories.map((x) => x.trim()).filter(Boolean), jobExpenseCategories: (s.jobExpenseCategories || []).map((x) => x.trim()).filter(Boolean), itemCategories: (s.itemCategories || []).map((x) => x.trim()).filter(Boolean) } }); toast("Settings saved"); state.reload(); } catch (x) { toast(x.message, "err"); }
   };
   const co = (k) => ({ value: s.company[k] || "", onChange: (e) => setS({ ...s, company: { ...s.company, [k]: e.target.value } }) });
   return (
@@ -104,6 +104,10 @@ export default function Settings() {
               </div>
             ))}
             <button className="btn ghost sm" onClick={() => setS({ ...s, taxes: [...s.taxes, { name: "New tax", rate: 0 }] })}>+ Add tax rate</button>
+          </section>
+          <section className="card form">
+            <h3>Item categories</h3>
+            <Field label="One per line. Every item must be in one; the Items page opens by category" hint="Renaming one here doesn't move its items: open them and pick the new name"><textarea rows={9} value={(s.itemCategories || []).join("\n")} onChange={(e) => setS({ ...s, itemCategories: e.target.value.split("\n") })} /></Field>
           </section>
           <section className="card form">
             <h3>Expense categories</h3>

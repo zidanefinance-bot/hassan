@@ -122,7 +122,12 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json(out);
   });
   api.put("/settings", requirePerm("admin"), (req, res) => {
-    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "invoiceFooter", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
+    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "itemCategories", "invoiceFooter", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
+    if ("itemCategories" in (req.body || {})) {
+      const cats = [...new Set((req.body.itemCategories || []).map((c) => String(c).trim()).filter(Boolean))];
+      if (!cats.length) throw httpError(400, "Keep at least one item category");
+      req.body.itemCategories = cats;
+    }
     for (const [k, v] of Object.entries(req.body || {})) if (allowed.includes(k)) B.setSetting(db, k, v);
     B.log(db, req.user.id, "updated settings", "settings", null, Object.keys(req.body || {}).join(", "));
     res.json({ ok: true });
@@ -226,6 +231,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!can(req.user, "cost.view")) delete b.purchase_rate;
     if (!can(req.user, "price.view")) delete b.sale_rate;
     if (!b.name?.trim()) throw httpError(400, "Name is required");
+    b.category = I.itemCategory(db, b.category);
     const r = db.prepare("INSERT INTO items (name, sku, unit, category, purchase_rate, sale_rate, tax_rate, reorder_level, track_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...itemFields(b));
     const newId = Number(r.lastInsertRowid);
     if (Number(b.opening_stock) && can(req.user, "items.write")) B.adjustStock(db, req.user.id, newId, b.opening_stock, "opening stock");
@@ -239,6 +245,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!can(req.user, "price.view")) delete body.sale_rate; // operations can't change selling rates
     if (!can(req.user, "cost.view")) delete body.purchase_rate;
     const next = { ...i, track_stock: !!i.track_stock, ...body };
+    // an item keeps a category that was later taken off the list, until someone changes it
+    if (next.category !== i.category || !i.category) next.category = I.itemCategory(db, next.category);
     db.prepare("UPDATE items SET name=?, sku=?, unit=?, category=?, purchase_rate=?, sale_rate=?, tax_rate=?, reorder_level=?, track_stock=? WHERE id=?").run(...itemFields(next), i.id);
     I.logItemChanges(db, req.user.id, i, next, cans(req));
     res.json({ ok: true });

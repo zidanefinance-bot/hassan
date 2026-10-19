@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { addDays, api, Field, KIND, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import Picker from "../components/Picker.jsx";
-import { cleanLine, createMissingItems, learnedLines, missingLines, partyPreset } from "../components/draftLines.js";
+import { cleanLine, guessCategory, learnedLines, missingLines, partyPreset, unitOf } from "../components/draftLines.js";
+import NewItems from "../components/NewItems.jsx";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import { readFiles } from "./Inbox.jsx";
@@ -34,6 +35,7 @@ export default function DocumentForm({ kind }) {
   const [addingContact, setAddingContact] = useState(null); // null, or the name typed in the picker
   const [addingItem, setAddingItem] = useState(null); // null, or { line, name, preset }
   const [aiParty, setAiParty] = useState(null); // customer/supplier named on the paper that isn't in our contacts yet
+  const [newItems, setNewItems] = useState(false);
   const [partyInfo, setPartyInfo] = useState({}); // what the paper says about them (buyer, terms, NTN)
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,7 +87,7 @@ export default function DocumentForm({ kind }) {
       lines: x.lines.length ? x.lines.map((l) => {
         const it = items.data.find((i) => i.id === l.item_match_id);
         return { ...blankLine(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty,
-          rate: l.rate ?? (it ? (isSale ? it.sale_rate : it.purchase_rate) ?? 0 : 0), tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description, ai_unit: l.unit, ai_rate: l.rate, ai_code: l.code };
+          rate: l.rate ?? (it ? (isSale ? it.sale_rate : it.purchase_rate) ?? 0 : 0), tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description, ai_unit: l.unit, ai_rate: l.rate };
       }) : d.lines,
     }));
     setDraft(null);
@@ -166,7 +168,7 @@ export default function DocumentForm({ kind }) {
       )}
       {inboxId && !id && doc.lines.some((l) => l.ai) && (
         <div className="ai-banner">✨ Filled from the paper. Lines marked <span className="ai-flag">check</span> weren't matched to one of your items for sure. Pick the right item (it's remembered for next time) or add them as new items.
-          {missingLines(doc.lines).length > 0 && <> <button className="btn sm" disabled={busy} onClick={async () => { setBusy(true); try { const lines2 = await createMissingItems(doc.lines, isSale ? "sale_rate" : "purchase_rate"); items.reload(); setDoc((d) => ({ ...d, lines: lines2 })); toast("Items added"); } catch (x) { toast(x.message, "err"); } finally { setBusy(false); } }}>+ Add the {missingLines(doc.lines).length} new item(s) to my items</button></>}</div>
+          {missingLines(doc.lines).length > 0 && <> <button className="btn sm" onClick={() => setNewItems(true)}>+ Add the {missingLines(doc.lines).length} new item(s) to my items</button></>}</div>
       )}
       <div className="card form doc-form">
         <div className="row-4">
@@ -206,7 +208,7 @@ export default function DocumentForm({ kind }) {
                 <tr key={l.key} className={l.ai && l.ai !== "high" ? "ai-check" : ""}>
                   <td>
                     {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”
-                      {!l.item_id && <> · <button type="button" className="link-btn" onClick={() => setAddingItem({ line: i, name: l.ai_text, preset: { unit: l.ai_unit || "pcs", [isSale ? "sale_rate" : "purchase_rate"]: l.ai_rate ?? "" } })}>+ add as new item</button></>}</small>}
+                      {!l.item_id && <> · <button type="button" className="link-btn" onClick={() => setAddingItem({ line: i, name: l.ai_text, preset: { unit: unitOf(l.ai_unit), category: guessCategory(l.ai_text, items.data, settings.data?.itemCategories), [isSale ? "sale_rate" : "purchase_rate"]: l.ai_rate ?? "" } })}>+ add as new item</button></>}</small>}
                     <Picker options={itemOptions(items.data)} value={l.item_id} onChange={(v) => pickItem(i, v)} emptyLabel="— custom line (not an item) —" placeholder="Type item name or SKU…"
                       createLabel="item" onCreate={(name) => setAddingItem({ line: i, name })} />
                     {!l.item_id && <input className="mt" placeholder="Description" value={l.description || ""} onChange={(e) => setLine(i, { description: e.target.value })} />}
@@ -254,6 +256,7 @@ export default function DocumentForm({ kind }) {
           <button className="btn primary" disabled={busy} onClick={() => save(!id || ["draft", "enquiry"].includes(doc.status))}>{id && !["draft", "enquiry"].includes(doc.status) ? "Save" : kind === "quote" ? "Save & mark sent" : kind === "dc" ? "Save & issue DC" : kind === "po" || isCredit ? "Save & issue" : `Save & ${kind === "invoice" ? "issue" : "record"}`}</button>
         </div>
       </div>
+      {newItems && <NewItems lines={doc.lines} items={items.data} rateField={isSale ? "sale_rate" : "purchase_rate"} onClose={() => setNewItems(false)} onDone={(lines2) => { setNewItems(false); items.reload(); setDoc((d) => ({ ...d, lines: lines2 })); }} />}
       {addingItem && <ItemForm presetName={addingItem.name} preset={addingItem.preset} onClose={() => setAddingItem(null)} onSaved={async (newId) => {
         const target = addingItem.line;
         setAddingItem(null);

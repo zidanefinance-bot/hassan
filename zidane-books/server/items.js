@@ -102,6 +102,14 @@ export function logItemChanges(db, userId, before, after, can) {
 // rows already parsed from CSV; header names from a Zoho Books item export or our own export are both understood
 const pick = (row, names) => { for (const n of names) { const v = row[n]; if (v !== undefined && String(v).trim() !== "") return String(v).trim(); } return undefined; };
 const money = (v) => (v === undefined ? undefined : Number(String(v).replace(/[^0-9.-]/g, "")) || 0);
+// the item's category, as written in the list (Settings → item categories); required on every item
+export function itemCategory(db, value) {
+  const list = JSON.parse(db.prepare("SELECT value FROM settings WHERE key = 'itemCategories'").get()?.value || "[]");
+  const hit = list.find((c) => c.toLowerCase() === String(value || "").trim().toLowerCase());
+  if (!hit) throw httpError(400, value ? `"${value}" is not one of the item categories` : "Choose a category for the item");
+  return hit;
+}
+
 export function importItems(db, userId, rows, can) {
   if (!Array.isArray(rows) || rows.length === 0) throw httpError(400, "The file has no rows");
   if (rows.length > 5000) throw httpError(400, "Import at most 5,000 items at a time");
@@ -112,11 +120,13 @@ export function importItems(db, userId, rows, can) {
       const name = pick(r, ["itemname", "name", "item"]);
       if (!name) { skipped++; continue; }
       const f = {
-        sku: pick(r, ["sku", "itemcode", "code"]), unit: pick(r, ["unit", "usageunit", "uom"]), category: pick(r, ["category", "categoryname", "itemtype", "brand"]),
+        sku: pick(r, ["sku", "itemcode", "code"]), unit: pick(r, ["unit", "usageunit", "uom"]), category: pick(r, ["category", "categoryname"]),
         sale_rate: can("price.view") ? money(pick(r, ["rate", "sellingprice", "salerate", "sellingrate", "salesrate"])) : undefined,
         purchase_rate: can("cost.view") ? money(pick(r, ["purchaserate", "purchaseprice", "costprice", "cost", "buyrate"])) : undefined,
         tax_rate: money(pick(r, ["taxpercentage", "taxrate", "tax"])), reorder_level: money(pick(r, ["reorderlevel", "reorderpoint"])),
       };
+      // a category we don't have becomes General (fix it on the item later)
+      if (f.category) { try { f.category = itemCategory(db, f.category); } catch { f.category = "General"; } }
       const stock = money(pick(r, ["openingstock", "stockonhand", "stock", "quantity"]));
       const existing = (f.sku && db.prepare("SELECT * FROM items WHERE sku = ? AND active = 1").get(f.sku)) || db.prepare("SELECT * FROM items WHERE name = ? COLLATE NOCASE AND active = 1").get(name);
       if (existing) {
@@ -127,7 +137,7 @@ export function importItems(db, userId, rows, can) {
         updated++;
       } else {
         const id = Number(db.prepare("INSERT INTO items (name, sku, unit, category, purchase_rate, sale_rate, tax_rate, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-          .run(name, f.sku || null, f.unit || "pcs", f.category || null, f.purchase_rate || 0, f.sale_rate || 0, f.tax_rate || 0, f.reorder_level || 0).lastInsertRowid);
+          .run(name, f.sku || null, f.unit || "pcs", f.category || "General", f.purchase_rate || 0, f.sale_rate || 0, f.tax_rate || 0, f.reorder_level || 0).lastInsertRowid);
         if (stock) adjustStock(db, userId, id, stock, "opening stock (import)", false);
         log(db, userId, "imported", "item", id, name);
         created++;

@@ -18,18 +18,18 @@ export function ensureAdmin(db) {
 
 // Sample data only: names and rates are illustrative, not real prices.
 const ITEMS = [
-  ["Super Fine Atta 10kg", "ATTA-10", "bag", "Atta & Flour", 1180, 1290, 0, 120],
-  ["Super Fine Atta 5kg", "ATTA-05", "bag", "Atta & Flour", 610, 670, 0, 200],
-  ["Basmati Rice 5kg", "RICE-05", "bag", "Rice", 1650, 1840, 0, 80],
-  ["Sugar Danedar 1kg", "SUG-01", "kg", "Sugar", 142, 155, 0, 400],
-  ["Cooking Oil 5L", "OIL-05", "tin", "Oil & Ghee", 2650, 2890, 18, 60],
-  ["Cooking Oil 1L Pouch", "OIL-01", "pouch", "Oil & Ghee", 560, 615, 18, 300],
-  ["Daal Chana 1kg", "DAAL-CH", "kg", "Pulses", 285, 320, 0, 150],
-  ["Daal Moong 1kg", "DAAL-MG", "kg", "Pulses", 330, 370, 0, 150],
-  ["Tapal Danedar 430g", "TEA-430", "pack", "Tea & Coffee", 1180, 1290, 18, 90],
-  ["Red Chilli Powder 100g", "SPC-RC", "pack", "Spices", 120, 140, 18, 250],
-  ["Dates 500g", "DATE-500", "pack", "Essentials", 560, 640, 0, 100],
-  ["Rooh Afza 800ml", "RA-800", "bottle", "Essentials", 480, 540, 18, 80],
+  ["Super Fine Atta 10kg", "ATTA-10", "bag", "Grocery", 1180, 1290, 0, 120],
+  ["Super Fine Atta 5kg", "ATTA-05", "bag", "Grocery", 610, 670, 0, 200],
+  ["Basmati Rice 5kg", "RICE-05", "bag", "Grocery", 1650, 1840, 0, 80],
+  ["Sugar Danedar 1kg", "SUG-01", "kg", "Grocery", 142, 155, 0, 400],
+  ["Cooking Oil 5L", "OIL-05", "tin", "Grocery", 2650, 2890, 18, 60],
+  ["Cooking Oil 1L Pouch", "OIL-01", "pouch", "Grocery", 560, 615, 18, 300],
+  ["Daal Chana 1kg", "DAAL-CH", "kg", "Grocery", 285, 320, 0, 150],
+  ["Daal Moong 1kg", "DAAL-MG", "kg", "Grocery", 330, 370, 0, 150],
+  ["Tapal Danedar 430g", "TEA-430", "pack", "Grocery", 1180, 1290, 18, 90],
+  ["Red Chilli Powder 100g", "SPC-RC", "pack", "Grocery", 120, 140, 18, 250],
+  ["Dates 500g", "DATE-500", "pack", "Grocery", 560, 640, 0, 100],
+  ["Rooh Afza 800ml", "RA-800", "bottle", "Grocery", 480, 540, 18, 80],
 ];
 const CUSTOMERS = [["Al-Noor Textile Mills", "Procurement Dept", "021 3500 0001"], ["Crescent Hospital Kitchen", "Admin", "021 3500 0002"], ["Helping Hands Welfare Trust", "Program Office", "0300 000 0003"]];
 const SUPPLIERS = [["Karachi Flour Mills", "Sales", "021 3600 0001"], ["Metro Rice Traders", "Owner", "021 3600 0002"], ["Edible Oil Distributors", "Accounts", "021 3600 0003"]];

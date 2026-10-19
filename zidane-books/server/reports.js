@@ -49,7 +49,7 @@ export function taxSummary(db, from, to) {
 
 export function inventory(db) {
   const items = db.prepare("SELECT * FROM items WHERE active = 1 ORDER BY name").all().map((i) => ({
-    ...i, stock_value: round2(i.stock_qty * i.purchase_rate), margin_pct: i.sale_rate ? round2(((i.sale_rate - i.purchase_rate) / i.sale_rate) * 100) : 0, low: i.track_stock && i.stock_qty <= i.reorder_level,
+    ...i, stock_value: round2(i.stock_qty * i.purchase_rate), margin_pct: i.sale_rate ? round2(((i.sale_rate - i.purchase_rate) / i.sale_rate) * 100) : 0, low: i.track_stock && i.reorder_level > 0 && i.stock_qty <= i.reorder_level,
   }));
   return { items, total_value: round2(items.reduce((a, i) => a + i.stock_value, 0)), low_stock: items.filter((i) => i.low).length };
 }
