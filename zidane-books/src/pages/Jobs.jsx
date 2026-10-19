@@ -1,5 +1,5 @@
 // Internal Jobs: Sales creates, Operations fulfils, Sales delivers and invoices. One screen, shaped by role.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OPS_STEPS, PageHead, Search, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import { ContactForm } from "./Contacts.jsx";
@@ -8,7 +8,7 @@ import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
 import Picker from "../components/Picker.jsx";
 import { contactOptions, itemOptions } from "./DocumentForm.jsx";
-import { cleanLine, createMissingItems, learnedLines, missingLines } from "../components/draftLines.js";
+import { cleanLine, createMissingItems, learnedLines, missingLines, partyPreset } from "../components/draftLines.js";
 
 const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey" };
 // buying status of a Job line, in words everyone understands (not invoice words like "paid" / "overdue")
@@ -62,26 +62,32 @@ export function JobForm() {
   const [adding, setAdding] = useState(null); // null, or the customer name typed in the picker
   const [addingItem, setAddingItem] = useState(null); // null, or { line, name, preset }
   const [aiParty, setAiParty] = useState(null);
+  const [partyInfo, setPartyInfo] = useState({}); // what the PO says about the customer (buyer, terms, NTN)
   const [err, setErr] = useState("");
   // a customer PO read by AI in the orders inbox (?inbox=ID)
   const inboxId = params.get("inbox");
   const [aiFilled, setAiFilled] = useState(false);
+  const filledFrom = useRef(null);
   const [creating, setCreating] = useState(false);
   useEffect(() => {
-    if (!inboxId || !items.data) return;
+    // once only: reloading items (after "Add the new items") must not refill the form over what was done
+    if (!inboxId || !items.data || filledFrom.current === inboxId) return;
+    filledFrom.current = inboxId;
     api(`/inbox/${inboxId}`).then((m) => {
       const x = m.extraction;
       if (!x) return;
       setF((s) => ({
         ...s, customer_id: x.party_match_id ? String(x.party_match_id) : s.customer_id, order_source: m.source === "email" ? (x.reference ? "formal PO" : "email") : m.source === "paste" ? "whatsapp" : x.reference ? "formal PO" : s.order_source,
         customer_po_number: x.reference || "", customer_po_date: x.date || "", required_date: x.required_date || "", delivery_location: x.delivery_location || "",
-        instructions: [!x.party_match_id && x.party_name ? `Customer on paper: ${x.party_name}` : null, x.notes].filter(Boolean).join("\n"),
+        // for Operations: who to deal with at the customer, not the money terms
+        instructions: [!x.party_match_id && x.party_name ? `Customer on paper: ${x.party_name}` : null, x.buyer_name ? `Buyer: ${[x.buyer_name, x.contact_phone].filter(Boolean).join(", ")}` : null, x.notes].filter(Boolean).join("\n"),
         items: x.lines.length ? x.lines.map((l) => {
           const it = items.data.find((i) => i.id === l.item_match_id);
           return { ...blank(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty, sale_rate: l.rate ?? it?.sale_rate ?? 0, tax_rate: l.tax_rate ?? it?.tax_rate ?? 0, ai: l.match_confidence, ai_text: l.description, ai_unit: l.unit, ai_rate: l.rate, ai_code: l.code };
         }) : s.items,
       }));
       setAiParty(!x.party_match_id && x.party_name ? x.party_name : null);
+      setPartyInfo(partyPreset(x));
       setAiFilled(true);
     }).catch(() => {});
   }, [inboxId, items.data]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -155,7 +161,7 @@ export function JobForm() {
           return { ...s, items: at < 0 ? [...s.items, line] : s.items.map((x, j) => (j === at ? line : x)) };
         });
       }} />}
-      {adding !== null && <ContactForm type="customer" presetName={adding} onClose={() => setAdding(null)} onSaved={(id) => { setAdding(null); setAiParty(null); customers.reload(); setF((s) => ({ ...s, customer_id: String(id) })); }} />}
+      {adding !== null && <ContactForm type="customer" presetName={adding} preset={adding === aiParty ? partyInfo : {}} onClose={() => setAdding(null)} onSaved={(id) => { setAdding(null); setAiParty(null); customers.reload(); setF((s) => ({ ...s, customer_id: String(id) })); }} />}
     </>
   );
 }

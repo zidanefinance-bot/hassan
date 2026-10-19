@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Comments from "../components/Comments.jsx";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 
-export function ContactForm({ type, initial, onClose, onSaved, presetName = "" }) {
-  const [f, bind] = useForm(initial ? { ...initial, payment_terms_days: initial.payment_terms_days ?? "", credit_limit: initial.credit_limit ?? "" } : { type, name: presetName, company: "", phone: "", email: "", address: "", ntn: "", notes: "", opening_balance: "", payment_terms_days: "", credit_limit: "" });
+export function ContactForm({ type, initial, onClose, onSaved, presetName = "", preset = {} }) {
+  const [f, bind] = useForm(initial ? { ...initial, payment_terms_days: initial.payment_terms_days ?? "", credit_limit: initial.credit_limit ?? "" } : { type, name: presetName, company: "", phone: "", email: "", address: "", ntn: "", notes: "", opening_balance: "", payment_terms_days: "", credit_limit: "", ...preset });
   const [err, setErr] = useState("");
   const toast = useToast();
   const save = async (e) => {

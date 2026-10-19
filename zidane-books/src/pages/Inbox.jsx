@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Field, Loading, Modal, money, num, PageHead, useAuth, useLoad, useToast } from "../lib.jsx";
+import { unitOf } from "../components/draftLines.js";
 
 export const readFiles = (files) => Promise.all(files.map((f) => {
   if (f.size > 10 * 1024 * 1024) throw new Error(`${f.name} is bigger than 10 MB`);
@@ -88,6 +89,11 @@ function Detail({ id, onChanged }) {
             {x.date && <><dt>Date</dt><dd>{x.date}</dd></>}
             {x.required_date && <><dt>{bill ? "Due" : "Needed by"}</dt><dd>{x.required_date}</dd></>}
             {x.delivery_location && <><dt>Deliver to</dt><dd>{x.delivery_location}</dd></>}
+            {x.party_address && <><dt>Address</dt><dd>{x.party_address}</dd></>}
+            {x.buyer_name && <><dt>{bill ? "Contact" : "Buyer"}</dt><dd>{[x.buyer_name, x.contact_phone].filter(Boolean).join(" · ")}</dd></>}
+            {x.payment_terms && <><dt>Payment terms</dt><dd>{x.payment_terms}
+              {x.party_match_id && x.payment_terms_days != null && x.party_terms_days !== x.payment_terms_days && <span className="badge amber sm">{x.party_match_name} is set to {x.party_terms_days == null ? "no terms" : `${x.party_terms_days} days`}</span>}</dd></>}
+            {(x.party_ntn || x.party_strn) && <><dt>NTN / STRN</dt><dd>{[x.party_ntn, x.party_strn].map((v) => v || "—").join(" / ")}</dd></>}
           </dl>
           {x.lines.length > 0 && (
             <table className="table compact">
@@ -96,7 +102,7 @@ function Detail({ id, onChanged }) {
                 <tr key={i} className={l.match_confidence !== "high" ? "ai-check" : ""}>
                   <td>{l.description}</td>
                   <td>{l.item_match_id ? <>{l.match_confidence === "high" ? "✓ " : "? "}{l.item_name}</> : <span className="ai-flag">not in items</span>}</td>
-                  <td className="r">{num(l.qty)} {l.unit || ""}</td><td className="r">{l.rate != null ? money(l.rate) : "—"}</td>
+                  <td className="r">{num(l.qty)} {l.unit ? unitOf(l.unit) : ""}</td><td className="r">{l.rate != null ? money(l.rate) : "—"}</td>
                 </tr>
               ))}</tbody>
               {total > 0 && <tfoot><tr><td colSpan={3}>Total (before tax){x.total ? ` · paper says ${money(x.total)}` : ""}</td><td className="r">{money(total)}</td></tr></tfoot>}

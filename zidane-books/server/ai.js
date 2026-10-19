@@ -30,6 +30,13 @@ export const Extraction = z.object({
   delivery_location: z.string().nullable(),
   lines: z.array(Line),
   total: z.number().nullable().describe("Grand total if written on the paper"),
+  buyer_name: z.string().nullable().describe("The person on the customer's / supplier's side: contact person, buyer, or who prepared the PO"),
+  contact_phone: z.string().nullable(),
+  payment_terms: z.string().nullable().describe("Payment terms as written, e.g. '30 DAYS CREDIT'"),
+  payment_terms_days: z.number().int().nullable().describe("Credit days from the payment terms; 0 for cash/advance; null if not written"),
+  party_ntn: z.string().nullable().describe("The customer's / supplier's NTN (not ours)"),
+  party_strn: z.string().nullable().describe("The customer's / supplier's sales tax registration number (not ours)"),
+  party_address: z.string().nullable().describe("The customer's / supplier's own address (not Zidane's address, which may also be printed)"),
   notes: z.string().nullable().describe("Anything important that doesn't fit above: special instructions, missing information, doubts"),
 });
 

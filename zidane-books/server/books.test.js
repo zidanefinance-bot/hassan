@@ -747,6 +747,7 @@ async function fakeErpPo({ po, plant, lines }) {
   });
   pdf.text("Total", 19, y + 6, { lineBreak: false }).text(total.toLocaleString("en-US", { minimumFractionDigits: 2 }), 546, y + 6, { lineBreak: false });
   pdf.text("Payment Terms", 19, y + 40, { lineBreak: false }).text("30 DAYS CREDIT", 105, y + 40, { lineBreak: false }).text("Total Amount", 379, y + 70, { lineBreak: false }).text(total.toLocaleString("en-US", { minimumFractionDigits: 2 }), 541, y + 70, { lineBreak: false });
+  pdf.text("Prepared By", 67, y + 110, { lineBreak: false }).text("Approved By", 498, y + 110, { lineBreak: false }).text("MOHSIN", 28, y + 123, { lineBreak: false });
   pdf.end();
   return done;
 }
@@ -765,7 +766,12 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
   assert.equal(x.reference, "POP-P1400-2610-00028");
   assert.equal(x.date, "2026-10-13");
   assert.equal(x.required_date, "2026-10-20");
-  assert.equal(x.delivery_location, "WH-CONSUMABLE-1400");
+  assert.equal(x.delivery_location, "WH-CONSUMABLE-1400, PLANT-1400");
+  assert.equal(x.buyer_name, "MOHSIN");
+  assert.equal(x.payment_terms, "30 DAYS CREDIT");
+  assert.equal(x.payment_terms_days, 30);
+  assert.equal(x.party_ntn, "5064360-6", "their NTN from the letterhead, not the '-' in our supplier block");
+  assert.equal(x.party_strn, "3277876153757");
   assert.equal(x.total, 18000 + 10080 + 6600);
   assert.deepEqual(x.lines.map((l) => [l.code, l.description, l.qty, l.unit, l.rate]), [
     ["00200400020642", "BEARING - 60/20 (WITH COLLAR)", 15, "PC", 1200], ["00200500020050", "BEARING - 6202 - NTN", 42, "PC", 240], ["00200500050173", "WD - 40 (SPRAY) 330ml", 6, "CAN", 1100]]);

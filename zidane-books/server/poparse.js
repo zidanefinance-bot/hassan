@@ -121,6 +121,7 @@ export function tableFromRows(rows) {
   return lines.length ? lines : null;
 }
 
+const BARE = /^(payment\s*terms|terms\s*of\s*payment|credit\s*terms|buyer|ship\s*to|deliver\s*to|delivery\s*address)$/i;
 // "Label : value" pairs anywhere on the page (value is the cell after the colon)
 function fields(rows) {
   const out = {};
@@ -128,15 +129,29 @@ function fields(rows) {
     const cells = r.cells.map((c) => c.s);
     for (let i = 0; i < cells.length; i++) {
       let label = cells[i], value = null;
-      if (cells[i + 1] === ":" && cells[i + 2] !== undefined && cells[i + 2] !== ":") value = cells[i + 2];
+      if (cells[i + 1] === ":") { if (cells[i + 2] !== undefined && cells[i + 2] !== ":" && cells[i + 3] !== ":") value = cells[i + 2]; else continue; } // "C. Person : Contact # :" is two empty fields
       else if (/:\s*\S/.test(label)) [label, value] = [label.split(":")[0], label.split(":").slice(1).join(":")];
       else if (/:$/.test(label) && cells[i + 1] && !cells[i + 1].endsWith(":")) [label, value] = [label.slice(0, -1), cells[i + 1]];
+      // a few labels are often printed without a colon: "Payment Terms   30 DAYS CREDIT"
+      else if (BARE.test(label) && cells[i + 1] && !cells[i + 1].endsWith(":") && !BARE.test(cells[i + 1])) value = cells[i + 1];
       if (value === null) continue;
       out[label.replace(/\s+/g, " ").trim().toLowerCase()] = String(value).trim();
     }
   }
   return out;
 }
+// signature blocks: "Prepared By" with the name printed on the row below it
+function signedBy(rows, re) {
+  const i = rows.findIndex((r) => r.cells.some((c) => re.test(c.s)));
+  if (i < 0) return null;
+  const head = rows[i].cells.find((c) => re.test(c.s));
+  for (const r of rows.slice(i + 1, i + 3)) {
+    const c = r.cells.filter((c) => !/:$/.test(c.s) && /[a-z]{3}/i.test(c.s)).sort((a, b) => Math.abs(a.x - head.x) - Math.abs(b.x - head.x))[0];
+    if (c && Math.abs(c.x - head.x) < 80) return c.s;
+  }
+  return null;
+}
+const termsDays = (t) => { const m = String(t || "").match(/(\d{1,3})\s*days?/i); return m ? Number(m[1]) : /cash|advance|immediate/i.test(t || "") ? 0 : null; };
 const pick = (f, res) => { for (const re of res) for (const [k, v] of Object.entries(f)) if (re.test(k) && v && v !== "-") return v; return null; };
 
 // Returns the same shape the AI reader returns (see ai.js), or null if this isn't a readable order/bill
@@ -161,14 +176,25 @@ export async function parseOrderPdf(buffer, { ourName = "zidane" } = {}) {
   const reference = pick(f, docType === "customer_order" ? [/^p\.?\s?o\.?\s*(#|no\.?|number)$/, /^order\s*(#|no\.?)$/] : [/^(invoice|bill)\s*(#|no\.?|number)$/, /^inv\.?\s*#$/]);
   const date = parseDate(pick(f, [/^p\.?\s?o\.?\s*date$/, /^(invoice|bill|order)\s*date$/, /^date$/]));
   const required = parseDate(pick(f, docType === "customer_order" ? [/^delivery\s*date$/, /^required\s*(by|date)$/, /^due\s*date$/] : [/^due\s*date$/]));
-  const location = pick(f, [/^(dlv\.?|delivery)\s*location$/, /^ship\s*to$/, /^deliver\s*to$/]);
-  const terms = pick(f, [/^payment\s*terms$/, /^terms$/]);
+  // where to deliver: their address / store / warehouse, plus the plant or branch printed in the letterhead
+  const location = pick(f, [/^(dlv\.?|delivery)\s*(location|address)$/, /^ship\s*to$/, /^deliver\s*to$/, /^(store|warehouse|site)$/]);
+  const plant = rows.slice(0, 3).flatMap((r) => r.cells.map((c) => c.s)).find((s) => /^(plant|unit|branch|site|factory)\b/i.test(s)) || null;
+  const terms = pick(f, [/^payment\s*terms$/, /^terms\s*of\s*payment$/, /^credit\s*terms$/, /^terms$/]);
+  // the person on their side: named contact / buyer, else whoever prepared the PO
+  const buyer = pick(f, [/^(c\.?|contact)\s*person$/, /^buyer$/, /^attn\.?$/, /^attention$/]) || (docType === "customer_order" ? signedBy(rows, /^prepared\s*by$/i) : null);
+  const phone = pick(f, [/^contact\s*(#|no\.?)$/, /^(phone|tel|cell|mobile)(\s*(#|no\.?))?$/]);
+  // their tax numbers sit in the letterhead, above the "Supplier : ZIDANE …" block (which is about us)
+  const head = rows.slice(0, rows.findIndex((r) => /^(supplier|vendor|to|bill\s*to)\b/i.test(r.cells[0].s)) >>> 0 || 4).map((r) => r.cells.map((c) => c.s).join(" ")).join(" ");
+  const ntn = head.match(/\bNTN\s*(?:#|no\.?)?\s*:?\s*([\d][\d-]{4,})/i)?.[1] || null;
+  const strn = head.match(/\b(?:STRN|GST|S\.?T\.?\s*No)\s*(?:#|no\.?)?\s*:?\s*([\d][\d-]{6,})/i)?.[1] || null;
   const bad = lines.filter((l) => !l.checks).length;
   return {
     doc_type: docType,
     summary: `${docType === "customer_order" ? "PO" : "Bill"} ${reference || ""} from ${top || "unknown"}: ${lines.length} item${lines.length > 1 ? "s" : ""}, Rs ${Math.round(total).toLocaleString("en-PK")}`.replace(/\s+/g, " "),
-    party_name: top, party_match_id: null, reference, date, required_date: required, delivery_location: location, total,
-    notes: [terms && `Payment terms: ${terms}`, bad && `${bad} line(s) don't add up (qty × rate ≠ amount). Check them.`].filter(Boolean).join(". ") || null,
+    party_name: top, party_match_id: null, reference, date, required_date: required,
+    delivery_location: [location, plant && !(location || "").includes(plant) ? plant : null].filter(Boolean).join(", ") || null, total,
+    buyer_name: buyer, contact_phone: phone, payment_terms: terms, payment_terms_days: termsDays(terms), party_ntn: ntn, party_strn: strn, party_address: null,
+    notes: bad ? `${bad} line(s) don't add up (qty × rate ≠ amount). Check them.` : null,
     lines: lines.map((l) => ({ description: l.note ? `${l.description} (${l.note})` : l.description, code: l.code, qty: l.qty, unit: l.unit, rate: l.rate, tax_rate: null, item_match_id: null, match_confidence: "none" })),
     reader: "pdf-text",
   };

@@ -1,6 +1,7 @@
 // Matching what's on a customer's PO / supplier's bill to our own contacts and items, without AI, and remembering it.
 // Order of trust: what a person confirmed before (alias by the party's item code, then by their item name),
-// then our SKU equal to their code, then the same name, then a close name (marked "check").
+// then the same name, then a close name (marked "check"). Their item code is only a memory key: it is their numbering,
+// not ours, so it is never compared with our SKUs or shown.
 import { round2 } from "./books.js";
 
 export const norm = (s) => String(s || "").toLowerCase().replace(/\(?\b(pvt|private|ltd|limited|co|company|corp|corporation|the)\b\.?\)?/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
@@ -43,7 +44,6 @@ export function matchLines(db, contactId, lines) {
     if (contactId && l.code) id = alias("SELECT item_id FROM item_aliases WHERE contact_id = ? AND code = ?", contactId, l.code);
     if (!id && contactId) id = alias("SELECT item_id FROM item_aliases WHERE contact_id = ? AND name_norm = ?", contactId, norm(l.description));
     if (id) conf = "high";
-    if (!id && l.code) { id = items.find((i) => i.sku && norm(i.sku) === norm(l.code))?.id || null; if (id) conf = "high"; }
     if (!id) { id = items.find((i) => norm(i.name) === norm(l.description))?.id || null; if (id) conf = "high"; }
     if (!id) {
       let best = null, score = 0;

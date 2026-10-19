@@ -97,9 +97,15 @@ export function getMessage(db, user, id) {
   if (!m || !allowed(user, m)) throw httpError(404, "Not found");
   const x = m.extraction ? JSON.parse(m.extraction) : null;
   // costs on a supplier bill stay away from Sales, selling rates on an order away from Operations
-  if (x && ((x.doc_type === "supplier_bill" && !can(user, "cost.view")) || (x.doc_type === "customer_order" && !can(user, "price.view")))) x.lines = x.lines.map((l) => ({ ...l, rate: null })), x.total = null;
+  // (payment terms are money talk too)
+  if (x && ((x.doc_type === "supplier_bill" && !can(user, "cost.view")) || (x.doc_type === "customer_order" && !can(user, "price.view")))) {
+    x.lines = x.lines.map((l) => ({ ...l, rate: null }));
+    x.total = x.payment_terms = x.payment_terms_days = null;
+  }
   if (x) {
-    x.party_match_name = x.party_match_id ? db.prepare("SELECT name FROM contacts WHERE id = ?").get(x.party_match_id)?.name : null;
+    const party = x.party_match_id ? db.prepare("SELECT name, payment_terms_days FROM contacts WHERE id = ?").get(x.party_match_id) : null;
+    x.party_match_name = party?.name || null;
+    x.party_terms_days = x.payment_terms != null ? party?.payment_terms_days ?? null : null;
     x.lines = x.lines.map((l) => ({ ...l, item_name: l.item_match_id ? db.prepare("SELECT name FROM items WHERE id = ?").get(l.item_match_id)?.name : null }));
   }
   return { ...m, extraction: x, files: db.prepare("SELECT id, filename, mime, size FROM inbox_files WHERE inbox_id = ?").all(id) };

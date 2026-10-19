@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { addDays, api, Field, KIND, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import Picker from "../components/Picker.jsx";
-import { cleanLine, createMissingItems, learnedLines, missingLines } from "../components/draftLines.js";
+import { cleanLine, createMissingItems, learnedLines, missingLines, partyPreset } from "../components/draftLines.js";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import { readFiles } from "./Inbox.jsx";
@@ -34,6 +34,7 @@ export default function DocumentForm({ kind }) {
   const [addingContact, setAddingContact] = useState(null); // null, or the name typed in the picker
   const [addingItem, setAddingItem] = useState(null); // null, or { line, name, preset }
   const [aiParty, setAiParty] = useState(null); // customer/supplier named on the paper that isn't in our contacts yet
+  const [partyInfo, setPartyInfo] = useState({}); // what the paper says about them (buyer, terms, NTN)
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   // AI draft: from the orders inbox (?inbox=ID) or a bill photo read on this page
@@ -71,13 +72,16 @@ export default function DocumentForm({ kind }) {
     if (!draft || !doc || !items.data) return;
     const x = draft;
     setAiParty(!x.party_match_id && x.party_name ? x.party_name : null);
+    setPartyInfo(partyPreset(x));
+    const termsDue = x.payment_terms_days != null && ["invoice", "bill"].includes(kind) ? addDays(x.date || today(), x.payment_terms_days) : null;
     setDoc((d) => ({
       ...d,
       contact_id: x.party_match_id ? String(x.party_match_id) : d.contact_id,
       date: x.date || d.date,
-      due_date: kind === "bill" && x.required_date ? x.required_date : d.due_date,
+      due_date: kind === "bill" && x.required_date ? x.required_date : termsDue || d.due_date,
       reference: x.reference || d.reference,
-      notes: [d.notes, !x.party_match_id && x.party_name ? `${isSale ? "Customer" : "Supplier"} on paper: ${x.party_name}` : null, kind !== "bill" && x.required_date ? `Needed by ${x.required_date}` : null, x.notes].filter(Boolean).join("\n"),
+      terms: x.payment_terms ? `Payment terms: ${x.payment_terms}` : d.terms,
+      notes: [d.notes, !x.party_match_id && x.party_name ? `${isSale ? "Customer" : "Supplier"} on paper: ${x.party_name}` : null, kind !== "bill" && x.required_date ? `Needed by ${x.required_date}` : null, x.buyer_name ? `${isSale ? "Buyer" : "Contact"}: ${[x.buyer_name, x.contact_phone].filter(Boolean).join(", ")}` : null, x.delivery_location ? `Deliver to: ${x.delivery_location}` : null, x.notes].filter(Boolean).join("\n"),
       lines: x.lines.length ? x.lines.map((l) => {
         const it = items.data.find((i) => i.id === l.item_match_id);
         return { ...blankLine(), item_id: it ? it.id : "", description: it ? "" : [l.description, l.unit].filter(Boolean).join(" · "), qty: l.qty,
@@ -262,7 +266,7 @@ export default function DocumentForm({ kind }) {
         const keepQty = target >= 0 ? doc.lines[at]?.qty : null;
         setTimeout(() => { pickItem(at, newId, list); if (keepQty) setLine(at, { qty: keepQty, ai: null }); }, 0);
       }} />}
-      {addingContact !== null && <ContactForm type={K.contact} presetName={addingContact} onClose={() => setAddingContact(null)} onSaved={(cid) => { setAddingContact(null); setAiParty(null); contacts.reload(); pickContact(String(cid)); }} />}
+      {addingContact !== null && <ContactForm type={K.contact} presetName={addingContact} preset={addingContact === aiParty ? partyInfo : {}} onClose={() => setAddingContact(null)} onSaved={(cid) => { setAddingContact(null); setAiParty(null); contacts.reload(); pickContact(String(cid)); }} />}
     </>
   );
 }

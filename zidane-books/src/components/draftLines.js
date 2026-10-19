@@ -13,7 +13,7 @@ export async function createMissingItems(lines, rateField) {
   for (let i = 0; i < out.length; i++) {
     const l = out[i];
     if (l.item_id || !l.ai_text) continue;
-    const r = await api("/items", { method: "POST", body: { name: l.ai_text, sku: l.ai_code || "", unit: unitOf(l.ai_unit), [rateField]: l.ai_rate ?? 0, tax_rate: 0, track_stock: true } });
+    const r = await api("/items", { method: "POST", body: { name: l.ai_text, unit: unitOf(l.ai_unit), [rateField]: l.ai_rate ?? 0, tax_rate: 0, track_stock: true } });
     out[i] = { ...l, item_id: r.id, description: "", ai: null };
   }
   return out;
@@ -21,6 +21,12 @@ export async function createMissingItems(lines, rateField) {
 
 // what was chosen for each paper line, so the same code/name matches by itself next time
 export const learnedLines = (lines) => lines.filter((l) => l.ai_text && l.item_id).map((l) => ({ code: l.ai_code || null, description: l.ai_text, item_id: Number(l.item_id) }));
+
+// a new customer/supplier from the paper: the details it prints about them
+export const partyPreset = (x) => !x ? {} : Object.fromEntries(Object.entries({
+  company: x.buyer_name, phone: x.contact_phone, address: x.party_address, ntn: x.party_ntn,
+  payment_terms_days: x.payment_terms_days ?? null, notes: x.party_strn ? `STRN ${x.party_strn}` : null,
+}).filter(([, v]) => v != null && v !== ""));
 
 // strip the helper fields before saving
 export const cleanLine = ({ ai, ai_text, ai_unit, ai_rate, ai_code, ...x }) => x;
