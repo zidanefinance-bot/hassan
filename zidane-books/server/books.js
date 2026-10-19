@@ -94,14 +94,53 @@ export const KIND_STATUSES = {
   bill: ["draft", "open", "void"],
 };
 
+// Which status may follow which. "signed" (DC), "converted" (quote → Job) and "billed" (PO → bill) are only set by
+// their own actions. Going back from open/issued is allowed only while nothing is paid or applied against it.
+const TRANSITIONS = {
+  quote: { enquiry: ["draft", "sent", "declined"], draft: ["enquiry", "sent", "declined"], sent: ["draft", "accepted", "declined"], accepted: ["sent", "declined"], declined: ["draft"], converted: [] },
+  dc: { draft: ["issued", "void"], issued: ["void"], signed: [], void: [] },
+  invoice: { draft: ["open", "void"], open: ["draft", "void"], void: [] },
+  bill: { draft: ["open", "void"], open: ["draft", "void"], void: [] },
+  credit_note: { draft: ["open", "void"], open: ["draft", "void"], void: [] },
+  vendor_credit: { draft: ["open", "void"], open: ["draft", "void"], void: [] },
+  po: { draft: ["issued", "cancelled"], issued: ["draft", "cancelled"], billed: [], cancelled: ["draft"] },
+};
+export function checkTransition(db, doc, status, { admin = false } = {}) {
+  if (status === doc.status) return;
+  if (!KIND_STATUSES[doc.kind].includes(status)) throw httpError(400, `Invalid status for ${doc.kind}`);
+  const ok = TRANSITIONS[doc.kind][doc.status]?.includes(status) || (admin && doc.status === "void" && status === "draft");
+  if (!ok) throw httpError(400, `A ${doc.status} ${doc.kind.replace("_", " ")} can't be changed to ${status}`);
+  if (doc.verified_at && !admin) throw httpError(403, "This document is verified by Accounts. Ask a director to change it.");
+  if (["open", "issued"].includes(doc.status)) {
+    if (paidAmount(db, doc.id) > 0) throw httpError(400, "Payments are applied to it. Unapply them first.");
+    if (creditUsed(db, doc.id) > 0) throw httpError(400, "This credit has been applied or refunded. Undo that first.");
+  }
+}
+
 // create or update a document with its lines (and stock effects) in one transaction
 export function saveDocument(db, userId, input, id = null) {
   const kind = input.kind;
   if (!KIND_STATUSES[kind]) throw httpError(400, "Unknown document kind");
   if (!input.contact_id) throw httpError(400, "Contact is required");
   if (!Array.isArray(input.lines) || input.lines.length === 0) throw httpError(400, "Add at least one line");
-  const status = input.status || "draft";
+  const existing = id ? db.prepare("SELECT * FROM documents WHERE id = ?").get(id) : null;
+  // an update without a status keeps the current one (it must never quietly turn an issued document into a draft)
+  const status = input.status || existing?.status || "draft";
   if (!KIND_STATUSES[kind].includes(status)) throw httpError(400, `Invalid status for ${kind}`);
+  if (!existing && ["signed", "converted", "billed"].includes(status)) throw httpError(400, `A new ${kind} can't start as ${status}`);
+  if (existing) {
+    if (existing.kind === "quote" && existing.status === "converted") throw httpError(400, "This quote is already a Job. Change the Job instead.");
+    if (existing.kind === "dc" && existing.status === "signed") throw httpError(400, "The customer has signed this delivery challan. It can't be changed.");
+    if (existing.kind === "po" && existing.status === "billed") throw httpError(400, "This purchase order is already billed. Change the bill instead.");
+    if (status !== existing.status) checkTransition(db, existing, status, { admin: input._admin });
+    if (Number(input.contact_id) !== existing.contact_id && (paidAmount(db, id) > 0 || creditUsed(db, id) > 0)) throw httpError(400, "Payments or credits are applied to it, so the customer/supplier can't change");
+  }
+  const jobId = input.job_id === undefined ? existing?.job_id : input.job_id || null;
+  if (jobId && jobId !== existing?.job_id && db.prepare("SELECT closed FROM jobs WHERE id = ?").get(jobId)?.closed) throw httpError(400, "That Job is closed");
+  if (kind === "bill" && input.reference?.trim()) {
+    const dup = db.prepare("SELECT number FROM documents WHERE kind = 'bill' AND contact_id = ? AND lower(trim(reference)) = lower(trim(?)) AND status != 'void' AND id != ?").get(input.contact_id, input.reference, id || 0);
+    if (dup) throw httpError(400, `This supplier's bill # ${input.reference.trim()} is already recorded as ${dup.number}`);
+  }
   const calc = computeTotals(input.lines, input);
   const isUpdate = Boolean(id);
   const returnStock = input.return_stock === false || input.return_stock === 0 ? 0 : 1;
@@ -141,15 +180,15 @@ export function saveDocument(db, userId, input, id = null) {
   });
 }
 
-export function setStatus(db, userId, id, status) {
+export function setStatus(db, userId, id, status, { admin = false } = {}) {
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
   if (!doc) throw httpError(404, "Not found");
-  if (!KIND_STATUSES[doc.kind].includes(status)) throw httpError(400, `Invalid status for ${doc.kind}`);
-  if (status === "void" && paidAmount(db, id) > 0) throw httpError(400, "Unapply the payments before voiding");
-  if (status === "void" && creditUsed(db, id) > 0) throw httpError(400, "Unapply or reverse the uses of this credit before voiding");
+  if (status === doc.status) return;
+  checkTransition(db, doc, status, { admin });
   return tx(db, () => {
     reverseStock(db, id);
     db.prepare("UPDATE documents SET status = ? WHERE id = ?").run(status, id);
+    if (status === "draft" || status === "void") db.prepare("UPDATE documents SET verified_at = NULL, verified_by = NULL WHERE id = ?").run(id);
     const lines = db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(id);
     applyStock(db, { ...doc, status }, lines);
     log(db, userId, `marked ${status}`, doc.kind, id, doc.number);
@@ -173,6 +212,9 @@ export function deleteDocument(db, userId, id) {
 export function convertDocument(db, userId, id) {
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
   if (!doc || doc.kind !== "po") throw httpError(400, "Only purchase orders can be converted to bills");
+  if (doc.status !== "issued") throw httpError(400, doc.status === "billed" ? "This purchase order is already billed" : "Issue the purchase order before turning it into a bill");
+  const child = db.prepare("SELECT number FROM documents WHERE source_id = ? AND kind = 'bill' AND status != 'void'").get(id);
+  if (child) throw httpError(400, `Already billed as ${child.number}`);
   const target = "bill";
   const lines = db.prepare("SELECT item_id, description, qty, rate, discount_pct, tax_rate FROM document_lines WHERE document_id = ?").all(id);
   const days = getSetting(db, "paymentTermsDays") || 0;

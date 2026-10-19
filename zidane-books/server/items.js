@@ -2,8 +2,10 @@
 import { tx } from "./db.js";
 import { adjustStock, httpError, log, round2, today } from "./books.js";
 
-const SALES_KINDS = ["quote", "dc", "invoice"];
-const BUY_KINDS = ["po", "bill"];
+import { DOC_READ } from "./collab.js";
+
+const SALES_KINDS = ["quote", "dc", "invoice", "credit_note"];
+const BUY_KINDS = ["po", "bill", "vendor_credit"];
 const CHANGE_FIELDS = { name: "name", sku: "SKU", unit: "unit", category: "category", purchase_rate: "purchase rate", sale_rate: "selling rate", tax_rate: "tax %", reorder_level: "reorder level" };
 
 // kinds the viewer may see, from their caps
@@ -79,8 +81,9 @@ export function itemHistory(db, itemId, can = () => true) {
 export function shapeMoves(moves, can) {
   return moves.map((m) => {
     if (!m.document_kind) return m;
-    const visible = SALES_KINDS.includes(m.document_kind) ? can("sales.read") : can("ops.read");
-    return visible ? m : { ...m, reason: SALES_KINDS.includes(m.document_kind) ? "delivered to customer" : "purchase received", document_id: null, document_kind: null };
+    if ((DOC_READ[m.document_kind] || ["admin"]).some(can)) return m;
+    const out = { credit_note: "returned by customer", vendor_credit: "returned to supplier", dc: "delivered to customer", invoice: "delivered to customer" }[m.document_kind] || "purchase received";
+    return { ...m, reason: out, document_id: null, document_kind: null };
   });
 }
 

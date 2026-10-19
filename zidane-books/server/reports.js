@@ -141,7 +141,7 @@ export function home(db, user, can, { from, to } = {}) {
   if (can("buy")) {
     const plist = procurementList(db);
     queues.push(
-      q("Operations", "newjob", "New Jobs to start", jobs.filter((j) => j.ops_status === "new").map((j) => jobItem(j, `${j.item_count} items · start procurement`)), "red"),
+      q("Operations", "newjob", "New Jobs to start", jobs.filter((j) => can("ops.write") && j.ops_status === "new").map((j) => jobItem(j, `${j.item_count} items · start procurement`)), "red"),
       q("Operations", "buy", "Items to buy", plist.map((g) => ({ label: `${g.name} · ${g.total_qty} ${g.unit}`, sub: `${g.jobs.length} job(s)${g.earliest ? ` · needed by ${g.earliest}` : ""}`, link: "/procurement", due: g.earliest }))),
       q("Operations", "late", "Deadline in 2 days, material not ready", jobs.filter((j) => j.required_date && j.required_date <= soon(2) && step(j.ops_status) < step("material_ready")).map((j) => jobItem(j, j.ops_status.replace(/_/g, " "))), "red"),
       q("Operations", "nobill", "Purchased but no supplier bill", jobs.filter((j) => ["partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"].includes(j.ops_status) && j.bill_count === 0).map((j) => jobItem(j, "Add the supplier bill"))),
@@ -168,7 +168,7 @@ export function home(db, user, can, { from, to } = {}) {
     const minPct = getSetting(db, "lowMarginPct") ?? 8;
     const recent = db.prepare("SELECT j.id, j.number, j.customer_po_number, c.name AS customer_name, j.required_date FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE j.closed = 0 OR date(j.created_at) >= date(?, '-60 days')").all(t)
       .map((j) => ({ ...j, e: jobEconomics(db, j.id) })).filter((j) => !j.e.cost_pending && j.e.margin_pct < minPct);
-    queues.push(q("Director", "margin", `Jobs below ${minPct}% margin`, recent.map((j) => ({ label: `${j.number}${j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""} · ${j.customer_name}`, sub: `${j.e.gross_profit < 0 ? "Loss" : "Margin"} ${j.e.margin_pct}% · profit Rs ${j.e.gross_profit.toLocaleString("en-PK")}`, link: `/jobs/${j.id}` })), "red"));
+    queues.push(q(can("admin") ? "Director" : "Margins", "margin", `Jobs below ${minPct}% margin`, recent.map((j) => ({ label: `${j.number}${j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""} · ${j.customer_name}`, sub: `${j.e.gross_profit < 0 ? "Loss" : "Margin"} ${j.e.margin_pct}% · profit Rs ${j.e.gross_profit.toLocaleString("en-PK")}`, link: `/jobs/${j.id}` })), "red"));
   }
   if (can("verify") || can("money")) {
     queues.push(

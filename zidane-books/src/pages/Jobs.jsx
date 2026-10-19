@@ -10,6 +10,9 @@ import Picker from "../components/Picker.jsx";
 import { contactOptions, itemOptions } from "./DocumentForm.jsx";
 
 const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey" };
+// buying status of a Job line, in words everyone understands (not invoice words like "paid" / "overdue")
+const PROC = { to_buy: ["To buy", "amber"], partial: ["Partly bought", "amber"], bought: ["Bought", "green"], from_stock: ["From our stock", "green"], not_available: ["Not available", "red"] };
+const ProcBadge = ({ s }) => <span className={`badge ${PROC[s]?.[1] || "grey"}`}>{PROC[s]?.[0] || label(s)}</span>;
 
 export default function Jobs() {
   const [q, setQ] = useState("");
@@ -180,7 +183,8 @@ export function JobView() {
   const toast = useToast();
   const [cost, setCost] = useState(false);
   const [deliver, setDeliver] = useState(false);
-  const act = async (fn, msg) => { try { const r = await fn(); if (msg) toast(msg); state.reload(); return r; } catch (x) { toast(x.message, "err"); } };
+  // reload on failure too, so a refused change (e.g. a status dropdown) snaps back to what's saved
+  const act = async (fn, msg) => { try { const r = await fn(); if (msg) toast(msg); state.reload(); return r; } catch (x) { toast(x.message, "err"); state.reload(); } };
   return (
     <Loading state={state}>{(j) => {
       const step = OPS_STEPS.indexOf(j.ops_status);
@@ -191,11 +195,13 @@ export function JobView() {
           <PageHead title={<>{j.number}{j.customer_po_number && <span className="po-tag">PO {j.customer_po_number}</span>} <Badge status={j.ops_status} /></>} sub={`${j.customer_name}${j.customer_po_date ? ` · PO dated ${fmtDate(j.customer_po_date)}` : ""} · created by ${j.created_by_name || "—"}`}>
             {can("ops.write") && j.ops_status === "new" && <button className="btn primary" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "procurement_started" } }), "Procurement started")}>Start procurement</button>}
             {can("ops.write") && step >= 1 && step < 4 && <button className="btn primary" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "material_ready" } }), "Sales has been told material is ready")}>Mark material ready</button>}
-            {can("ops.write") && nextOps && step >= 4 && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}
+            {can("ops.write") && step === 4 && !j.documents.some((d) => d.kind === "dc" && d.status !== "draft" && d.status !== "void") && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "procurement_started" } }), "Moved back to procurement")}>Not ready after all</button>}
+            {can("ops.write") && nextOps && step >= 4 && nextOps !== "delivered" && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}
             {can("buy") && <Link className="btn" to={`/bills/new?job=${id}`}>+ Supplier bill</Link>}
             {can("buy") && <button className="btn" onClick={() => setCost(true)}>+ Freight / direct cost</button>}
-            {can("sales.write") && step >= 4 && j.items.some((it) => it.delivered_qty < it.qty) && <button className="btn primary" onClick={() => setDeliver(true)}>Material arrived → DC + invoice</button>}
-            {can("sales.write") && <button className={`btn ${step >= 4 ? "" : "primary"}`} onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
+            {can("sales.write") && !j.closed && step >= 4 && j.items.some((it) => it.procurement_status !== "not_available" && it.delivered_qty < it.qty) && <button className="btn primary" onClick={() => setDeliver(true)}>Material arrived → DC + invoice</button>}
+            {can("sales.write") && !j.closed && (step >= 4 || can("admin")) && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
+            {can("sales.write") && !j.closed && step < 4 && <span className="muted small self-center">DC unlocks when Operations marks the material ready</span>}
             {can("sales.write") && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/invoice`, { method: "POST" }), "Draft invoice created"); if (r) nav(`/invoices/${r.id}`); }}>Create invoice</button>}
             {can("admin") && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/close`, { method: "POST", body: { closed: !j.closed } }), j.closed ? "Job reopened" : "Job closed")}>{j.closed ? "Reopen" : "Close job"}</button>}
           </PageHead>
@@ -224,7 +230,7 @@ export function JobView() {
                   <dt className="indent">Freight & direct costs</dt><dd className="muted">− {money(j.economics.direct_costs)}</dd>
                   <dt className="grand">Gross profit</dt><dd className={`grand ${j.economics.gross_profit < 0 ? "neg" : "pos"}`}>{money(j.economics.gross_profit)} <small className="muted">({j.economics.margin_pct}%)</small></dd>
                 </dl>
-                {j.economics.cost_pending && <p className="neg small">Purchase cost pending: no supplier bill on this Job yet.</p>}
+                {j.economics.cost_pending && <p className="neg small">{j.economics.cost_pending_reason === "no_bill" ? "Profit not final: no supplier bill on this Job yet." : "Profit not final: some items are still to buy."}</p>}
               </section>
             ) : (
               <section className="card"><h3>Documents</h3>{j.documents.length === 0 ? <p className="muted">None yet.</p> : <DocList docs={j.documents} />}</section>
@@ -242,11 +248,11 @@ export function JobView() {
                   {can("price.view") && <td className="r">{it.sale_rate ? money(it.sale_rate) : <span className="neg">rate pending</span>}</td>}
                   {can("cost.view") && <td className="r">{it.purchase_rate ? money(it.purchase_rate) : "—"}</td>}
                   <td>
-                    {can("buy") ? (
-                      <select className="inline" value={it.procurement_status} onChange={(e) => act(() => api(`/job-items/${it.id}/procurement`, { method: "POST", body: { status: e.target.value } }), "Updated")}>
-                        {["to_buy", "partial", "bought", "not_available", "from_stock"].map((s) => <option key={s} value={s}>{label(s)}</option>)}
+                    {can("buy") && !j.closed && !(it.delivered_qty > 0) && !(step >= 4 && ["bought", "from_stock"].includes(it.procurement_status)) ? (
+                      <select className="inline" value={it.procurement_status} onChange={(e) => act(() => api(`/job-items/${it.id}/procurement`, { method: "POST", body: { status: e.target.value } }), `Marked ${PROC[e.target.value][0].toLowerCase()}`)}>
+                        {Object.entries(PROC).map(([s, [l]]) => <option key={s} value={s}>{l}</option>)}
                       </select>
-                    ) : <Badge status={it.procurement_status === "to_buy" ? "open" : it.procurement_status === "bought" || it.procurement_status === "from_stock" ? "paid" : it.procurement_status === "not_available" ? "overdue" : "partial"} />}
+                    ) : <ProcBadge s={it.procurement_status} />}
                   </td>
                   <td className="r">{num(it.purchased_qty)}</td>
                   {can("sales.read") && <td className="r">{num(it.delivered_qty)}</td>}

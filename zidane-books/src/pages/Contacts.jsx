@@ -50,10 +50,10 @@ export default function Contacts({ type }) {
       </PageHead>
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No {title.toLowerCase()} yet. Add your first one.</div> : (
         <div className="card flush"><table className="table">
-          <thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th className="r">{type === "customer" ? "Receivable" : "Payable"}</th></tr></thead>
+          <thead><tr><th>Name</th><th>Contact</th><th>Phone</th>{rows[0]?.outstanding !== undefined && <th className="r">{type === "customer" ? "Receivable" : "Payable"}</th>}</tr></thead>
           <tbody>{rows.map((c) => (
             <tr key={c.id} className="click" onClick={() => nav(`/contacts/${c.id}`)}>
-              <td><b>{c.name}</b></td><td className="muted">{c.company}</td><td>{c.phone}</td><td className={`r ${c.outstanding > 0 ? "neg" : ""}`}>{money(c.outstanding)}</td>
+              <td><b>{c.name}</b></td><td className="muted">{c.company}</td><td>{c.phone}</td>{c.outstanding !== undefined && <td className={`r ${c.outstanding > 0 ? "neg" : ""}`}>{money(c.outstanding)}</td>}
             </tr>
           ))}</tbody>
         </table></div>
@@ -135,13 +135,13 @@ export function ContactView() {
                 <dt>Email</dt><dd>{c.email || "—"}</dd><dt>Address</dt><dd>{c.address || "—"}</dd><dt>NTN</dt><dd>{c.ntn || "—"}</dd><dt>Notes</dt><dd>{c.notes || "—"}</dd>
               </dl>
             </section>
-            <section className="card stat big"><small>{isCust ? "They owe you" : "You owe them"}</small><b className={outstanding > 0 ? "neg" : ""}>{money(outstanding)}</b>
+            {!c.money_hidden && <section className="card stat big"><small>{isCust ? "They owe you" : "You owe them"}</small><b className={outstanding > 0 ? "neg" : ""}>{money(outstanding)}</b>
               {c.credits > 0 && <span className="pos">{isCust ? "Customer advance (unused):" : "Our advance with them (unused):"} <b>{money(c.credits)}</b></span>}
               {c.credits > 0 && outstanding > 0 && <span className="muted small">Open an {isCust ? "invoice" : "bill"} and use "Apply credits" to adjust it.</span>}
               {c.credit && <span className={c.credit.over ? "neg small" : "muted small"}>Credit limit {money(c.credit.limit)} · used {money(c.credit.owed)}</span>}
-              {(c.payment_terms_days ?? null) !== null && <span className="muted small">Terms: {c.payment_terms_days} days</span>}</section>
+              {(c.payment_terms_days ?? null) !== null && <span className="muted small">Terms: {c.payment_terms_days} days</span>}</section>}
           </div>
-          <div className="tabs">{[["transactions", "Transactions"], ["statement", "Statement / ledger"], ...(c.payments.length ? [["payments", `Payments (${c.payments.length})`]] : [])].map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>
+          <div className="tabs">{[["transactions", "Transactions"], ...(c.money_hidden ? [] : [["statement", "Statement / ledger"]]), ...(c.payments.length ? [["payments", `Payments (${c.payments.length})`]] : [])].map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>
           {tab === "statement" && <Statement contactId={c.id} isCust={isCust} />}
           {tab === "payments" && (
             <section className="card flush"><table className="table">
@@ -161,7 +161,7 @@ export function ContactView() {
                 <tbody>{c.documents.map((d) => (
                   <tr key={d.id} className="click" onClick={() => nav(`/${KIND[d.kind].path}/${d.id}`)}>
                     <td>{fmtDate(d.date)}</td><td>{KIND[d.kind].label}</td><td>{d.number}</td><td><Badge status={d.display_status} /></td><td className="r">{d.kind === "dc" ? "" : money(d.total)}</td>
-                    <td className="r">{["invoice", "bill"].includes(d.kind) && d.status === "open" ? money(d.total - d.paid) : ""}</td>
+                    <td className="r">{["invoice", "bill"].includes(d.kind) && d.status === "open" && d.paid !== undefined ? money(d.total - d.paid) : ""}</td>
                   </tr>
                 ))}</tbody></table>
             )}

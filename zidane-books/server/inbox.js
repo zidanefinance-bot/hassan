@@ -24,9 +24,12 @@ const visibleTypes = (user) => {
   return t;
 };
 export const canUseInbox = (user) => can(user, "admin") || can(user, "sales.write") || can(user, "buy");
+// not yet read (or not an order): only directors and whoever added it, so a supplier's rates never reach Sales by accident
 const allowed = (user, row) => {
   const t = visibleTypes(user);
-  return t === null || !row.doc_type || row.doc_type === "other" || t.includes(row.doc_type);
+  if (t === null) return true;
+  if (!row.doc_type || row.doc_type === "other") return row.created_by === user.id;
+  return t.includes(row.doc_type);
 };
 
 export function addMessage(db, uploadDir, { source, message_id = null, from_addr = null, subject = null, body_text = "", received_at = null, files = [], created_by = null }) {
@@ -71,7 +74,7 @@ let queue = Promise.resolve();
 export const enqueue = (db, uploadDir, id) => { queue = queue.then(() => processMessage(db, uploadDir, id)).catch(() => {}); return queue; };
 
 export function listInbox(db, user, { status = "" } = {}) {
-  const rows = db.prepare(`SELECT m.id, m.source, m.from_addr, m.subject, m.received_at, m.status, m.doc_type, m.extraction, m.error, m.result_kind, m.result_id,
+  const rows = db.prepare(`SELECT m.id, m.source, m.created_by, m.from_addr, m.subject, m.received_at, m.status, m.doc_type, m.extraction, m.error, m.result_kind, m.result_id,
       (SELECT COUNT(*) FROM inbox_files f WHERE f.inbox_id = m.id) AS file_count
     FROM inbox_messages m WHERE (? = '' OR m.status = ?) ORDER BY m.id DESC LIMIT 300`).all(status, status);
   return rows.filter((r) => allowed(user, r)).map((r) => {
@@ -94,7 +97,7 @@ export function getMessage(db, user, id) {
 }
 
 export function inboxFile(db, user, fileId) {
-  const f = db.prepare("SELECT f.*, m.doc_type FROM inbox_files f JOIN inbox_messages m ON m.id = f.inbox_id WHERE f.id = ?").get(fileId);
+  const f = db.prepare("SELECT f.*, m.doc_type, m.created_by FROM inbox_files f JOIN inbox_messages m ON m.id = f.inbox_id WHERE f.id = ?").get(fileId);
   if (!f || !allowed(user, f)) throw httpError(404, "Not found");
   return f;
 }

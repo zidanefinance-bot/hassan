@@ -19,9 +19,11 @@ export default function Documents({ kind }) {
   const [status, setStatus] = useState("all");
   const state = useLoad(`/documents?kind=${kind}&q=${encodeURIComponent(q)}${status !== "all" ? `&status=${status}` : ""}`);
   const nav = useNavigate();
-  const money_ = ["invoice", "bill", "credit_note", "vendor_credit"].includes(kind);
-  const isCredit = ["credit_note", "vendor_credit"].includes(kind);
   const { can } = useAuth();
+  // balances and due dates are for whoever handles that money (Accounts; Sales for customers)
+  const seesMoney = can("money") || can("admin") || (K.contact === "customer" && can("sales.read"));
+  const money_ = ["invoice", "bill", "credit_note", "vendor_credit"].includes(kind) && seesMoney;
+  const isCredit = ["credit_note", "vendor_credit"].includes(kind);
   return (
     <>
       <PageHead title={K.plural}>
@@ -29,7 +31,7 @@ export default function Documents({ kind }) {
         {kind === "quote" && can("sales.write") && <Link className="btn" to="/quotes/new?enquiry=1">+ New Enquiry</Link>}
         {WRITE[kind].some(can) && kind !== "dc" && <Link className="btn primary" to={`/${K.path}/new`}>+ New {K.label}</Link>}
       </PageHead>
-      <div className="tabs">{FILTERS[kind].map((s) => <button key={s} className={status === s ? "active" : ""} onClick={() => setStatus(s)}>{s}</button>)}</div>
+      <div className="tabs">{FILTERS[kind].filter((s) => seesMoney || !["partial", "overdue", "paid", "closed"].includes(s)).map((s) => <button key={s} className={status === s ? "active" : ""} onClick={() => setStatus(s)}>{s}</button>)}</div>
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">Nothing here yet.</div> : (
         <div className="card flush"><table className="table">
           <thead><tr><th>Date</th><th>Number</th><th>{K.contact === "customer" ? "Customer" : "Supplier"}</th><th>{K.contact === "customer" ? "Job / Customer PO" : "Job / Ref"}</th><th>Status</th>{money_ && <th>{isCredit ? "Ref" : "Due"}</th>}<th className="r">Total</th>{money_ && <th className="r">{isCredit ? "Unused" : "Balance"}</th>}</tr></thead>

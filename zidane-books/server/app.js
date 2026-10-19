@@ -37,6 +37,10 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   const need = (user, perms) => { if (!canAny(user, Array.isArray(perms) ? perms : [perms])) throw httpError(403, "You don't have access to this"); };
   const id = (req) => Number(req.params.id);
   const cans = (req) => (p) => can(req.user, p);
+  // who may see money (payments, balances, paid/overdue) for a side: Accounts and directors always; Sales for customers,
+  // since they chase collections. Operations and purchasers see what was bought, not what was paid.
+  const seesMoney = (user, side) => can(user, "money") || can(user, "admin") || (side === "customer" && can(user, "sales.read"));
+  const SIDE = { quote: "customer", invoice: "customer", dc: "customer", credit_note: "customer", po: "supplier", bill: "supplier", vendor_credit: "supplier" };
   // selling rate is Sales/Accounts/Director only; purchase cost is Operations/Accounts/Director only
   const shapeItem = (req, i) => {
     const out = { ...i };
@@ -135,7 +139,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
         + COALESCE((SELECT SUM(${B.CREDIT_UNUSED_SQL}) FROM documents d WHERE d.contact_id = c.id AND d.kind IN ('credit_note','vendor_credit') AND d.status = 'open'), 0) AS credits
       FROM contacts c WHERE (? IS NULL OR c.type = ?) AND (c.name LIKE ? OR IFNULL(c.company,'') LIKE ? OR IFNULL(c.phone,'') LIKE ?) ORDER BY c.name`)
       .all(type || null, type || null, q, q, q);
-    res.json(rows.filter((c) => canAny(req.user, CONTACT_READ[c.type])).map((c) => ({ ...c, outstanding: round2(c.outstanding), credits: round2(c.credits) })));
+    res.json(rows.filter((c) => canAny(req.user, CONTACT_READ[c.type])).map((c) => (seesMoney(req.user, c.type)
+      ? { ...c, outstanding: round2(c.outstanding), credits: round2(c.credits) } : { ...c, outstanding: undefined, credits: undefined, opening_balance: undefined })));
   });
   api.get("/contacts/:id", (req, res) => {
     const c = db.prepare("SELECT * FROM contacts WHERE id = ?").get(id(req));
@@ -146,6 +151,9 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const jobs = c.type === "customer" ? db.prepare("SELECT id, number, ops_status, required_date, closed FROM jobs WHERE customer_id = ? ORDER BY id DESC").all(c.id) : [];
     const payments = db.prepare(`SELECT p.*, ${B.UNUSED_SQL} AS unused FROM payments p WHERE contact_id = ? ORDER BY date DESC, id DESC`).all(c.id).map((p) => ({ ...p, unused: round2(p.unused) }));
     const credits = B.contactCredits(db, c.id);
+    if (!seesMoney(req.user, c.type)) {
+      return res.json({ ...c, opening_balance: undefined, documents: docs.map((d) => ({ ...d, paid: undefined, display_status: d.status })), jobs, payments: [], credits: null, credit: null, money_hidden: true });
+    }
     res.json({ ...c, documents: docs, jobs, payments, credits: round2(credits.reduce((a, x) => a + x.unused, 0)), credit: c.type === "customer" ? B.creditStatus(db, c.id) : null });
   });
   api.get("/contacts/:id/credit-status", (req, res) => { need(req.user, ["sales.read", "money"]); res.json(B.creditStatus(db, id(req), Number(req.query.extra) || 0)); });
@@ -154,6 +162,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const c = db.prepare("SELECT type FROM contacts WHERE id = ?").get(id(req));
     if (!c) throw httpError(404, "Not found");
     need(req.user, [...CONTACT_READ[c.type], "money"]);
+    if (!seesMoney(req.user, c.type)) throw httpError(403, "Statements are for Accounts");
     res.json({ ...B.statement(db, id(req), req.query.from || undefined, req.query.to || undefined), company: B.getSetting(db, "company") });
   });
   api.get("/contacts/:id/open-documents", (req, res) => {
@@ -243,7 +252,11 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
 
   // ---- jobs
   const needJobs = (req) => need(req.user, ["sales.read", "ops.read"]);
-  api.get("/jobs", (req, res) => { needJobs(req); res.json(J.jobList(db, req.query)); });
+  api.get("/jobs", (req, res) => {
+    needJobs(req);
+    const sales = can(req.user, "sales.read"), ops = can(req.user, "ops.read");
+    res.json(J.jobList(db, req.query).map((j) => ({ ...j, ...(sales ? {} : { dc_count: undefined, signed_dc_count: undefined, invoice_count: undefined }), ...(ops ? {} : { bill_count: undefined }) })));
+  });
   api.get("/jobs/:id", (req, res) => { needJobs(req); res.json(J.jobDetail(db, id(req), cans(req))); });
   api.post("/jobs", requirePerm("sales.write"), (req, res) => {
     const jobId = J.createJob(db, req.user.id, req.body);
@@ -257,15 +270,15 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (req.body.status === "material_ready" && before !== "material_ready") C.notifyEvent(db, req.user.id, "job.ready", { jobId: id(req) });
     res.json({ ok: true });
   });
-  api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req)) }));
+  api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req), { admin: can(req.user, "admin") }) }));
   api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req)) }));
   // "Material arrived": delivery challan + invoice in one go, optionally emailed to the customer as PDFs
   api.post("/jobs/:id/deliver", requirePerm("sales.write"), async (req, res) => {
     const out = { dc_id: null, invoice_id: null, invoice_status: null, email: null };
-    const pending = db.prepare("SELECT 1 FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'draft'").get(id(req));
-    if (pending) throw httpError(400, "This Job already has a draft delivery challan. Issue or delete it first.");
+    J.deliverPrecheck(db, id(req));
     out.dc_id = J.dcFromJob(db, req.user.id, id(req));
     B.setStatus(db, req.user.id, out.dc_id, "issued");
+    afterSave(req, out.dc_id, "draft");
     out.invoice_id = J.invoiceFromJob(db, req.user.id, id(req));
     const inv = db.prepare("SELECT * FROM documents WHERE id = ?").get(out.invoice_id);
     try {
@@ -309,7 +322,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
         return { ...d, paid: round2(d.paid), balance: left ?? round2(d.total - d.paid), display_status: B.displayStatus(d, d.paid, undefined, left) };
       });
     const status = req.query.status;
-    res.json(status ? rows.filter((d) => d.display_status === status) : rows);
+    const out = seesMoney(req.user, SIDE[kind]) ? rows : rows.map((d) => ({ ...d, paid: undefined, balance: undefined, display_status: d.status }));
+    res.json(status ? out.filter((d) => d.display_status === status) : out);
   });
   const loadDoc = (req, perms) => {
     const d = db.prepare("SELECT * FROM documents WHERE id = ?").get(id(req));
@@ -322,7 +336,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const paid = B.paidAmount(db, d.id);
     const isCredit = Boolean(B.CREDIT_KINDS[d.kind]);
     const left = isCredit ? B.creditUnused(db, d.id) : null;
-    res.json({
+    const hide = !seesMoney(req.user, SIDE[d.kind]);
+    const body = ({
       ...d, paid, balance: left ?? round2(d.total - paid), display_status: B.displayStatus(d, paid, undefined, left),
       applications: isCredit ? db.prepare("SELECT a.*, x.kind, x.number FROM payment_allocations a JOIN documents x ON x.id = a.document_id WHERE a.credit_id = ? ORDER BY a.id").all(d.id) : [],
       refunds: isCredit ? db.prepare("SELECT * FROM refunds WHERE credit_id = ? ORDER BY id").all(d.id) : [],
@@ -338,11 +353,13 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       job: d.job_id ? db.prepare("SELECT id, number, customer_po_number, delivery_location FROM jobs WHERE id = ?").get(d.job_id) : null,
       verified_by_name: d.verified_by ? db.prepare("SELECT name FROM users WHERE id = ?").get(d.verified_by)?.name : null,
     });
+    res.json(hide ? { ...body, paid: undefined, balance: undefined, display_status: d.status, payments: [], applications: [], refunds: [], money_hidden: true } : body);
   });
   api.post("/documents", (req, res) => {
     need(req.user, DOC_WRITE[req.body.kind] || "admin");
     if (req.body.kind === "invoice" && req.body.status === "open") checkCreditLimit(req, req.body.contact_id, B.computeTotals(req.body.lines || [], req.body).total);
-    const docId = B.saveDocument(db, req.user.id, req.body);
+    jobDocChecks(req, { id: 0, job_id: Number(req.body.job_id) || null }, req.body.kind, req.body.status || "draft", req.body.lines || []);
+    const docId = B.saveDocument(db, req.user.id, { ...req.body, _admin: can(req.user, "admin") });
     afterSave(req, docId, null);
     res.json({ id: docId });
   });
@@ -351,8 +368,14 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (d.verified_at && !can(req.user, "admin")) throw httpError(400, "This document is verified by Accounts. Ask a director to change it.");
     const paid = B.paidAmount(db, d.id);
     if (paid > 0 && B.computeTotals(req.body.lines || [], req.body).total < paid) throw httpError(400, "Total can't go below what's already paid");
-    if (d.kind === "invoice" && d.status === "draft" && req.body.status === "open") limitGuard(req, d.id, () => checkCreditLimit(req, d.contact_id, B.computeTotals(req.body.lines || [], req.body).total));
-    B.saveDocument(db, req.user.id, { ...req.body, kind: d.kind }, d.id);
+    // credit limit on whatever this edit adds to what the customer owes (a bigger open invoice counts too)
+    const newStatus = req.body.status || d.status;
+    if (d.kind === "invoice" && newStatus === "open") {
+      const extra = round2(B.computeTotals(req.body.lines || [], req.body).total - (d.status === "open" && Number(req.body.contact_id ?? d.contact_id) === d.contact_id ? d.total : 0));
+      if (extra > 0) limitGuard(req, d.id, () => checkCreditLimit(req, Number(req.body.contact_id ?? d.contact_id), extra));
+    }
+    jobDocChecks(req, { ...d, job_id: req.body.job_id === undefined ? d.job_id : Number(req.body.job_id) || null }, d.kind, newStatus, req.body.lines || []);
+    B.saveDocument(db, req.user.id, { ...req.body, kind: d.kind, _admin: can(req.user, "admin") }, d.id);
     afterSave(req, d.id, d.status);
     if (d.verified_at) db.prepare("UPDATE documents SET verified_at = NULL, verified_by = NULL WHERE id = ?").run(d.id); // changed after verification → verify again
     res.json({ id: d.id });
@@ -370,13 +393,24 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       throw e;
     }
   };
+  // a Job's DCs and invoices can't go past what the Job ordered / delivered
+  const jobDocChecks = (req, doc, kind, status, lines) => {
+    if (!doc.job_id) return;
+    if (kind === "dc" && ["issued", "signed"].includes(status)) J.checkDcIssue(db, doc, lines, { admin: can(req.user, "admin") });
+    if (kind === "invoice" && ["open", "draft"].includes(status)) J.checkInvoiceQty(db, doc, lines);
+  };
   const afterSave = (req, docId, beforeStatus) => {
-    const d = db.prepare("SELECT status FROM documents WHERE id = ?").get(docId);
+    const d = db.prepare("SELECT kind, status, job_id FROM documents WHERE id = ?").get(docId);
     if (d?.status === "open" && beforeStatus !== "open") C.notifyEvent(db, req.user.id, "doc.issued", { docId });
+    if (d?.kind === "dc" && d.job_id && ["issued", "signed"].includes(d.status)) J.markDispatched(db, d.job_id);
   };
   api.post("/documents/:id/status", docAction(DOC_WRITE, (req, d) => {
-    if (d.kind === "invoice" && d.status === "draft" && req.body.status === "open") limitGuard(req, d.id, () => checkCreditLimit(req, d.contact_id, d.total));
-    B.setStatus(db, req.user.id, id(req), req.body.status);
+    // the credit limit applies whenever an invoice becomes open, from whatever status
+    if (d.kind === "invoice" && d.status !== "open" && req.body.status === "open") limitGuard(req, d.id, () => checkCreditLimit(req, d.contact_id, d.total));
+    if (d.kind === "dc" && req.body.status === "issued") J.checkDcIssue(db, d, null, { admin: can(req.user, "admin") });
+    if (d.kind === "invoice" && req.body.status === "open") J.checkInvoiceQty(db, d, db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(d.id));
+    if (d.kind === "dc" && req.body.status === "void") J.checkDcRemoval(db, d);
+    B.setStatus(db, req.user.id, id(req), req.body.status, { admin: can(req.user, "admin") });
     afterSave(req, d.id, d.status);
   }));
   api.post("/documents/:id/email", async (req, res) => {
@@ -415,6 +449,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   });
   api.delete("/documents/:id", docAction(DOC_WRITE, (req, d) => {
     if ((d.verified_at || (d.kind === "dc" && d.status === "signed")) && !can(req.user, "admin")) throw httpError(400, "Verified invoices/bills and signed DCs can only be removed by a director");
+    if (d.kind === "quote" && d.status === "converted") throw httpError(400, "This quote is already a Job");
+    if (d.kind === "dc") J.checkDcRemoval(db, d);
     B.deleteDocument(db, req.user.id, d.id);
   }));
 

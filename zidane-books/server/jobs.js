@@ -3,6 +3,7 @@
 // direct costs, fulfilment status); Sales then raises the customer DC and invoice from it.
 import { tx } from "./db.js";
 import { getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
+import { DOC_READ } from "./collab.js";
 
 export const OPS_STATUSES = ["new", "procurement_started", "partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"];
 export const PROCUREMENT_STATUSES = ["to_buy", "partial", "bought", "not_available", "from_stock"];
@@ -12,6 +13,12 @@ export function createJob(db, userId, input) {
   const items = (input.items || []).filter((i) => i.item_id || i.description);
   if (!input.customer_id) throw httpError(400, "Customer is required");
   if (items.length === 0) throw httpError(400, "Add at least one item");
+  if (input.quote_id) {
+    const q = db.prepare("SELECT * FROM documents WHERE id = ? AND kind = 'quote'").get(input.quote_id);
+    if (!q) throw httpError(400, "That quote doesn't exist");
+    if (q.status === "converted" || q.job_id) throw httpError(400, "A Job already exists for this quote");
+    if (q.contact_id !== Number(input.customer_id)) throw httpError(400, "The quote is for a different customer");
+  }
   return tx(db, () => {
     const number = nextNumber(db, "job");
     const r = db.prepare(`INSERT INTO jobs (number, customer_id, quote_id, customer_po_number, customer_po_date, order_source, required_date, delivery_location, priority, fulfilment_type, instructions, created_by)
@@ -36,18 +43,41 @@ export function jobFromQuote(db, userId, quoteId, extra = {}) {
   return createJob(db, userId, { customer_id: q.contact_id, quote_id: q.id, items: lines, instructions: q.notes, ...extra });
 }
 
+const step = (s) => OPS_STATUSES.indexOf(s);
+const issuedDcs = (db, jobId) => db.prepare("SELECT COUNT(*) AS n FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN ('issued','signed')").get(jobId).n;
+
 export function setOpsStatus(db, userId, id, status) {
   if (!OPS_STATUSES.includes(status)) throw httpError(400, "Unknown fulfilment status");
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
   if (!job) throw httpError(404, "Job not found");
+  if (job.closed) throw httpError(400, "This Job is closed. A director can reopen it.");
+  if (status === job.ops_status) return;
+  const items = db.prepare("SELECT procurement_status FROM job_items WHERE job_id = ?").all(id).map((r) => r.procurement_status);
+  if (step(status) >= step("material_ready") && step(job.ops_status) < step("material_ready") && items.some((s) => s === "to_buy" || s === "partial")) {
+    throw httpError(400, "Some items are still to buy. Mark each item bought, from stock or not available first.");
+  }
+  if (step(status) >= step("material_ready") && items.length && items.every((s) => s === "not_available")) throw httpError(400, "Nothing on this Job is available to deliver");
+  if (step(status) < step("dispatched") && issuedDcs(db, id)) throw httpError(400, "A delivery challan has already gone out for this Job, so it can't move back before dispatched");
+  if (status === "delivered" && !db.prepare("SELECT 1 FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'signed'").get(id)) {
+    throw httpError(400, "Delivered is set when Sales records the customer's signed DC");
+  }
   db.prepare("UPDATE jobs SET ops_status = ? WHERE id = ?").run(status, id);
   log(db, userId, `marked ${status.replace(/_/g, " ")}`, "job", id, job.number);
 }
 
 export function setItemProcurement(db, userId, jobItemId, status) {
   if (!PROCUREMENT_STATUSES.includes(status)) throw httpError(400, "Unknown procurement status");
-  const it = db.prepare("SELECT ji.*, j.number, j.ops_status FROM job_items ji JOIN jobs j ON j.id = ji.job_id WHERE ji.id = ?").get(jobItemId);
+  const it = db.prepare("SELECT ji.*, j.number, j.ops_status, j.closed FROM job_items ji JOIN jobs j ON j.id = ji.job_id WHERE ji.id = ?").get(jobItemId);
   if (!it) throw httpError(404, "Not found");
+  if (status === it.procurement_status) return;
+  // once goods are with the customer, or material has been declared ready, the buying side is settled
+  if (it.closed) throw httpError(400, "This Job is closed");
+  if (lineTotals(db, it.job_id, "dc", ["issued", "signed"])(it).qty > 0) throw httpError(400, "This item has already been delivered to the customer, so its buying status can't change");
+  if (step(it.ops_status) >= step("material_ready") && ["to_buy", "partial", "not_available"].includes(status)) {
+    throw httpError(400, "Material is already marked ready. Move the Job back to 'procurement started' first if something is missing.");
+  }
+  const billed = lineTotals(db, it.job_id, "bill", ["open", "draft"])(it).qty;
+  if (["not_available", "to_buy", "partial"].includes(status) && billed >= it.qty) throw httpError(400, `A supplier bill already covers ${billed} of this item, so it's bought. If it went back to the supplier, record a vendor credit first.`);
   tx(db, () => {
     db.prepare("UPDATE job_items SET procurement_status = ? WHERE id = ?").run(status, jobItemId);
     // keep the Job's fulfilment status in step with its lines until material is ready
@@ -64,6 +94,7 @@ export function setItemProcurement(db, userId, jobItemId, status) {
 export function updateJob(db, userId, id, input) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
   if (!job) throw httpError(404, "Job not found");
+  if (job.closed) throw httpError(400, "This Job is closed. A director can reopen it.");
   db.prepare("UPDATE jobs SET customer_po_number=?, customer_po_date=?, required_date=?, delivery_location=?, priority=?, instructions=? WHERE id=?")
     .run(input.customer_po_number ?? job.customer_po_number, input.customer_po_date ?? job.customer_po_date, input.required_date ?? job.required_date,
       input.delivery_location ?? job.delivery_location, input.priority ?? job.priority, input.instructions ?? job.instructions, id);
@@ -91,7 +122,8 @@ export function jobEconomics(db, jobId) {
   return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, stock_cost: fromStock, direct_costs: direct, total_cost: cost,
     gross_profit: round2(revenue - cost), margin_pct: revenue ? round2(((revenue - cost) / revenue) * 100) : 0,
     // profit isn't final while anything is still to buy, or nothing bought has a supplier bill yet
-    cost_pending: purchases + fromStock === 0 || items.some((i) => !["bought", "from_stock"].includes(i.procurement_status)) };
+    cost_pending: purchases + fromStock === 0 || items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)),
+    cost_pending_reason: purchases + fromStock === 0 ? "no_bill" : items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)) ? "still_buying" : null };
 }
 
 // One Job, shaped for the viewer's role (see auth.js caps)
@@ -107,11 +139,13 @@ export function jobDetail(db, id, can) {
     ...job,
     items: items.map((i) => ({
       id: i.id, item_id: i.item_id, name: i.item_name || i.description, unit: i.unit || "", qty: i.qty, procurement_status: i.procurement_status, stock_qty: i.stock_qty,
-      delivered_qty: delivered(i).qty, invoiced_qty: invoiced(i).qty, purchased_qty: bought(i).qty,
+      ...(can("sales.read") ? { delivered_qty: delivered(i).qty, invoiced_qty: invoiced(i).qty } : { delivered_qty: delivered(i).qty }),
+      ...(can("ops.read") ? { purchased_qty: bought(i).qty } : {}),
       ...(can("price.view") ? { sale_rate: i.sale_rate, tax_rate: i.tax_rate } : {}),
       ...(can("cost.view") ? { purchase_rate: i.purchase_rate } : {}),
     })),
-    documents: docs.filter((d) => (["quote", "invoice", "dc"].includes(d.kind) ? can("sales.read") : can("ops.read"))),
+    // each side only sees its own paperwork on the Job (credit notes are Sales', vendor credits Operations')
+    documents: docs.filter((d) => DOC_READ[d.kind].some(can)).map((d) => (can("money") ? d : { ...d, paid: undefined })),
     expenses: can("ops.read") ? db.prepare("SELECT * FROM expenses WHERE job_id = ? ORDER BY date").all(id) : [],
     economics: can("profit.view") ? jobEconomics(db, id) : null,
   };
@@ -152,13 +186,79 @@ export function procurementList(db) {
 }
 
 // Sales: draft customer DC for whatever hasn't been delivered yet
-export function dcFromJob(db, userId, jobId) {
+// Quantity rules for a Job's customer paperwork: a DC can't deliver more than was ordered (less what already went out),
+// and an invoice can't bill more than was delivered (or ordered, when the Job has no DC).
+function jobLineLimits(db, doc, lines) {
+  const items = db.prepare("SELECT ji.*, COALESCE(i.name, ji.description) AS name FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.job_id = ?").all(doc.job_id);
+  const key = (x) => (x.item_id ? `i${x.item_id}` : `d${(x.description || "").toLowerCase()}`);
+  const sumOther = (kind, statuses) => {
+    const rows = db.prepare(`SELECT l.item_id, l.description, SUM(l.qty) AS qty FROM document_lines l JOIN documents d ON d.id = l.document_id
+      WHERE d.job_id = ? AND d.kind = ? AND d.status IN (${statuses.map(() => "?").join(",")}) AND d.id != ? GROUP BY l.item_id, l.description`).all(doc.job_id, kind, ...statuses, doc.id || 0);
+    return Object.fromEntries(rows.map((r) => [key(r), r.qty]));
+  };
+  const want = {};
+  for (const l of lines) want[key(l)] = round2((want[key(l)] || 0) + Number(l.qty || 0));
+  return { items, key, sumOther, want };
+}
+export function checkDcIssue(db, doc, lines = null, { admin = false } = {}) {
+  if (!doc.job_id) return;
+  const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(doc.job_id);
+  if (job.closed) throw httpError(400, "This Job is closed");
+  if (step(job.ops_status) < step("material_ready") && !admin) throw httpError(400, "Operations hasn't marked the material ready yet");
+  const { items, key, sumOther, want } = jobLineLimits(db, doc, lines || db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(doc.id));
+  const out = sumOther("dc", ["issued", "signed"]);
+  for (const it of items) {
+    const left = round2(it.qty - (out[key(it)] || 0));
+    if ((want[key(it)] || 0) > left + 0.001) throw httpError(400, `Only ${left} of ${it.name} is left to deliver on this Job`);
+  }
+}
+export function checkInvoiceQty(db, doc, lines) {
+  if (!doc.job_id) return;
+  const { items, key, sumOther, want } = jobLineLimits(db, doc, lines);
+  const delivered = sumOther("dc", ["issued", "signed"]);
+  const anyDc = Object.keys(delivered).length > 0;
+  const billed = sumOther("invoice", ["open", "draft"]);
+  for (const it of items) {
+    const cap = round2((anyDc ? delivered[key(it)] || 0 : it.qty) - (billed[key(it)] || 0));
+    if ((want[key(it)] || 0) > cap + 0.001) throw httpError(400, `Only ${Math.max(0, cap)} of ${it.name} is left to invoice (${anyDc ? "delivered" : "ordered"} on this Job)`);
+  }
+}
+// a DC that went out can't be voided or deleted if the Job has already invoiced those goods
+export function checkDcRemoval(db, doc) {
+  if (!doc.job_id || !["issued", "signed"].includes(doc.status)) return;
+  const { items, key, sumOther } = jobLineLimits(db, doc, []);
+  const delivered = sumOther("dc", ["issued", "signed"]);
+  const billed = sumOther("invoice", ["open", "draft"]);
+  if (items.some((it) => (billed[key(it)] || 0) > (delivered[key(it)] || 0) + 0.001)) throw httpError(400, "Goods on this delivery challan are already invoiced. Void the invoice (or make a credit note) first.");
+}
+
+// "Material arrived" does DC + invoice together: make sure both will work before the DC goes out
+export function deliverPrecheck(db, jobId) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
+  if (job.closed) throw httpError(400, "This Job is closed");
+  const draft = db.prepare("SELECT number, kind FROM documents WHERE job_id = ? AND kind IN ('dc','invoice') AND status = 'draft'").get(jobId);
+  if (draft) throw httpError(400, `${draft.number} is already a draft ${draft.kind === "dc" ? "delivery challan" : "invoice"} for this Job. Issue or delete it first.`);
+  if (step(job.ops_status) < step("material_ready")) throw httpError(400, "Operations hasn't marked the material ready yet");
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
-  const lines = items.map((i) => ({ item_id: i.item_id, description: i.description, qty: round2(i.qty - delivered(i).qty), rate: 0 })).filter((l) => l.qty > 0);
-  if (lines.length === 0) throw httpError(400, "Everything on this Job has already been delivered");
+  const invoiced = lineTotals(db, jobId, "invoice", ["open"]);
+  const toDeliver = items.filter((i) => i.procurement_status !== "not_available" && i.qty - delivered(i).qty > 0.001);
+  if (!toDeliver.length) throw httpError(400, "Everything available on this Job has already been delivered");
+  if (items.every((i) => invoiced(i).qty >= i.qty - 0.001)) throw httpError(400, "This Job is already fully invoiced. Use 'Create DC' to send the goods.");
+}
+
+export function dcFromJob(db, userId, jobId, { admin = false } = {}) {
+  const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
+  if (!job) throw httpError(404, "Job not found");
+  const draft = db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'draft'").get(jobId);
+  if (draft) throw httpError(400, `${draft.number} is already a draft delivery challan for this Job. Issue or delete it first.`);
+  if (step(job.ops_status) < step("material_ready") && !admin) throw httpError(400, "Operations hasn't marked the material ready yet");
+  const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
+  const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
+  if (job.closed) throw httpError(400, "This Job is closed");
+  const lines = items.filter((i) => i.procurement_status !== "not_available").map((i) => ({ item_id: i.item_id, description: i.description, qty: round2(i.qty - delivered(i).qty), rate: 0 })).filter((l) => l.qty > 0);
+  if (lines.length === 0) throw httpError(400, items.some((i) => i.procurement_status !== "not_available") ? "Everything on this Job has already been delivered" : "Nothing on this Job is available to deliver");
   return saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, notes: job.delivery_location ? `Deliver to: ${job.delivery_location}` : null, lines });
 }
 
@@ -166,16 +266,26 @@ export function dcFromJob(db, userId, jobId) {
 export function invoiceFromJob(db, userId, jobId) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
+  const draft = db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'draft'").get(jobId);
+  if (draft) throw httpError(400, `${draft.number} is already a draft invoice for this Job. Issue or delete it first.`);
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
   const invoiced = lineTotals(db, jobId, "invoice", ["open", "draft"]);
   const anyDc = items.some((i) => delivered(i).qty > 0);
-  const lines = items.map((i) => ({ item_id: i.item_id, description: i.description, qty: round2((anyDc ? delivered(i).qty : i.qty) - invoiced(i).qty), rate: i.sale_rate, tax_rate: i.tax_rate }))
+  if (job.closed) throw httpError(400, "This Job is closed");
+  const lines = items.filter((i) => anyDc || i.procurement_status !== "not_available")
+    .map((i) => ({ item_id: i.item_id, description: i.description, qty: round2((anyDc ? delivered(i).qty : i.qty) - invoiced(i).qty), rate: i.sale_rate, tax_rate: i.tax_rate }))
     .filter((l) => l.qty > 0);
   if (lines.length === 0) throw httpError(400, anyDc ? "Everything delivered is already invoiced" : "Nothing left to invoice");
   const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
   const due = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
   return saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: due, reference: job.customer_po_number || job.number, lines });
+}
+
+// a DC that has gone out means the goods left: move the Job along to dispatched (never backwards)
+export function markDispatched(db, jobId) {
+  const job = db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(jobId);
+  if (job && step(job.ops_status) < step("dispatched")) db.prepare("UPDATE jobs SET ops_status = 'dispatched' WHERE id = ?").run(jobId);
 }
 
 export function signDc(db, userId, id, { name, date }) {
@@ -190,6 +300,10 @@ export function signDc(db, userId, id, { name, date }) {
 export function closeJob(db, userId, id, closed = true) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
   if (!job) throw httpError(404, "Job not found");
+  if (closed) {
+    const drafts = db.prepare("SELECT number FROM documents WHERE job_id = ? AND status = 'draft' AND kind IN ('dc','invoice','bill','po')").all(id).map((d) => d.number);
+    if (drafts.length) throw httpError(400, `Finish or delete the drafts first: ${drafts.join(", ")}`);
+  }
   db.prepare("UPDATE jobs SET closed = ? WHERE id = ?").run(closed ? 1 : 0, id);
   log(db, userId, closed ? "closed job" : "reopened job", "job", id, job.number);
 }

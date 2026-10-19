@@ -113,7 +113,7 @@ export default function DocumentView({ kind }) {
       const phone = d.contact.phone?.replace(/\D/g, "").replace(/^0/, "92");
       return (
         <>
-          <PageHead title={<>{d.number}{(d.job?.customer_po_number || (K.contact === "customer" && d.reference && d.reference !== d.job?.number && d.reference)) && <span className="po-tag">PO {d.job?.customer_po_number || d.reference}</span>} <Badge status={d.display_status} />{d.verified_at && <span className="badge green">verified</span>}{d.submitted_date && <span className="badge blue">submitted</span>}{isCredit && d.status === "open" && d.balance > 0 && <span className="badge green">{money(d.balance)} unused</span>}</>}
+          <PageHead title={<>{d.number}{K.contact === "customer" && (d.job?.customer_po_number || (d.reference && d.reference !== d.job?.number && d.reference)) && <span className="po-tag">PO {d.job?.customer_po_number || d.reference}</span>} <Badge status={d.display_status} />{d.verified_at && <span className="badge green">verified</span>}{d.submitted_date && <span className="badge blue">submitted</span>}{isCredit && d.status === "open" && d.balance > 0 && <span className="badge green">{money(d.balance)} unused</span>}</>}
             sub={`${K.label} · ${d.contact.name}${d.job ? ` · ${d.job.number}` : ""}`}>
             {writer && kind === "quote" && d.status === "enquiry" && <button className="btn primary" onClick={() => post("/status", { status: "sent" }, "Marked sent")}>Rates added, mark sent</button>}
             {writer && kind === "quote" && d.status === "sent" && <><button className="btn" onClick={() => post("/status", { status: "accepted" }, "Customer confirmed")}>Customer confirmed</button><button className="btn" onClick={() => post("/status", { status: "declined" }, "Marked declined")}>Declined</button></>}
@@ -128,14 +128,14 @@ export default function DocumentView({ kind }) {
             {can("verify") && isMoney && d.status === "open" && !d.verified_at && <button className="btn primary" onClick={() => post("/verify", {}, "Verified")}>Verify</button>}
             {can("money") && isMoney && d.status === "open" && d.balance > 0 && <button className="btn primary" onClick={() => setModal("pay")}>{kind === "invoice" ? "Receive payment" : "Pay supplier"}</button>}
             {can("money") && isMoney && d.status === "open" && d.balance > 0 && d.credits.length > 0 && <button className="btn" onClick={() => setModal("credits")}>Apply credits ({money(d.credits.reduce((a, c) => a + c.unused, 0))})</button>}
-            {writer && kind === "po" && ["issued", "draft"].includes(d.status) && <button className="btn primary" onClick={async () => { const r = await post("/convert", {}, "Bill created"); if (r) nav(`/bills/${r.id}`); }}>Convert to bill</button>}
+            {writer && kind === "po" && d.status === "issued" && <button className="btn primary" onClick={async () => { const r = await post("/convert", {}, "Bill created"); if (r) nav(`/bills/${r.id}`); }}>Convert to bill</button>}
             {editable && <Link className="btn" to={`/${K.path}/${id}/edit`}>Edit</Link>}
             {writer && <button className="btn" onClick={async () => { const r = await post("/clone", {}, "Copied as a new draft"); if (r) nav(`/${K.path}/${r.id}/edit`); }}>Copy</button>}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
             {writer && !["draft", "void", "enquiry"].includes(d.status) && <button className="btn" onClick={() => setModal("email")}>Email</button>}
             {phone && <a className="btn wa-btn" href={`https://wa.me/${phone}?text=${encodeURIComponent(waText(d, company))}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-            {writer && ["open", "issued"].includes(d.status) && d.paid === 0 && ["invoice", "bill", "dc", "credit_note", "vendor_credit"].includes(kind) && (!isCredit || d.balance === d.total) && <button className="btn ghost danger" onClick={() => confirm(`Void ${d.number}?${isDc || kind === "bill" ? " Stock will be reversed." : ""}`) && post("/status", { status: "void" }, "Voided")}>Void</button>}
-            {writer && d.paid === 0 && ((!d.verified_at && d.status !== "signed") || can("admin")) && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${d.number}?`)) { await act(() => api(`/documents/${id}`, { method: "DELETE" }), "Deleted"); nav(`/${K.path}`); } }}>Delete</button>}
+            {writer && ["open", "issued"].includes(d.status) && !(d.paid > 0) && (!d.verified_at || can("admin")) && ["invoice", "bill", "dc", "credit_note", "vendor_credit"].includes(kind) && (!isCredit || d.balance === undefined || d.balance === d.total) && <button className="btn ghost danger" onClick={() => confirm(`Void ${d.number}?${isDc || kind === "bill" ? " Stock will be reversed." : ""}`) && post("/status", { status: "void" }, "Voided")}>Void</button>}
+            {writer && !(d.paid > 0) && d.status !== "converted" && d.status !== "billed" && ((!d.verified_at && d.status !== "signed") || can("admin")) && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${d.number}?`)) { await act(() => api(`/documents/${id}`, { method: "DELETE" }), "Deleted"); nav(`/${K.path}`); } }}>Delete</button>}
           </PageHead>
           {d.credit_status?.over && <div className="form-error no-print">Over credit limit: customer owes {money(d.credit_status.owed)}, limit {money(d.credit_status.limit)}. Only a director can issue this invoice.</div>}
           <p className="muted links">
@@ -151,7 +151,7 @@ export default function DocumentView({ kind }) {
             <header className="paper-head">
               <div><img src="/logo.svg" alt="" className="paper-logo" /><div className="muted small">{company.address}<br />{company.phone} · {company.email}{company.ntn && <><br />NTN {company.ntn}{company.strn && ` · STRN ${company.strn}`}</>}</div></div>
               <div className="r"><h2>{(kind === "quote" && d.status === "enquiry" ? "Enquiry" : K.label).toUpperCase()}</h2><b>{d.number}</b>
-                <div className="muted small">Date: {fmtDate(d.date)}{d.due_date && <><br />Due: {fmtDate(d.due_date)}</>}{d.reference && <><br />Ref: {d.reference}</>}{d.job?.customer_po_number && <><br />Customer PO: {d.job.customer_po_number}</>}</div></div>
+                <div className="muted small">Date: {fmtDate(d.date)}{d.due_date && <><br />Due: {fmtDate(d.due_date)}</>}{d.reference && d.reference !== d.job?.customer_po_number && <><br />Ref: {d.reference}</>}{d.job?.customer_po_number && <><br />Customer PO: {d.job.customer_po_number}</>}</div></div>
             </header>
             <div className="paper-to"><small className="muted">{K.contact === "customer" ? (isDc ? "Deliver to" : "Bill to") : "Supplier"}</small><b>{d.contact.name}</b>
               <div className="muted small">{d.contact.company}{(d.job?.delivery_location || d.contact.address) && <><br />{isDc && d.job?.delivery_location ? d.job.delivery_location : d.contact.address}</>}{d.contact.phone && <><br />{d.contact.phone}</>}{d.contact.ntn && <><br />NTN {d.contact.ntn}</>}</div></div>

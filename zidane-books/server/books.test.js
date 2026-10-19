@@ -51,7 +51,7 @@ test("payments drive paid/partial/overdue and can't exceed balance", () => {
   const extra = B.recordPayment(db, 1, { direction: "in", document_id: inv, amount: 700 });
   assert.equal(B.displayStatus(doc(), B.paidAmount(db, inv)), "paid");
   assert.equal(B.unusedAmount(db, extra), 100, "overpayment stays as customer advance");
-  assert.throws(() => B.setStatus(db, 1, inv, "void"), /payments/);
+  assert.throws(() => B.setStatus(db, 1, inv, "void"), /Payments are applied/);
 });
 
 test("Job flow: quote → Job → DC moves stock → invoice doesn't move it again → economics", () => {
@@ -67,6 +67,8 @@ test("Job flow: quote → Job → DC moves stock → invoice doesn't move it aga
   const ji = db.prepare("SELECT id FROM job_items WHERE job_id = ?").get(job).id;
   J.setItemProcurement(db, 1, ji, "bought");
   assert.equal(db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(job).ops_status, "purchase_complete");
+  assert.throws(() => J.dcFromJob(db, 1, job), /material ready/, "no DC before Operations says the goods are ready");
+  J.setOpsStatus(db, 1, job, "material_ready");
   const dc = J.dcFromJob(db, 1, job);
   B.setStatus(db, 1, dc, "issued");
   assert.equal(db.prepare("SELECT stock_qty FROM items WHERE id = ?").get(i).stock_qty, 100, "DC takes stock out");
@@ -87,6 +89,8 @@ test("direct-delivery Jobs never touch warehouse stock", () => {
   const { db, c, s: sup, i } = fresh();
   const job = J.createJob(db, 1, { customer_id: c, fulfilment_type: "direct", items: [{ item_id: i, qty: 5, sale_rate: 120 }] });
   B.saveDocument(db, 1, { kind: "bill", contact_id: sup, job_id: job, status: "open", lines: [{ item_id: i, qty: 5, rate: 90 }] });
+  J.setItemProcurement(db, 1, db.prepare("SELECT id FROM job_items WHERE job_id = ?").get(job).id, "bought");
+  J.setOpsStatus(db, 1, job, "material_ready");
   const dc = J.dcFromJob(db, 1, job);
   B.setStatus(db, 1, dc, "issued");
   assert.equal(db.prepare("SELECT stock_qty FROM items WHERE id = ?").get(i).stock_qty, 0);
@@ -234,7 +238,7 @@ test("credit notes and vendor credits: return stock, apply, refund, void rules; 
   B.applyCredits(db, 1, inv, [{ credit_id: cn, amount: 150 }]);
   assert.equal(B.paidAmount(db, inv), 150);
   assert.equal(B.creditUnused(db, cn), 50);
-  assert.throws(() => B.setStatus(db, 1, cn, "void"), /Unapply or reverse/);
+  assert.throws(() => B.setStatus(db, 1, cn, "void"), /applied or refunded/);
   // refund the rest of the credit note to the customer
   B.recordRefund(db, 1, { credit_id: cn, amount: 50, mode: "cash" });
   assert.equal(B.creditUnused(db, cn), 0);
@@ -617,6 +621,106 @@ test("customer PO number: finds the Job and its documents, shows on home queues,
     db.prepare("UPDATE jobs SET customer_po_number = 'CH-9001' WHERE number = 'JOB-00002'").run();
     const q = (await get(ops, "/reports/home")).queues.find((x) => x.key === "newjob");
     assert.ok(q.items.some((i) => i.label.includes("PO CH-9001")));
+  } finally {
+    server.close();
+  }
+});
+
+test("audit fixes: role leaks and workflow holes stay closed", async () => {
+  const db = openDb(":memory:");
+  process.env.ADMIN_PASSWORD = "testpass123";
+  const director = ensureAdmin(db);
+  delete process.env.ADMIN_PASSWORD;
+  seedDemo(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (ck, method, path, body) => {
+    const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, body: await r.json() };
+  };
+  const one = (sql, ...a) => db.prepare(sql).get(...a);
+  try {
+    const [dir, sales, ops, pur] = [await login(director.email, director.password), await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk"), await login("purchaser@zidane.com.pk")];
+    const cust = one("SELECT id FROM contacts WHERE name = 'Crescent Hospital Kitchen'").id;
+    const oil = one("SELECT id FROM contacts WHERE name = 'Edible Oil Distributors'").id;
+    const job1 = one("SELECT id FROM jobs WHERE number = 'JOB-00001'").id;
+
+    // 1. a customer credit note on a Job is Sales' paperwork, not Operations'
+    await call(sales, "POST", "/documents", { kind: "credit_note", contact_id: one("SELECT customer_id FROM jobs WHERE id = ?", job1).customer_id, job_id: job1, status: "open", lines: [{ item_id: 1, qty: 1, rate: 100 }] });
+    assert.ok(!(await call(ops, "GET", `/jobs/${job1}`)).body.documents.some((d) => d.kind === "credit_note"));
+    assert.ok((await call(sales, "GET", `/jobs/${job1}`)).body.documents.some((d) => d.kind === "credit_note"));
+    // 3. purchaser doesn't see supplier payments, balances or statements
+    const c = (await call(pur, "GET", `/contacts/${oil}`)).body;
+    assert.equal(c.payments.length, 0);
+    assert.ok(c.documents.every((d) => d.paid === undefined && !["overdue", "paid", "partial"].includes(d.display_status)));
+    assert.equal((await call(pur, "GET", `/contacts/${oil}/statement`)).status, 403);
+    assert.equal((await call(pur, "GET", "/contacts?type=supplier")).body[0].outstanding, undefined);
+    const bill = one("SELECT id FROM documents WHERE kind = 'bill' AND contact_id = ?", oil).id;
+    assert.equal((await call(ops, "GET", `/documents/${bill}`)).body.payments.length, 0);
+    // 4. an unread message is only for its sender and directors
+    const m = (await call(pur, "POST", "/inbox", { text: "KFM bill 100 bags @ 1150" })).body.id;
+    assert.equal((await call(sales, "GET", `/inbox/${m}`)).status, 404);
+    assert.equal((await call(dir, "GET", `/inbox/${m}`)).status, 200);
+
+    // 6. a verified, part-paid invoice can't go back to draft; a signed DC is final
+    const inv1 = one("SELECT id FROM documents WHERE kind = 'invoice' AND job_id = ?", job1).id;
+    assert.equal((await call(sales, "POST", `/documents/${inv1}/status`, { status: "draft" })).status >= 400, true);
+    const dc1 = one("SELECT id FROM documents WHERE kind = 'dc' AND job_id = ?", job1).id;
+    assert.equal((await call(sales, "POST", `/documents/${dc1}/status`, { status: "draft" })).status, 400);
+    // draft → void → open can't sneak past the credit limit
+    db.prepare("UPDATE contacts SET credit_limit = 1000 WHERE id = ?").run(cust);
+    const big = (await call(sales, "POST", "/documents", { kind: "invoice", contact_id: cust, status: "draft", lines: [{ item_id: 1, qty: 100, rate: 1000 }] })).body.id;
+    await call(sales, "POST", `/documents/${big}/status`, { status: "void" });
+    assert.ok((await call(sales, "POST", `/documents/${big}/status`, { status: "open" })).status >= 400, "void can't be reopened, and the limit still applies");
+    // 7. growing an open invoice past the limit is caught too
+    db.prepare("UPDATE contacts SET credit_limit = 5000 WHERE id = ?").run(cust);
+    const small = (await call(sales, "POST", "/documents", { kind: "invoice", contact_id: cust, status: "open", lines: [{ item_id: 1, qty: 1, rate: 100 }] })).body.id;
+    assert.equal((await call(sales, "PUT", `/documents/${small}`, { contact_id: cust, status: "open", lines: [{ item_id: 1, qty: 1, rate: 129000 }] })).status, 403);
+    db.prepare("UPDATE contacts SET credit_limit = NULL WHERE id = ?").run(cust);
+    // 8. saving without a status keeps it
+    const mrt = one("SELECT * FROM documents WHERE reference = 'MRT-221'");
+    await call(ops, "PUT", `/documents/${mrt.id}`, { contact_id: mrt.contact_id, reference: "MRT-221", lines: [{ item_id: 4, qty: 200, rate: 142 }] });
+    assert.equal(one("SELECT status FROM documents WHERE id = ?", mrt.id).status, "open");
+    // 9. a paid invoice keeps its customer
+    assert.equal((await call(dir, "PUT", `/documents/${inv1}`, { contact_id: cust, status: "open", lines: [{ item_id: 1, qty: 1, rate: 1 }] })).status, 400);
+    // 10. a converted quote is read-only and makes one Job only
+    const q = one("SELECT id, contact_id FROM documents WHERE kind = 'quote' AND status = 'converted'");
+    assert.equal((await call(sales, "PUT", `/documents/${q.id}`, { contact_id: q.contact_id, status: "accepted", lines: [{ item_id: 1, qty: 1, rate: 1 }] })).status, 400);
+    assert.equal((await call(sales, "POST", "/jobs", { customer_id: q.contact_id, quote_id: q.id, items: [{ item_id: 1, qty: 1 }] })).status, 400);
+    // 11. a PO becomes one bill, and only once issued
+    const po = one("SELECT id FROM documents WHERE kind = 'po'").id;
+    assert.equal((await call(ops, "POST", `/documents/${po}/convert`)).status, 200);
+    assert.equal((await call(ops, "POST", `/documents/${po}/convert`)).status, 400);
+    // 17. the same supplier bill can't be entered twice
+    const kfm = one("SELECT * FROM documents WHERE reference = 'KFM-8812'");
+    assert.equal((await call(pur, "POST", "/documents", { kind: "bill", contact_id: kfm.contact_id, reference: "kfm-8812", status: "open", lines: [{ item_id: 1, qty: 1, rate: 1 }] })).status, 400);
+
+    // 12. no DC before material is ready, never two drafts, never more than ordered
+    const job2 = one("SELECT id FROM jobs WHERE number = 'JOB-00002'").id;
+    assert.equal((await call(sales, "POST", `/jobs/${job2}/dc`)).status, 400);
+    for (const ji of db.prepare("SELECT id FROM job_items WHERE job_id = ?").all(job2)) J.setItemProcurement(db, 1, ji.id, "from_stock");
+    J.setOpsStatus(db, 1, job2, "material_ready");
+    const dcA = (await call(sales, "POST", `/jobs/${job2}/dc`)).body.id;
+    assert.equal((await call(sales, "POST", `/jobs/${job2}/dc`)).status, 400, "one draft DC at a time");
+    const lines = db.prepare("SELECT item_id, qty FROM document_lines WHERE document_id = ?").all(dcA);
+    assert.equal((await call(sales, "PUT", `/documents/${dcA}`, { contact_id: cust, status: "issued", lines: lines.map((l) => ({ ...l, qty: l.qty * 2 })) })).status, 400, "can't deliver more than ordered");
+    assert.equal((await call(sales, "POST", `/documents/${dcA}/status`, { status: "issued" })).status, 200);
+    assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job2).ops_status, "dispatched", "a DC that went out moves the Job to dispatched");
+    // 13. invoiced goods keep their DC
+    const inv2 = (await call(sales, "POST", `/jobs/${job2}/invoice`)).body.id;
+    assert.ok(inv2);
+    assert.equal((await call(sales, "POST", `/documents/${dcA}/status`, { status: "void" })).status, 400);
+    assert.equal((await call(sales, "DELETE", `/documents/${dcA}`)).status, 400);
+    // 15. an item a bill already covers can't go back to "to buy"
+    const job3 = one("SELECT id FROM jobs WHERE number = 'JOB-00003'").id;
+    const covered = one("SELECT id FROM job_items WHERE job_id = ? AND procurement_status = 'bought'", job3).id;
+    assert.equal((await call(pur, "POST", `/job-items/${covered}/procurement`, { status: "to_buy" })).status, 400);
+    // 16. a Job with drafts can't be closed; a closed Job can't be edited
+    assert.equal((await call(dir, "POST", `/jobs/${job2}/close`, {})).status, 400);
+    // walkthrough: once ready, a bought item can't become "not available"
+    const ji2 = one("SELECT id FROM job_items WHERE job_id = ?", job2).id;
+    assert.equal((await call(ops, "POST", `/job-items/${ji2}/procurement`, { status: "not_available" })).status, 400);
   } finally {
     server.close();
   }
