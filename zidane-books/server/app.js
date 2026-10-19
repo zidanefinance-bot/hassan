@@ -299,8 +299,11 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const kind = req.query.kind;
     need(req.user, DOC_READ[kind] || "admin");
     const q = `%${req.query.q || ""}%`;
-    const rows = db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, ${B.PAID_SQL} AS paid
-      FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id WHERE d.kind = ? AND (d.number LIKE ? OR c.name LIKE ? OR IFNULL(j.number,'') LIKE ?) ORDER BY d.date DESC, d.id DESC LIMIT 500`).all(kind, q, q, q)
+    // customer PO numbers are searchable everywhere: the Job's PO and the document's own reference
+    const rows = db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, j.customer_po_number AS job_po, ${B.PAID_SQL} AS paid
+      FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id
+      WHERE d.kind = ? AND (d.number LIKE ? OR c.name LIKE ? OR IFNULL(j.number,'') LIKE ? OR IFNULL(j.customer_po_number,'') LIKE ? OR IFNULL(d.reference,'') LIKE ?)
+      ORDER BY d.date DESC, d.id DESC LIMIT 500`).all(kind, q, q, q, q, q)
       .map((d) => {
         const left = B.CREDIT_KINDS[d.kind] ? B.creditUnused(db, d.id) : null;
         return { ...d, paid: round2(d.paid), balance: left ?? round2(d.total - d.paid), display_status: B.displayStatus(d, d.paid, undefined, left) };
@@ -557,6 +560,41 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.delete("/comments/:id", (req, res) => { C.deleteComment(db, req.user, id(req)); res.json({ ok: true }); });
   api.get("/notifications", (req, res) => { C.dailyAlerts(db); res.json(C.inbox(db, req.user.id)); });
   api.post("/notifications/read", (req, res) => { C.markRead(db, req.user.id, req.body?.ids === "all" ? "all" : req.body?.ids); res.json({ ok: true }); });
+
+  // ---- search everything from the top bar: Jobs (incl. customer PO #), documents, contacts, items. Filtered by role.
+  api.get("/search", (req, res) => {
+    const q = String(req.query.q || "").trim();
+    if (q.length < 2) return res.json([]);
+    const like = `%${q}%`;
+    const out = [];
+    if (canAny(req.user, ["sales.read", "ops.read"])) {
+      for (const j of db.prepare(`SELECT j.id, j.number, j.customer_po_number, j.ops_status, j.closed, c.name FROM jobs j JOIN contacts c ON c.id = j.customer_id
+          WHERE j.number LIKE ? OR IFNULL(j.customer_po_number,'') LIKE ? OR c.name LIKE ? ORDER BY j.closed, j.id DESC LIMIT 8`).all(like, like, like)) {
+        out.push({ type: "Job", title: `${j.number}${j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""}`, sub: `${j.name} · ${j.closed ? "closed" : j.ops_status.replace(/_/g, " ")}`, link: `/jobs/${j.id}` });
+      }
+    }
+    const kinds = Object.keys(DOC_READ).filter((k) => canAny(req.user, DOC_READ[k]));
+    if (kinds.length) {
+      for (const d of db.prepare(`SELECT d.id, d.kind, d.number, d.reference, d.status, d.date, c.name, j.customer_po_number AS po FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id
+          WHERE d.kind IN (${kinds.map(() => "?").join(",")}) AND (d.number LIKE ? OR IFNULL(d.reference,'') LIKE ? OR IFNULL(j.customer_po_number,'') LIKE ? OR c.name LIKE ?)
+          ORDER BY d.date DESC, d.id DESC LIMIT 12`).all(...kinds, like, like, like, like)) {
+        const po = d.po || (["quote", "invoice", "dc", "credit_note"].includes(d.kind) ? d.reference : null);
+        out.push({ type: { quote: "Quote", invoice: "Invoice", dc: "DC", po: "PO", bill: "Bill", credit_note: "Credit note", vendor_credit: "Vendor credit" }[d.kind],
+          title: `${d.number}${po && po !== d.number ? ` · ${d.kind === "bill" || d.kind === "po" ? "Ref" : "PO"} ${po}` : d.kind === "bill" && d.reference ? ` · Bill # ${d.reference}` : ""}`,
+          sub: `${d.name} · ${d.status} · ${d.date}`, link: `/${C.DOC_PATH[d.kind]}/${d.id}` });
+      }
+    }
+    for (const [type, perms] of [["customer", CONTACT_READ.customer], ["supplier", CONTACT_READ.supplier]]) {
+      if (!canAny(req.user, perms)) continue;
+      for (const c of db.prepare("SELECT id, name, phone, company FROM contacts WHERE type = ? AND (name LIKE ? OR IFNULL(phone,'') LIKE ? OR IFNULL(company,'') LIKE ?) ORDER BY name LIMIT 5").all(type, like, like, like)) {
+        out.push({ type: type === "customer" ? "Customer" : "Supplier", title: c.name, sub: [c.company, c.phone].filter(Boolean).join(" · "), link: `/contacts/${c.id}` });
+      }
+    }
+    for (const i of db.prepare("SELECT id, name, sku, unit, stock_qty FROM items WHERE active = 1 AND (name LIKE ? OR IFNULL(sku,'') LIKE ?) ORDER BY name LIMIT 5").all(like, like)) {
+      out.push({ type: "Item", title: i.name, sub: [i.sku, `${i.stock_qty} ${i.unit} in stock`].filter(Boolean).join(" · "), link: `/items/${i.id}` });
+    }
+    res.json(out);
+  });
 
   // ---- orders inbox (AI reads POs and supplier bills)
   const aiReady = () => IN.readerReady();

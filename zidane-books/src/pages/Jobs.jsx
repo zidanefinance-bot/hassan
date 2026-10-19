@@ -20,16 +20,17 @@ export default function Jobs() {
   return (
     <>
       <PageHead title="Jobs" sub="Every confirmed customer order becomes a Job. Sales creates it, Operations fulfils it.">
-        <Search value={q} onChange={setQ} placeholder="Search job or customer…" />
+        <Search value={q} onChange={setQ} placeholder="Search PO #, job or customer…" />
         {can("sales.write") && <Link className="btn primary" to="/jobs/new">+ New Job</Link>}
       </PageHead>
       <div className="tabs">{["active", "all"].map((s) => <button key={s} className={scope === s ? "active" : ""} onClick={() => setScope(s)}>{s}</button>)}</div>
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No Jobs yet.</div> : (
         <div className="card flush"><table className="table">
-          <thead><tr><th>Job</th><th>Customer</th><th>Needed by</th><th>Priority</th><th>Fulfilment</th><th className="r">Items</th>{can("sales.read") && <th>Customer side</th>}</tr></thead>
+          <thead><tr><th>Job</th><th>Customer PO</th><th>Customer</th><th>Needed by</th><th>Priority</th><th>Fulfilment</th><th className="r">Items</th>{can("sales.read") && <th>Customer side</th>}</tr></thead>
           <tbody>{rows.map((j) => (
             <tr key={j.id} className="click" onClick={() => nav(`/jobs/${j.id}`)}>
               <td><b>{j.number}</b>{j.fulfilment_type === "direct" && <span className="badge blue sm">direct</span>}{j.closed ? <span className="badge grey sm">closed</span> : null}</td>
+              <td>{j.customer_po_number ? <b className="po">{j.customer_po_number}</b> : <span className="muted">—</span>}</td>
               <td>{j.customer_name}</td>
               <td className={j.required_date && j.required_date < today() && OPS_STEPS.indexOf(j.ops_status) < 4 ? "neg" : ""}>{fmtDate(j.required_date)}</td>
               <td><span className={`badge ${PRIORITY_TONE[j.priority]}`}>{j.priority}</span></td>
@@ -187,7 +188,7 @@ export function JobView() {
       const docsOf = (k) => j.documents.filter((d) => d.kind === k);
       return (
         <>
-          <PageHead title={<>{j.number} <Badge status={j.ops_status} /></>} sub={`${j.customer_name}${j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""} · created by ${j.created_by_name || "—"}`}>
+          <PageHead title={<>{j.number}{j.customer_po_number && <span className="po-tag">PO {j.customer_po_number}</span>} <Badge status={j.ops_status} /></>} sub={`${j.customer_name}${j.customer_po_date ? ` · PO dated ${fmtDate(j.customer_po_date)}` : ""} · created by ${j.created_by_name || "—"}`}>
             {can("ops.write") && j.ops_status === "new" && <button className="btn primary" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "procurement_started" } }), "Procurement started")}>Start procurement</button>}
             {can("ops.write") && step >= 1 && step < 4 && <button className="btn primary" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "material_ready" } }), "Sales has been told material is ready")}>Mark material ready</button>}
             {can("ops.write") && nextOps && step >= 4 && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}

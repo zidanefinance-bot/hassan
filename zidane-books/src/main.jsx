@@ -19,6 +19,7 @@ import Settings from "./pages/Settings.jsx";
 import Inbox from "./pages/Inbox.jsx";
 import Account from "./pages/Account.jsx";
 import Bell from "./components/Notifications.jsx";
+import GlobalSearch from "./components/GlobalSearch.jsx";
 import { registerServiceWorker, useInstall } from "./pwa.js";
 
 const NAV = [
@@ -73,11 +74,12 @@ function Shell() {
       <div className="main">
         <header className="topbar">
           <button className="icon-btn menu" onClick={() => setOpen((o) => !o)} aria-label="Menu">☰</button>
+          <GlobalSearch />
           <div className="spacer" />
           {install.canInstall && <button className="btn sm install-btn" onClick={install.install}>⬇ Install app</button>}
           <Bell />
           <NavLink className="user" to="/account" title="My account"><div className="avatar">{user.name[0]}</div><div><b>{user.name}</b><small>{user.role_label}</small></div></NavLink>
-          <button className="btn ghost" onClick={logout}>Sign out</button>
+          <button className="btn ghost signout" onClick={logout} title="Sign out"><span className="so-text">Sign out</span><span className="so-icon" aria-hidden>⏻</span></button>
         </header>
         <main className="content">
           <Routes>

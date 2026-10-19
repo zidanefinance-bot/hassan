@@ -585,3 +585,39 @@ test("push alerts: devices subscribe, notifications are pushed, dead subscriptio
     PUSH.usePushSender(null);
   }
 });
+
+test("customer PO number: finds the Job and its documents, shows on home queues, search respects roles", async () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email) => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password: "demo1234" }) })).headers.get("set-cookie").split(";")[0];
+  const get = async (ck, path) => (await fetch(base + path, { headers: { cookie: ck } })).json();
+  try {
+    const [sales, ops] = [await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk")];
+    // the seeded JOB-1 came from Al-Noor's PO ANT-PO-4471
+    const jobs = await get(sales, "/jobs?q=4471");
+    assert.equal(jobs.length, 1);
+    assert.equal(jobs[0].customer_po_number, "ANT-PO-4471");
+    const invs = await get(sales, "/documents?kind=invoice&q=4471");
+    assert.equal(invs.length, 1);
+    assert.equal(invs[0].job_po, "ANT-PO-4471");
+    assert.equal((await get(sales, "/documents?kind=dc&q=ANT-PO")).length, 1);
+    // one search box: Sales sees the Job, DC and invoice for that PO; Operations sees the Job but no customer invoice
+    const s = await get(sales, "/search?q=4471");
+    assert.deepEqual([...new Set(s.map((r) => r.type))].sort(), ["DC", "Invoice", "Job", "Quote"], "the Job, the quote it came from, its DC and invoice");
+    assert.ok(s.find((r) => r.type === "Job").title.includes("PO ANT-PO-4471"));
+    const o = await get(ops, "/search?q=4471");
+    assert.ok(o.some((r) => r.type === "Job"));
+    assert.ok(!o.some((r) => ["Invoice", "DC", "Customer"].includes(r.type)), "Operations doesn't see customer documents");
+    assert.ok((await get(ops, "/search?q=Karachi Flour")).some((r) => r.type === "Supplier"));
+    assert.deepEqual(await get(sales, "/search?q=a"), [], "needs at least 2 characters");
+    // home queue labels lead with the PO
+    db.prepare("UPDATE jobs SET customer_po_number = 'CH-9001' WHERE number = 'JOB-00002'").run();
+    const q = (await get(ops, "/reports/home")).queues.find((x) => x.key === "newjob");
+    assert.ok(q.items.some((i) => i.label.includes("PO CH-9001")));
+  } finally {
+    server.close();
+  }
+});

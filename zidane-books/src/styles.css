@@ -392,3 +392,32 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .picker-list li.create.hi { background: #FDF0F0; }
 .picker-list li.none { color: var(--muted); cursor: default; }
 .lines-table td .picker-list { min-width: 320px; }
+
+/* customer PO number, wherever an order shows */
+.po { color: var(--blue); font-weight: 700; }
+.po-tag { display: inline-block; margin-left: 10px; padding: 2px 10px; border-radius: 999px; background: #EAF1FD; color: var(--blue); font-size: 0.55em; font-weight: 700; vertical-align: middle; letter-spacing: .01em; }
+
+/* top bar search */
+.gsearch { position: relative; flex: 1; max-width: 520px; }
+.gsearch input { width: 100%; background: #F5F6F9; border-color: transparent; }
+.gsearch input:focus { background: #fff; border-color: var(--red); }
+.gsearch-list { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; right: 0; min-width: 320px; max-height: 70vh; overflow: auto; margin: 0; padding: 6px; list-style: none; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 18px 50px rgba(20, 25, 40, .18); }
+.gsearch-list li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.gsearch-list li.hi { background: #F3F4F7; }
+.gsearch-list li.none { color: var(--muted); cursor: default; }
+.gs-text { display: flex; flex-direction: column; min-width: 0; }
+.gs-text small { color: var(--muted); font-size: 12px; }
+.gs-type { flex: none; min-width: 74px; text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 3px 6px; border-radius: 6px; background: #EEF0F4; color: #4A5468; }
+.gs-type.t-Job { background: #FDF0F0; color: var(--red); }
+.gs-type.t-Invoice, .gs-type.t-Quote, .gs-type.t-DC { background: #EAF1FD; color: var(--blue); }
+.gs-type.t-Bill, .gs-type.t-PO { background: #FFF4E0; color: var(--amber); }
+@media (max-width: 720px) {
+  .topbar { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  .topbar .spacer { display: none; }
+  .gsearch { flex: 1; min-width: 0; max-width: none; }
+  .gsearch input { font-size: 14px; min-width: 0; }
+  .gsearch-list { position: fixed; top: 58px; left: 8px; right: 8px; width: auto; min-width: 0; max-width: calc(100vw - 16px); box-sizing: border-box; }
+  .gs-type { min-width: 64px; }
+}
+.signout .so-icon { display: none; }
+@media (max-width: 720px) { .signout .so-text { display: none; } .signout .so-icon { display: inline; font-size: 18px; } .signout { padding: 6px 8px; } }

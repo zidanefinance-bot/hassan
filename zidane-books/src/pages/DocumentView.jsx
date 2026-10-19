@@ -113,7 +113,7 @@ export default function DocumentView({ kind }) {
       const phone = d.contact.phone?.replace(/\D/g, "").replace(/^0/, "92");
       return (
         <>
-          <PageHead title={<>{d.number} <Badge status={d.display_status} />{d.verified_at && <span className="badge green">verified</span>}{d.submitted_date && <span className="badge blue">submitted</span>}{isCredit && d.status === "open" && d.balance > 0 && <span className="badge green">{money(d.balance)} unused</span>}</>}
+          <PageHead title={<>{d.number}{(d.job?.customer_po_number || (K.contact === "customer" && d.reference && d.reference !== d.job?.number && d.reference)) && <span className="po-tag">PO {d.job?.customer_po_number || d.reference}</span>} <Badge status={d.display_status} />{d.verified_at && <span className="badge green">verified</span>}{d.submitted_date && <span className="badge blue">submitted</span>}{isCredit && d.status === "open" && d.balance > 0 && <span className="badge green">{money(d.balance)} unused</span>}</>}
             sub={`${K.label} · ${d.contact.name}${d.job ? ` · ${d.job.number}` : ""}`}>
             {writer && kind === "quote" && d.status === "enquiry" && <button className="btn primary" onClick={() => post("/status", { status: "sent" }, "Marked sent")}>Rates added, mark sent</button>}
             {writer && kind === "quote" && d.status === "sent" && <><button className="btn" onClick={() => post("/status", { status: "accepted" }, "Customer confirmed")}>Customer confirmed</button><button className="btn" onClick={() => post("/status", { status: "declined" }, "Marked declined")}>Declined</button></>}

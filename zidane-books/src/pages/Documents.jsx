@@ -25,17 +25,17 @@ export default function Documents({ kind }) {
   return (
     <>
       <PageHead title={K.plural}>
-        <Search value={q} onChange={setQ} placeholder={`Search ${K.plural.toLowerCase()}…`} />
+        <Search value={q} onChange={setQ} placeholder={K.contact === "customer" ? "Search number, PO # or customer…" : "Search number, ref or supplier…"} />
         {kind === "quote" && can("sales.write") && <Link className="btn" to="/quotes/new?enquiry=1">+ New Enquiry</Link>}
         {WRITE[kind].some(can) && kind !== "dc" && <Link className="btn primary" to={`/${K.path}/new`}>+ New {K.label}</Link>}
       </PageHead>
       <div className="tabs">{FILTERS[kind].map((s) => <button key={s} className={status === s ? "active" : ""} onClick={() => setStatus(s)}>{s}</button>)}</div>
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">Nothing here yet.</div> : (
         <div className="card flush"><table className="table">
-          <thead><tr><th>Date</th><th>Number</th><th>{K.contact === "customer" ? "Customer" : "Supplier"}</th><th>Job</th><th>Status</th>{money_ && <th>{isCredit ? "Ref" : "Due"}</th>}<th className="r">Total</th>{money_ && <th className="r">{isCredit ? "Unused" : "Balance"}</th>}</tr></thead>
+          <thead><tr><th>Date</th><th>Number</th><th>{K.contact === "customer" ? "Customer" : "Supplier"}</th><th>{K.contact === "customer" ? "Job / Customer PO" : "Job / Ref"}</th><th>Status</th>{money_ && <th>{isCredit ? "Ref" : "Due"}</th>}<th className="r">Total</th>{money_ && <th className="r">{isCredit ? "Unused" : "Balance"}</th>}</tr></thead>
           <tbody>{rows.map((d) => (
             <tr key={d.id} className="click" onClick={() => nav(`/${K.path}/${d.id}`)}>
-              <td>{fmtDate(d.date)}</td><td><b>{d.number}</b></td><td>{d.contact_name}</td><td className="muted">{d.job_number || "—"}</td><td><Badge status={d.display_status} />{d.verified_at && <span className="badge green sm">✓</span>}</td>
+              <td>{fmtDate(d.date)}</td><td><b>{d.number}</b></td><td>{d.contact_name}</td><td>{d.job_number && <span className="muted">{d.job_number}</span>}{(d.job_po || d.reference) && (d.job_po || d.reference) !== d.job_number && <b className="po">{d.job_number ? " · " : ""}{d.job_po || d.reference}</b>}{!d.job_number && !d.reference && <span className="muted">—</span>}</td><td><Badge status={d.display_status} />{d.verified_at && <span className="badge green sm">✓</span>}</td>
               {money_ && <td>{isCredit ? <span className="muted">{d.reference || "—"}</span> : fmtDate(d.due_date)}</td>}<td className="r">{kind === "dc" ? "" : money(d.total)}</td>{money_ && <td className="r">{d.status === "open" ? money(d.balance) : "—"}</td>}
             </tr>
           ))}</tbody>

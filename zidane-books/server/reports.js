@@ -106,14 +106,16 @@ export function home(db, user, can, { from, to } = {}) {
   const t = today();
   from ||= t.slice(0, 8) + "01"; to ||= t;
   const soon = (n) => new Date(Date.parse(t) + n * 864e5).toISOString().slice(0, 10);
-  const docs = (sql, ...args) => db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, ${PAID_SQL} AS paid
+  const docs = (sql, ...args) => db.prepare(`SELECT d.*, c.name AS contact_name, j.number AS job_number, j.customer_po_number AS job_po, ${PAID_SQL} AS paid
     FROM documents d JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id WHERE ${sql} ORDER BY COALESCE(d.due_date, d.date), d.id`).all(...args)
     .map((d) => ({ ...d, balance: round2(d.total - d.paid) }));
   const jobs = jobList(db, { scope: "active" });
   const step = (s) => OPS_STATUSES.indexOf(s);
   const P = { quote: "quotes", invoice: "invoices", dc: "delivery-challans", po: "purchase-orders", bill: "bills" };
-  const docItem = (d, sub) => ({ label: `${d.number} · ${d.contact_name}`, sub, link: `/${P[d.kind]}/${d.id}`, due: d.due_date });
-  const jobItem = (j, sub) => ({ label: `${j.number} · ${j.customer_name}`, sub, link: `/jobs/${j.id}`, due: j.required_date });
+  // the customer's PO number is how everyone knows an order, so it leads wherever there is one
+  const custPo = (d) => d.job_po || (["quote", "invoice", "dc"].includes(d.kind) && d.reference && d.reference !== d.job_number ? d.reference : null);
+  const docItem = (d, sub) => ({ label: `${d.number}${custPo(d) ? ` · PO ${custPo(d)}` : ""} · ${d.contact_name}`, sub, link: `/${P[d.kind]}/${d.id}`, due: d.due_date });
+  const jobItem = (j, sub) => ({ label: `${j.number}${j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""} · ${j.customer_name}`, sub, link: `/jobs/${j.id}`, due: j.required_date });
   const q = (dept, key, title, items, tone = "amber") => ({ dept, key, title, tone, count: items.length, items: items.slice(0, 8) });
   const queues = [];
   const signDays = getSetting(db, "dcSignDays") || 3;
@@ -164,9 +166,9 @@ export function home(db, user, can, { from, to } = {}) {
   }
   if (can("profit.view")) {
     const minPct = getSetting(db, "lowMarginPct") ?? 8;
-    const recent = db.prepare("SELECT j.id, j.number, c.name AS customer_name, j.required_date FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE j.closed = 0 OR date(j.created_at) >= date(?, '-60 days')").all(t)
+    const recent = db.prepare("SELECT j.id, j.number, j.customer_po_number, c.name AS customer_name, j.required_date FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE j.closed = 0 OR date(j.created_at) >= date(?, '-60 days')").all(t)
       .map((j) => ({ ...j, e: jobEconomics(db, j.id) })).filter((j) => !j.e.cost_pending && j.e.margin_pct < minPct);
-    queues.push(q("Director", "margin", `Jobs below ${minPct}% margin`, recent.map((j) => ({ label: `${j.number} · ${j.customer_name}`, sub: `${j.e.gross_profit < 0 ? "Loss" : "Margin"} ${j.e.margin_pct}% · profit Rs ${j.e.gross_profit.toLocaleString("en-PK")}`, link: `/jobs/${j.id}` })), "red"));
+    queues.push(q("Director", "margin", `Jobs below ${minPct}% margin`, recent.map((j) => ({ label: `${j.number}${j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""} · ${j.customer_name}`, sub: `${j.e.gross_profit < 0 ? "Loss" : "Margin"} ${j.e.margin_pct}% · profit Rs ${j.e.gross_profit.toLocaleString("en-PK")}`, link: `/jobs/${j.id}` })), "red"));
   }
   if (can("verify") || can("money")) {
     queues.push(

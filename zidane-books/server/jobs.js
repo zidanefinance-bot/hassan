@@ -128,7 +128,7 @@ export function jobList(db, { q = "", status = "", scope = "" } = {}) {
       (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status = 'signed') AS signed_dc_count,
       (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'invoice' AND status = 'open') AS invoice_count,
       (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'bill') AS bill_count
-    FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE (j.number LIKE ? OR c.name LIKE ?) ORDER BY j.closed, COALESCE(j.required_date, '9999'), j.id DESC LIMIT 500`).all(like, like);
+    FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE (j.number LIKE ? OR c.name LIKE ? OR IFNULL(j.customer_po_number, '') LIKE ?) ORDER BY j.closed, COALESCE(j.required_date, '9999'), j.id DESC LIMIT 500`).all(like, like, like);
   return rows.filter((j) => (!status || j.ops_status === status) && (scope !== "active" || !j.closed));
 }
 
