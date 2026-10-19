@@ -7,7 +7,6 @@ const TZ = "Asia/Karachi";
 const stamp = (d) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ, day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(d);
 const fileStamp = (d) => new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(d).replace(" ", "-").replace(":", "");
 const day = (s) => (s ? new Date(`${s}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "");
-const STATUS = { to_buy: "To buy", partial: "Partly bought", not_available: "Not available" };
 
 export async function procurementXlsx(db, user, { canCost = false } = {}) {
   const now = new Date();
@@ -32,23 +31,23 @@ export async function procurementXlsx(db, user, { canCost = false } = {}) {
 
   // 1. every customer line, grouped by item (the same item sits together, shaded alike)
   const ws = wb.addWorksheet("What to buy");
-  const cols = ["#", "Item", "Category", "Customer", "Job", "Qty", "Unit", "Needed by", "Priority", "Status", "Bought qty", "Notes"];
+  const cols = ["#", "Item", "Category", "Customer", "Job", "To buy", "Unit", "Ordered", "Already bought", "Needed by", "Priority", "Bought now", "Notes"];
   head(ws, "What to buy", cols.length);
   header(ws, 4, cols);
-  [5, 42, 16, 30, 13, 9, 8, 14, 10, 14, 12, 28].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  [5, 42, 16, 30, 13, 9, 8, 9, 14, 14, 10, 12, 28].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
   let n = 0;
   groups.forEach((g, gi) => {
     for (const j of g.jobs) {
-      const r = ws.addRow([++n, g.name, g.category, j.customer_name, j.job_number, j.qty, g.unit, day(j.required_date), j.priority || "", STATUS[j.status] || j.status, null, null]);
+      const r = ws.addRow([++n, g.name, g.category, j.customer_name, j.job_number, j.qty, g.unit, j.ordered, j.bought || "", day(j.required_date), j.priority || "", null, null]);
+      r.getCell(6).font = { bold: true };
       if (gi % 2) r.eachCell({ includeEmpty: true }, (c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F6F9" } }; });
-      if (j.status === "not_available") r.getCell(10).font = { color: { argb: "FFC22A2F" } };
     }
   });
   if (!n) ws.addRow(["", "Nothing to buy right now"]);
 
   // 2. one line per item: how much in all, what's in stock, the earliest date
   const tot = wb.addWorksheet("Totals by item");
-  const tcols = ["Item", "Category", "Total qty", "Unit", "In stock", "Earliest needed", "Customers", ...(canCost ? ["Last cost (Rs)"] : [])];
+  const tcols = ["Item", "Category", "Total to buy", "Unit", "In stock", "Earliest needed", "Customers", ...(canCost ? ["Last cost (Rs)"] : [])];
   head(tot, "What to buy: totals by item", tcols.length);
   header(tot, 4, tcols);
   [42, 16, 11, 8, 10, 16, 50, 14].forEach((w, i) => { tot.getColumn(i + 1).width = w; });

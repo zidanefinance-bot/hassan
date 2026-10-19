@@ -138,10 +138,11 @@ export function home(db, user, can, { from, to } = {}) {
       q("Sales", "rate", "Enquiries waiting for rates", docs("d.kind = 'quote' AND d.status = 'enquiry'").map((d) => docItem(d, "Add selling rates and send the quote"))),
       q("Sales", "quote", "Quotes sent, waiting for customer", docs("d.kind = 'quote' AND d.status = 'sent'").map((d) => docItem(d, "Follow up for confirmation / PO")), "blue"),
       q("Sales", "nojob", "Confirmed, Job not created", docs("d.kind = 'quote' AND d.status = 'accepted'").map((d) => docItem(d, "Create the Internal Job")), "red"),
-      q("Sales", "dc", "Material ready, DC needed", jobs.filter((j) => step(j.ops_status) >= step("material_ready") && j.dc_count === 0).map((j) => jobItem(j, "Create the customer DC")), "red"),
+      // by quantity, so the rest of a part delivery / part invoice keeps showing until it's done
+      q("Sales", "dc", "Material ready, DC needed", jobs.filter((j) => !j.closed && step(j.ops_status) >= step("material_ready") && j.out_qty < j.ordered_qty - 0.001 && !j.draft_dc_count).map((j) => jobItem(j, j.out_qty > 0 ? `Part delivered (${j.out_qty} of ${j.ordered_qty}). DC for the rest` : "Create the customer DC")), "red"),
       q("Sales", "signed", "Delivered, signed DC missing", docs("d.kind = 'dc' AND d.status = 'issued' AND d.date > ?", soon(-signDays)).map((d) => docItem(d, "Upload / mark signed receiving"))),
       q("Sales", "signedold", `DC unsigned for ${signDays}+ days`, docs("d.kind = 'dc' AND d.status = 'issued' AND d.date <= ?", soon(-signDays)).map((d) => docItem(d, `Issued ${d.date}. Get the signed copy`)), "red"),
-      q("Sales", "inv", "Signed DC, invoice not made", jobs.filter((j) => j.signed_dc_count > 0 && j.invoice_count === 0).map((j) => jobItem(j, "Create the customer invoice")), "red"),
+      q("Sales", "inv", "Signed DC, invoice not made", jobs.filter((j) => !j.closed && j.signed_qty > j.invoiced_qty + 0.001).map((j) => jobItem(j, j.invoiced_qty > 0 ? `Invoice the rest (${j.invoiced_qty} of ${j.signed_qty} delivered invoiced)` : "Create the customer invoice")), "red"),
       q("Sales", "draftinv", "Draft invoices", docs("d.kind = 'invoice' AND d.status = 'draft'").map((d) => docItem(d, "Review and issue"))),
       q("Sales", "submit", "Invoices not submitted to customer", docs("d.kind = 'invoice' AND d.status = 'open' AND d.submitted_date IS NULL").map((d) => docItem(d, "Submit and mark the date"))),
       q("Sales", "follow", "Overdue: follow up with customer", docs("d.kind = 'invoice' AND d.status = 'open' AND d.due_date < ?", t).filter((d) => d.balance > 0).map((d) => docItem(d, `Rs ${d.balance.toLocaleString("en-PK")} outstanding`)), "red"),
@@ -152,7 +153,8 @@ export function home(db, user, can, { from, to } = {}) {
     queues.push(
       q("Operations", "newjob", "New Jobs to start", jobs.filter((j) => can("ops.write") && j.ops_status === "new").map((j) => jobItem(j, `${j.item_count} items · start procurement`)), "red"),
       q("Operations", "buy", "Items to buy", plist.map((g) => ({ label: `${g.name} · ${g.total_qty} ${g.unit}`, sub: `${g.jobs.length} job(s)${g.earliest ? ` · needed by ${g.earliest}` : ""}`, link: "/procurement", due: g.earliest }))),
-      q("Operations", "late", "Deadline in 2 days, material not ready", jobs.filter((j) => j.required_date && j.required_date <= soon(2) && step(j.ops_status) < step("material_ready")).map((j) => jobItem(j, j.ops_status.replace(/_/g, " "))), "red"),
+      q("Operations", "overdue", "Past the deadline, material not ready", jobs.filter((j) => !j.closed && j.required_date && j.required_date < t && step(j.ops_status) < step("material_ready")).map((j) => jobItem(j, `Was needed ${j.required_date} · ${j.ops_status.replace(/_/g, " ")}`)), "red"),
+      q("Operations", "late", "Deadline in 2 days, material not ready", jobs.filter((j) => !j.closed && j.required_date && j.required_date >= t && j.required_date <= soon(2) && step(j.ops_status) < step("material_ready")).map((j) => jobItem(j, j.ops_status.replace(/_/g, " "))), "amber"),
       q("Operations", "nobill", "Purchased but no supplier bill", jobs.filter((j) => ["partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"].includes(j.ops_status) && j.bill_count === 0).map((j) => jobItem(j, "Add the supplier bill"))),
       q("Operations", "ready", "Bought, mark material ready", jobs.filter((j) => j.ops_status === "purchase_complete").map((j) => jobItem(j, "Tell Sales it's ready")), "blue"),
     );

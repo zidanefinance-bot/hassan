@@ -105,11 +105,13 @@ export default function DocumentForm({ kind }) {
     } catch (x) { setErr(x.message); } finally { setReading(false); if (photo.current) photo.current.value = ""; }
   };
 
+  const withBlank = (lines) => (lines.length ? lines : [blankLine()]);
   // purchases for a Job: pull in the Job's items (if the lines are still empty) so Operations only fills supplier, rates and bill #
   useEffect(() => {
     if (!isPurchase || !doc?.job_id) return;
     api(`/jobs/${doc.job_id}`).then((j) => setDoc((d) => (d.lines.every((l) => !l.item_id && !l.description)
-      ? { ...d, lines: j.items.filter((it) => it.procurement_status !== "from_stock").map((it) => ({ ...blankLine(), item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: it.qty, rate: it.purchase_rate || 0 })) }
+      // only what earlier bills for this Job haven't covered yet
+      ? { ...d, lines: withBlank(j.items.filter((it) => it.procurement_status !== "from_stock" && it.qty - (it.purchased_qty || 0) > 0.001).map((it) => ({ ...blankLine(), item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: Math.round((it.qty - (it.purchased_qty || 0)) * 1000) / 1000, rate: it.purchase_rate || 0 }))) }
       : d))).catch(() => {});
   }, [doc?.job_id]); // eslint-disable-line react-hooks/exhaustive-deps
 

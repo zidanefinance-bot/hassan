@@ -283,7 +283,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json({ ok: true });
   });
   api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req), { admin: can(req.user, "admin") }) }));
-  api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req)) }));
+  api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req), { admin: can(req.user, "admin") }) }));
   // "Material arrived": delivery challan + invoice in one go, optionally emailed to the customer as PDFs
   api.post("/jobs/:id/deliver", requirePerm("sales.write"), async (req, res) => {
     const out = { dc_id: null, invoice_id: null, invoice_status: null, email: null };
@@ -413,19 +413,20 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   const jobDocChecks = (req, doc, kind, status, lines) => {
     if (!doc.job_id) return;
     if (kind === "dc" && ["issued", "signed"].includes(status)) J.checkDcIssue(db, doc, lines, { admin: can(req.user, "admin") });
-    if (kind === "invoice" && ["open", "draft"].includes(status)) J.checkInvoiceQty(db, doc, lines);
+    if (kind === "invoice" && ["open", "draft"].includes(status)) J.checkInvoiceQty(db, doc, lines, { admin: can(req.user, "admin") });
   };
   const afterSave = (req, docId, beforeStatus) => {
     const d = db.prepare("SELECT kind, status, job_id FROM documents WHERE id = ?").get(docId);
     if (d?.status === "open" && beforeStatus !== "open") C.notifyEvent(db, req.user.id, "doc.issued", { docId });
     const out = (s) => ["issued", "signed"].includes(s);
+    if (d?.kind === "bill" && d.job_id) J.syncJobBuying(db, req.user.id, d.job_id);
     if (d?.kind === "dc" && d.job_id) J.syncJobDelivery(db, d.job_id, { removed: out(beforeStatus) && !out(d.status) });
   };
   api.post("/documents/:id/status", docAction(DOC_WRITE, (req, d) => {
     // the credit limit applies whenever an invoice becomes open, from whatever status
     if (d.kind === "invoice" && d.status !== "open" && req.body.status === "open") limitGuard(req, d.id, () => checkCreditLimit(req, d.contact_id, d.total));
     if (d.kind === "dc" && req.body.status === "issued") J.checkDcIssue(db, d, null, { admin: can(req.user, "admin") });
-    if (d.kind === "invoice" && req.body.status === "open") J.checkInvoiceQty(db, d, db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(d.id));
+    if (d.kind === "invoice" && req.body.status === "open") J.checkInvoiceQty(db, d, db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(d.id), { admin: can(req.user, "admin") });
     if (d.kind === "dc" && req.body.status === "void") J.checkDcRemoval(db, d);
     B.setStatus(db, req.user.id, id(req), req.body.status, { admin: can(req.user, "admin") });
     afterSave(req, d.id, d.status);
@@ -467,6 +468,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.delete("/documents/:id", docAction(DOC_WRITE, (req, d) => {
     if ((d.verified_at || (d.kind === "dc" && d.status === "signed")) && !can(req.user, "admin")) throw httpError(400, "Verified invoices/bills and signed DCs can only be removed by a director");
     if (d.kind === "quote" && d.status === "converted") throw httpError(400, "This quote is already a Job");
+    // issued money paperwork stays on record (void it instead); only a director can remove it
+    if (["invoice", "bill", "credit_note", "vendor_credit"].includes(d.kind) && d.status !== "draft" && !can(req.user, "admin")) throw httpError(400, `${d.number} is already issued. Void it instead of deleting (a director can delete it).`);
     if (d.kind === "dc") J.checkDcRemoval(db, d);
     B.deleteDocument(db, req.user.id, d.id);
     if (d.kind === "dc" && d.job_id) J.syncJobDelivery(db, d.job_id, { removed: ["issued", "signed"].includes(d.status) });

@@ -127,7 +127,7 @@ export default function Dashboard() {
             <div className="stats">
               {k.receivables !== undefined && <Stat label="Customer outstanding" value={money(k.receivables)} to="/reports?tab=receivables" sub={k.aging && (k.aging.buckets["31-60"] + k.aging.buckets["61-90"] + k.aging.buckets["90+"]) > 0 ? <span className="neg">{money(k.aging.buckets["31-60"] + k.aging.buckets["61-90"] + k.aging.buckets["90+"])} over 30 days late</span> : null} />}
               {k.payables !== undefined && <Stat label="Supplier payable" value={money(k.payables)} to="/reports?tab=payables" />}
-              {k.orders_in_hand && <Stat label="Orders in hand (open Jobs)" value={money(k.orders_in_hand.value)} to="/jobs" sub={<span className="muted">{k.orders_in_hand.jobs} Job{k.orders_in_hand.jobs === 1 ? "" : "s"} · {money(k.orders_in_hand.to_invoice)} still to invoice</span>} />}
+              {k.orders_in_hand && <Stat label="Orders in hand (not invoiced yet)" value={money(k.orders_in_hand.to_invoice)} to="/jobs" sub={<span className="muted">{k.orders_in_hand.jobs} open Job{k.orders_in_hand.jobs === 1 ? "" : "s"} · total value {money(k.orders_in_hand.value)}</span>} />}
               {k.open_quotes !== undefined && <Stat label="Open enquiries & quotes" value={money(k.open_quotes)} to="/quotes" />}
               {k.active_jobs !== undefined && <Stat label="Active Jobs" value={k.active_jobs} to="/jobs" sub={<span className={k.blocked_jobs ? "neg" : "muted"}>{k.blocked_jobs} past due date</span>} />}
               {k.period && <Stat label={`Net profit · ${PERIODS[period][0].toLowerCase()}`} value={money(k.period.net_profit)} tone={k.period.net_profit < 0 ? "neg" : "pos"} to={`/reports?tab=pnl&from=${from}&to=${to}`}

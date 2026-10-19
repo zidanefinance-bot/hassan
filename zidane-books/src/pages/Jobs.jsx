@@ -201,6 +201,10 @@ export function JobView() {
       const step = OPS_STEPS.indexOf(j.ops_status);
       const nextOps = { new: "procurement_started", procurement_started: null, partially_purchased: null, purchase_complete: "material_ready", material_ready: "dispatched", dispatched: "delivered" }[j.ops_status];
       const docsOf = (k) => j.documents.filter((d) => d.kind === k);
+      // Sales: what's in hand and not delivered yet (a part delivery is fine), and what's delivered but not invoiced
+      const canDeliver = j.items.some((it) => (it.ready_qty ?? 0) - it.delivered_qty > 0.001);
+      const toDeliverLeft = j.items.some((it) => it.qty - it.delivered_qty > 0.001);
+      const canInvoice = j.items.some((it) => it.delivered_qty - (it.invoiced_qty ?? 0) > 0.001) || can("admin");
       return (
         <>
           <PageHead title={<>{j.number}{j.customer_po_number && <span className="po-tag">PO {j.customer_po_number}</span>} <Badge status={j.ops_status} /></>} sub={`${j.customer_name}${j.customer_po_date ? ` · PO dated ${fmtDate(j.customer_po_date)}` : ""} · created by ${j.created_by_name || "—"}`}>
@@ -211,10 +215,10 @@ export function JobView() {
             {can("ops.write") && nextOps && step >= 4 && nextOps !== "delivered" && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}
             {can("buy") && <Link className="btn" to={`/bills/new?job=${id}`}>+ Supplier bill</Link>}
             {can("buy") && <button className="btn" onClick={() => setCost(true)}>+ Freight / direct cost</button>}
-            {can("sales.write") && !j.closed && step >= 4 && j.items.some((it) => it.procurement_status !== "not_available" && it.delivered_qty < it.qty) && <button className="btn primary" onClick={() => setDeliver(true)}>Material arrived → DC + invoice</button>}
-            {can("sales.write") && !j.closed && (step >= 4 || can("admin")) && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
-            {can("sales.write") && !j.closed && step < 4 && <span className="muted small self-center">DC unlocks when Operations marks the material ready</span>}
-            {can("sales.write") && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/invoice`, { method: "POST" }), "Draft invoice created"); if (r) nav(`/invoices/${r.id}`); }}>Create invoice</button>}
+            {can("sales.write") && !j.closed && canDeliver && <button className="btn primary" onClick={() => setDeliver(true)}>{step >= 4 ? "Material arrived" : "Send what's in hand"} → DC + invoice</button>}
+            {can("sales.write") && !j.closed && toDeliverLeft && (canDeliver || can("admin")) && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
+            {can("sales.write") && !j.closed && toDeliverLeft && !canDeliver && <span className="muted small self-center">DC unlocks when Operations marks items bought or the material ready</span>}
+            {can("sales.write") && !j.closed && canInvoice && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/invoice`, { method: "POST" }), "Draft invoice created"); if (r) nav(`/invoices/${r.id}`); }}>Create invoice</button>}
             {can("admin") && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/close`, { method: "POST", body: { closed: !j.closed } }), j.closed ? "Job reopened" : "Job closed")}>{j.closed ? "Reopen" : "Close job"}</button>}
           </PageHead>
 

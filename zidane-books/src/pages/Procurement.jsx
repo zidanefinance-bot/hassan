@@ -20,14 +20,15 @@ export default function Procurement() {
           {groups.map((g) => (
             <section key={g.key} className={`card buy ${g.urgent ? "urgent" : ""}`}>
               <header>
-                <div><h3>{g.name}</h3><span className="muted small">{g.category ? `${g.category} · ` : ""}{g.stock_qty !== null && g.stock_qty !== undefined ? `In stock ${num(g.stock_qty)} ${g.unit}` : "Not in item list"}{g.purchase_rate ? ` · last cost ${money(g.purchase_rate)}` : ""}</span></div>
+                <div><h3>{g.name}</h3><span className="muted small">{g.category ? `${g.category} · ` : ""}{g.stock_qty !== null && g.stock_qty !== undefined ? `In stock ${num(g.stock_qty)} ${g.unit}` : "Not in item list"}{g.purchase_rate ? ` · last cost ${money(g.purchase_rate)}` : ""}</span>
+                  {g.stock_qty >= g.total_qty && <span className="badge green sm">stock covers it: mark "From stock"</span>}</div>
                 <div className="r"><b className="big-num">{num(g.total_qty)}</b> <span className="muted">{g.unit}</span>{g.earliest && <div className={`small ${g.earliest <= today() ? "neg" : "muted"}`}>by {fmtDate(g.earliest)}</div>}</div>
               </header>
               <table className="table compact"><tbody>
                 {g.jobs.map((j) => (
                   <tr key={j.job_item_id}>
                     <td><Link to={`/jobs/${j.job_id}`}>{j.job_number}</Link> <span className="muted">{j.customer_name}</span>{j.fulfilment_type === "direct" && <span className="badge blue sm">direct</span>}</td>
-                    <td className="r">{num(j.qty)}</td>
+                    <td className="r">{num(j.qty)}{j.bought > 0 && <div className="muted small">{num(j.bought)} of {num(j.ordered)} bought</div>}</td>
                     <td className="r nowrap">
                       <button className="btn sm" onClick={() => mark(j.job_item_id, "bought")}>Bought</button>
                       <button className="btn sm ghost" onClick={() => mark(j.job_item_id, "partial")}>Partial</button>

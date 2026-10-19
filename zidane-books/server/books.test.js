@@ -65,9 +65,9 @@ test("Job flow: quote → Job → DC moves stock → invoice doesn't move it aga
   B.saveDocument(db, 1, { kind: "bill", contact_id: sup, job_id: job, status: "open", lines: [{ item_id: i, qty: 10, rate: 95 }] });
   assert.equal(db.prepare("SELECT stock_qty FROM items WHERE id = ?").get(i).stock_qty, 110);
   const ji = db.prepare("SELECT id FROM job_items WHERE job_id = ?").get(job).id;
+  assert.throws(() => J.dcFromJob(db, 1, job), /Nothing more is bought/, "no DC for goods Operations hasn't marked bought / ready");
   J.setItemProcurement(db, 1, ji, "bought");
   assert.equal(db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(job).ops_status, "purchase_complete");
-  assert.throws(() => J.dcFromJob(db, 1, job), /material ready/, "no DC before Operations says the goods are ready");
   J.setOpsStatus(db, 1, job, "material_ready");
   const dc = J.dcFromJob(db, 1, job);
   B.setStatus(db, 1, dc, "issued");
@@ -885,7 +885,7 @@ test("start fresh removes the records, keeps users and settings, and backs up fi
   await wb.xlsx.load(buffer);
   const ws = wb.getWorksheet("What to buy");
   assert.match(String(ws.getCell("A2").value), /^Downloaded: \d+ \w+ \d{4}, .* · by Imran$/);
-  assert.deepEqual(ws.getRow(4).values.slice(1, 7), ["#", "Item", "Category", "Customer", "Job", "Qty"]);
+  assert.deepEqual(ws.getRow(4).values.slice(1, 7), ["#", "Item", "Category", "Customer", "Job", "To buy"]);
   const lines = J.procurementList(db).flatMap((g) => g.jobs.map((j) => [g.name, j.customer_name, j.qty]));
   assert.ok(lines.length > 0, "the demo has something to buy");
   assert.deepEqual([ws.getCell("B5").value, ws.getCell("D5").value, ws.getCell("F5").value], lines[0]);
@@ -908,4 +908,73 @@ test("start fresh removes the records, keeps users and settings, and backs up fi
   assert.ok(old.prepare("SELECT COUNT(*) n FROM documents").get().n > 0);
   old.close();
   db.close();
+});
+
+test("QA round: buying, delivering and invoicing follow the real paperwork", async () => {
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (ck, method, path, body) => {
+    const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, body: await r.json() };
+  };
+  const one = (sql, ...a) => db.prepare(sql).get(...a);
+  try {
+    const [dir, sales, pur] = [await login(director.email, director.password), await login("sales@zidane.com.pk"), await login("purchaser@zidane.com.pk")];
+    const cust = one("SELECT id FROM contacts WHERE type = 'customer'").id;
+    const sup = one("SELECT id FROM contacts WHERE type = 'supplier'").id;
+    const [a, b] = db.prepare("SELECT id FROM items ORDER BY id LIMIT 2").all().map((r) => r.id);
+    // a Job needs real quantities and rates
+    assert.equal((await call(sales, "POST", "/jobs", { customer_id: cust, items: [{ item_id: a, qty: 0, sale_rate: 10 }] })).status, 400);
+    assert.equal((await call(sales, "POST", "/jobs", { customer_id: cust, items: [{ item_id: a, qty: -5, sale_rate: 10 }] })).status, 400);
+    assert.equal((await call(sales, "POST", "/jobs", { customer_id: cust, items: [{ item_id: a, qty: 5, sale_rate: -1 }] })).status, 400);
+    const job = (await call(sales, "POST", "/jobs", { customer_id: cust, items: [{ item_id: a, qty: 15, sale_rate: 100 }, { item_id: b, qty: 4, sale_rate: 50 }] })).body.id;
+    const ji = (item) => one("SELECT * FROM job_items WHERE job_id = ? AND item_id = ?", job, item);
+    // a supplier bill for part of the Job: that line becomes partly bought, and What to buy shows only the rest
+    const bill1 = await call(pur, "POST", "/documents", { kind: "bill", contact_id: sup, job_id: job, reference: "QA-1", status: "open", charges: 500, charges_label: "Rickshaw", lines: [{ item_id: a, qty: 10, rate: 80 }] });
+    assert.equal(bill1.status, 200);
+    assert.equal(ji(a).procurement_status, "partial");
+    assert.equal(ji(b).procurement_status, "to_buy");
+    const g = J.procurementList(db).find((x) => x.item_id === a).jobs.find((x) => x.job_id === job);
+    assert.deepEqual([g.qty, g.ordered, g.bought], [5, 15, 10]);
+    // the rest on a second bill: bought
+    await call(pur, "POST", "/documents", { kind: "bill", contact_id: sup, job_id: job, reference: "QA-2", status: "open", lines: [{ item_id: a, qty: 5, rate: 90 }] });
+    assert.equal(ji(a).procurement_status, "bought");
+    assert.ok(!J.procurementList(db).some((x) => x.item_id === a && x.jobs.some((j) => j.job_id === job)), "nothing left to buy for it");
+    // freight on a bill is part of the Job's cost
+    assert.equal(J.jobEconomics(db, job).purchases, 10 * 80 + 500 + 5 * 90);
+    // "from stock" only when the stock is really there
+    db.prepare("UPDATE items SET stock_qty = 2 WHERE id = ?").run(b);
+    assert.equal((await call(pur, "POST", `/job-items/${ji(b).id}/procurement`, { status: "from_stock" })).status, 400);
+    db.prepare("UPDATE items SET stock_qty = 50 WHERE id = ?").run(b);
+    assert.equal((await call(pur, "POST", `/job-items/${ji(b).id}/procurement`, { status: "from_stock" })).status, 200);
+    assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job).ops_status, "purchase_complete");
+
+    // no invoice before goods go out on a DC (a director can invoice in advance)
+    assert.match((await call(sales, "POST", `/jobs/${job}/invoice`)).body.error, /DC first/);
+    // what's bought can go out before Operations marks the whole Job ready; a part delivery isn't "delivered"
+    const dc = (await call(sales, "POST", `/jobs/${job}/dc`)).body.id;
+    assert.ok(dc, "bought goods can go out");
+    const lines = db.prepare("SELECT item_id, qty FROM document_lines WHERE document_id = ?").all(dc);
+    assert.equal((await call(sales, "PUT", `/documents/${dc}`, { contact_id: cust, job_id: job, lines: lines.map((l) => (l.item_id === a ? { ...l, qty: 10 } : l)).filter((l) => l.item_id === a) })).status, 200);
+    assert.equal((await call(sales, "POST", `/documents/${dc}/status`, { status: "issued" })).status, 200);
+    assert.equal((await call(sales, "POST", `/documents/${dc}/sign`, { name: "Store" })).status, 200);
+    assert.equal(one("SELECT ops_status FROM jobs WHERE id = ?", job).ops_status, "dispatched", "10 of 15 signed for: not delivered yet");
+    let home = (await call(sales, "GET", "/reports/home")).body;
+    assert.ok(home.queues.find((q) => q.key === "inv").items.some((i) => i.label.includes(one("SELECT number FROM jobs WHERE id = ?", job).number)), "the signed part waits for its invoice");
+    const inv = (await call(sales, "POST", `/jobs/${job}/invoice`)).body.id;
+    assert.deepEqual(db.prepare("SELECT item_id, qty FROM document_lines WHERE document_id = ?").all(inv).map((l) => [l.item_id, l.qty]), [[a, 10]], "only what was delivered");
+    assert.equal((await call(sales, "POST", `/documents/${inv}/status`, { status: "open" })).status, 200);
+    // an issued invoice is voided, not deleted (unless a director does it)
+    assert.equal((await call(sales, "DELETE", `/documents/${inv}`)).status, 400);
+    // the rest still shows as to deliver
+    home = (await call(sales, "GET", "/reports/home")).body;
+    assert.ok(home.queues.find((q) => q.key === "dc").items.some((i) => /Part delivered/.test(i.sub)), "the rest of the order is still to deliver");
+    void dir;
+  } finally {
+    server.close();
+  }
 });
