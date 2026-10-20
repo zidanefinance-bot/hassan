@@ -16,6 +16,10 @@ export function createJob(db, userId, input) {
   if (items.length === 0) throw httpError(400, "Add at least one item");
   if (items.some((i) => !(Number(i.qty) > 0))) throw httpError(400, "Every line needs a quantity above 0");
   if (items.some((i) => Number(i.sale_rate ?? i.rate) < 0)) throw httpError(400, "A selling rate can't be negative");
+  // one customer PO = one Job (a double tap, or the same PO entered twice, must not make another)
+  const po = String(input.customer_po_number || "").trim();
+  const twin = po && db.prepare("SELECT number FROM jobs WHERE customer_id = ? AND LOWER(TRIM(customer_po_number)) = LOWER(?)").get(input.customer_id, po);
+  if (twin) throw httpError(400, `${twin.number} is already the Job for PO ${po}. Open it instead of making another.`);
   if (input.quote_id) {
     const q = db.prepare("SELECT * FROM documents WHERE id = ? AND kind = 'quote'").get(input.quote_id);
     if (!q) throw httpError(400, "That quote doesn't exist");
@@ -120,10 +124,34 @@ export function syncJobBuying(db, userId, jobId) {
   if (changed) { rollupOps(db, jobId); log(db, userId, `${changed} item(s) bought by supplier bill`, "job", jobId, job.number); }
 }
 
+// a Job made by mistake (e.g. twice): only while nothing hangs on it yet
+export function deleteJob(db, userId, id) {
+  const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
+  if (!job) throw httpError(404, "Job not found");
+  const doc = db.prepare("SELECT number FROM documents WHERE job_id = ? LIMIT 1").get(id);
+  if (doc) throw httpError(400, `${doc.number} belongs to this Job. Delete or move it first.`);
+  if (db.prepare("SELECT 1 FROM expenses WHERE job_id = ?").get(id)) throw httpError(400, "This Job has costs recorded. Remove them first.");
+  tx(db, () => {
+    db.prepare("UPDATE documents SET status = 'accepted', job_id = NULL WHERE kind = 'quote' AND job_id = ?").run(id); // its quote can become a Job again
+    // the PO it came from points at the twin Job if there is one, else waits in the inbox again
+    const twin = job.customer_po_number && db.prepare("SELECT id FROM jobs WHERE customer_id = ? AND LOWER(TRIM(customer_po_number)) = LOWER(TRIM(?)) AND id != ?").get(job.customer_id, job.customer_po_number, id);
+    if (twin) db.prepare("UPDATE inbox_messages SET result_id = ? WHERE result_kind = 'job' AND result_id = ?").run(twin.id, id);
+    else db.prepare("UPDATE inbox_messages SET status = 'ready', result_kind = NULL, result_id = NULL WHERE result_kind = 'job' AND result_id = ?").run(id);
+    db.prepare("DELETE FROM attachments WHERE entity = 'job' AND entity_id = ?").run(id);
+    db.prepare("DELETE FROM comments WHERE entity = 'job' AND entity_id = ?").run(id);
+    db.prepare("DELETE FROM job_items WHERE job_id = ?").run(id);
+    db.prepare("DELETE FROM jobs WHERE id = ?").run(id);
+    log(db, userId, "deleted job", "job", id, job.number);
+  });
+}
+
 export function updateJob(db, userId, id, input) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
   if (!job) throw httpError(404, "Job not found");
   if (job.closed) throw httpError(400, "This Job is closed. A director can reopen it.");
+  const po = String(input.customer_po_number ?? job.customer_po_number ?? "").trim();
+  const twin = po && db.prepare("SELECT number FROM jobs WHERE customer_id = ? AND LOWER(TRIM(customer_po_number)) = LOWER(?) AND id != ?").get(job.customer_id, po, id);
+  if (twin) throw httpError(400, `${twin.number} already has PO ${po}`);
   tx(db, () => {
     db.prepare("UPDATE jobs SET customer_po_number=?, customer_po_date=?, required_date=?, delivery_location=?, priority=?, instructions=?, order_source=?, fulfilment_type=? WHERE id=?")
       .run(input.customer_po_number ?? job.customer_po_number, input.customer_po_date ?? job.customer_po_date, input.required_date ?? job.required_date,

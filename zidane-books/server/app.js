@@ -281,6 +281,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     C.notifyEvent(db, req.user.id, "job.created", { jobId });
     res.json({ id: jobId });
   });
+  api.delete("/jobs/:id", requirePerm("admin"), (req, res) => { J.deleteJob(db, req.user.id, id(req)); res.json({ ok: true }); });
   api.put("/jobs/:id", requirePerm("sales.write"), (req, res) => { J.updateJob(db, req.user.id, id(req), req.body); res.json({ ok: true }); });
   api.post("/jobs/:id/ops-status", requirePerm("ops.write"), (req, res) => {
     const before = db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(id(req))?.ops_status;

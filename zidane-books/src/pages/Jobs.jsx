@@ -103,8 +103,11 @@ export function JobForm() {
   }, [editId]);
   const set = (k) => ({ value: f[k], onChange: (e) => setF({ ...f, [k]: e.target.value }) });
   const setItem = (i, patch) => setF((s) => ({ ...s, items: s.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) }));
+  const [saving, setSaving] = useState(false);
   const save = async () => {
+    if (saving) return; // a double tap must not make two Jobs
     setErr("");
+    setSaving(true);
     try {
       // "Customer on paper" was only a hint while the customer wasn't picked
       const instructions = f.customer_id ? f.instructions.split("\n").filter((l) => !l.startsWith("Customer on paper:")).join("\n") : f.instructions;
@@ -118,7 +121,7 @@ export function JobForm() {
       if (inboxId) await api(`/inbox/${inboxId}/status`, { method: "POST", body: { status: "done", result_kind: "job", result_id: r.id, lines: learnedLines(f.items) } }).catch(() => {});
       toast("Job created and sent to Operations");
       nav(`/jobs/${r.id}`);
-    } catch (x) { setErr(x.message); }
+    } catch (x) { setErr(x.message); setSaving(false); }
   };
   return (
     <>
@@ -165,7 +168,7 @@ export function JobForm() {
           <button type="button" className="btn ghost" onClick={() => setAddingItem({ line: -1, name: "" })}>+ New item (not in list)</button></div>
         <Field label="Instructions for Operations"><textarea rows={2} {...set("instructions")} placeholder="Packing, delivery timing, gate pass…" /></Field>
         {err && <div className="form-error">{err}</div>}
-        <div className="form-actions"><button className="btn ghost" onClick={() => nav(-1)}>Cancel</button><button className="btn primary" onClick={save}>{editId ? "Save changes" : "Create Job"}</button></div>
+        <div className="form-actions"><button className="btn ghost" onClick={() => nav(-1)}>Cancel</button><button className="btn primary" disabled={saving} onClick={save}>{saving ? "Saving…" : editId ? "Save changes" : "Create Job"}</button></div>
       </div>
       {creating && <NewItems lines={f.items} items={items.data} rateField="sale_rate" onClose={() => setCreating(false)} onDone={(items2) => { setCreating(false); items.reload(); setF((s) => ({ ...s, items: items2 })); }} />}
       {addingItem && <ItemForm presetName={addingItem.name} preset={addingItem.preset} onClose={() => setAddingItem(null)} onSaved={async (newId) => {
@@ -232,6 +235,7 @@ export function JobView() {
             {can("ops.write") && j.ops_status === "dispatched" && !j.documents.some((d) => d.kind === "dc" && ["issued", "signed"].includes(d.status)) && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "material_ready" } }), "Moved back to material ready")}>Not dispatched yet</button>}
             {can("ops.write") && nextOps && step >= 4 && nextOps !== "delivered" && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}
             {can("sales.write") && !j.closed && <Link className="btn ghost" to={`/jobs/${id}/edit`}>Edit Job</Link>}
+            {can("admin") && !j.documents.length && !j.expenses?.length && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${j.number}? Use this for a Job made twice by mistake.`) && await act(() => api(`/jobs/${id}`, { method: "DELETE" }), "Job deleted")) nav("/jobs"); }}>Delete Job</button>}
             {can("buy") && <Link className="btn" to={`/bills/new?job=${id}`}>+ Supplier bill</Link>}
             {can("buy") && <button className="btn" onClick={() => setCost(true)}>+ Freight / direct cost</button>}
             {can("sales.write") && !j.closed && canDeliver && <button className="btn primary" onClick={() => setDeliver(true)}>{step >= 4 ? "Material arrived" : "Send what's in hand"} → DC + invoice</button>}

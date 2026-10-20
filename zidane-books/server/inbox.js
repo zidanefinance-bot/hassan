@@ -57,10 +57,23 @@ export async function processMessage(db, uploadDir, id) {
   if (!m) return;
   db.prepare("UPDATE inbox_messages SET status = 'reading', error = NULL WHERE id = ?").run(id);
   try {
-    const files = db.prepare("SELECT * FROM inbox_files WHERE inbox_id = ?").all(id).map((f) => ({ filename: f.filename, mime: f.mime === "image/jpg" ? "image/jpeg" : f.mime, buffer: readFileSync(join(uploadDir, f.path)) }));
+    const fileRows = db.prepare("SELECT * FROM inbox_files WHERE inbox_id = ?").all(id);
+    const files = fileRows.map((f) => ({ filename: f.filename, mime: f.mime === "image/jpg" ? "image/jpeg" : f.mime, buffer: readFileSync(join(uploadDir, f.path)) }));
     // computer-made PDFs (ERP purchase orders, printed bills) are read for free; only photos and scans need AI
     let draft = null;
-    for (const f of files.filter((f) => f.mime === "application/pdf")) { draft = await parseOrderPdf(f.buffer); if (draft) break; }
+    const more = [];
+    for (const [k, f] of files.entries()) {
+      if (f.mime !== "application/pdf") continue;
+      const d = await parseOrderPdf(f.buffer);
+      if (d && !draft) draft = d; else if (d) more.push(fileRows[k]);
+    }
+    // several POs in one email: each becomes its own inbox entry (and Job), the first stays here
+    for (const f of more) {
+      const nid = Number(db.prepare("INSERT INTO inbox_messages (source, from_addr, subject, body_text, received_at, created_by) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(m.source, m.from_addr, [m.subject, f.filename].filter(Boolean).join(" · "), m.body_text || "", m.received_at, m.created_by).lastInsertRowid);
+      db.prepare("UPDATE inbox_files SET inbox_id = ? WHERE id = ?").run(nid, f.id);
+      await processMessage(db, uploadDir, nid);
+    }
     if (!draft) {
       if (!reader.ready()) throw new Error(files.length ? "This file has no readable text (a photo or scan). Turn on AI reading, or type the order in." : "Nothing to read automatically. Turn on AI reading, or type the order in.");
       const catalog = db.prepare("SELECT id, name, sku, unit FROM items WHERE active = 1 ORDER BY name").all();

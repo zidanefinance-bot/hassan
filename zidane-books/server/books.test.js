@@ -845,6 +845,11 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
     assert.equal(auto.delivery_location, "WH-CONSUMABLE-1400, PLANT-1400");
     assert.deepEqual(db.prepare("SELECT item_id, qty, sale_rate FROM job_items WHERE job_id = ? ORDER BY id").all(auto.id).map((r) => [r.item_id, r.qty, r.sale_rate]), [[ids[1], 20, 245], [ids[2], 2, 1100]]);
     assert.ok(db.prepare("SELECT 1 FROM attachments WHERE entity = 'job' AND entity_id = ?").get(auto.id));
+    // two POs in one email: each is read on its own
+    const before = db.prepare("SELECT COUNT(*) n FROM inbox_messages").get().n;
+    m = await call("POST", "/inbox", { files: [{ filename: "a.pdf", mime: "application/pdf", data: po2.toString("base64") }, { filename: "b.pdf", mime: "application/pdf", data: (await fakeOraclePo()).toString("base64") }], wait: true });
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM inbox_messages").get().n, before + 2);
+    assert.ok(db.prepare("SELECT 1 FROM inbox_messages WHERE extraction LIKE '%23552%'").get(), "the second PO has its own entry");
     // a photo with AI off says so instead of guessing
     const png = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
     m = await call("POST", "/inbox", { files: [{ filename: "photo.png", mime: "image/png", data: png }], wait: true });
@@ -1096,4 +1101,20 @@ test("tax withheld by the customer settles the invoice and shows in the tax repo
   assert.equal(s.closing, 0);
   assert.match(s.rows.at(-1).details, /tax withheld Rs 891/);
   assert.throws(() => B.recordPayment(db, 1, { direction: "in", contact_id: c, amount: 10, wht_income: -1 }), /negative/);
+});
+
+test("one customer PO makes one Job; a Job made twice by mistake can be deleted", () => {
+  const { db, c, i } = fresh();
+  const job = J.createJob(db, 1, { customer_id: c, customer_po_number: "ORD-139826", items: [{ item_id: i, qty: 200, sale_rate: 10 }] });
+  assert.throws(() => J.createJob(db, 1, { customer_id: c, customer_po_number: " ord-139826 ", items: [{ item_id: i, qty: 200, sale_rate: 10 }] }), /already the Job for PO/);
+  // as if a double tap had got through before this rule
+  db.prepare("INSERT INTO jobs (number, customer_id, customer_po_number) VALUES ('JOB-X', ?, 'ORD-139826')").run(c);
+  const dup = db.prepare("SELECT id FROM jobs WHERE number = 'JOB-X'").get().id;
+  db.prepare("INSERT INTO job_items (job_id, item_id, qty) VALUES (?, ?, 200)").run(dup, i);
+  db.prepare("INSERT INTO inbox_messages (source, status, result_kind, result_id) VALUES ('email', 'done', 'job', ?)").run(dup);
+  J.deleteJob(db, 1, dup);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM jobs").get().n, 1);
+  assert.equal(db.prepare("SELECT result_id FROM inbox_messages").get().result_id, job, "the PO now points at the Job that stays");
+  B.saveDocument(db, 1, { kind: "dc", contact_id: c, job_id: job, status: "draft", lines: [{ item_id: i, qty: 1, rate: 0 }] });
+  assert.throws(() => J.deleteJob(db, 1, job), /belongs to this Job/);
 });
