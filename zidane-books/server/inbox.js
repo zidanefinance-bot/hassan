@@ -79,6 +79,11 @@ export async function processMessage(db, uploadDir, id) {
     if (!draft && m.source === "email" && !reader.ready()) {
       const real = files.filter((f) => !(SIGNATURE_IMAGE.test(f.filename) && f.buffer.length < 80 * 1024));
       const text = `${m.subject || ""}\n${String(m.body_text || "").slice(0, 3000)}`;
+      // automatic mail (Google location sharing, sign-in alerts, newsletters …) is never a customer's order
+      if (AUTOMATED_FROM.test(m.from_addr || "") || AUTOMATED_SUBJECT.test(m.subject || "")) {
+        db.prepare("UPDATE inbox_messages SET status = 'ignored', error = ? WHERE id = ?").run("Automatic email, not an order", id);
+        return;
+      }
       if (QUERY.test(text)) {
         db.prepare("UPDATE inbox_messages SET status = 'error', doc_type = 'customer_order', error = ? WHERE id = ?").run("A customer's query or RFQ without a readable PO. Read the email and make the enquiry / quote (AI reading is off).", id);
         notify(db, [...usersWith(db, "sales.write"), ...usersWith(db, "admin")], { kind: "inbox", title: `Query by email: ${m.subject || m.from_addr || "no subject"}`, body: m.from_addr || "", link: `/inbox?open=${id}` });
@@ -146,6 +151,8 @@ function attachSource(db, m, entity, entityId, userId) {
 
 // words that make an email a customer's order or query; logos in email signatures (image001.jpg …) don't count as files
 const QUERY = /\b(rfq|quotations?|quotes?|enquiry|enquiries|inquiry|requirements?|required|requisition|p\.?\s?o\.?\s*#?\s*\d|purchase\s*orders?|orders?|deliver(y|ies)?|supply|need)\b/i;
+const AUTOMATED_FROM = /(no-?reply|do-?not-?reply|notifications?@|alerts?@|mailer-daemon|postmaster|@(.*\.)?(google|accounts\.google|facebookmail|linkedin|microsoft|apple|whatsapp|mailchimp)\.com)/i;
+const AUTOMATED_SUBJECT = /(sharing (their |your )?location|location sharing|security alert|sign-?in|verify your|verification code|password|newsletter|unsubscribe|delivery status notification|undeliverable|out of office|automatic reply)/i;
 const SIGNATURE_IMAGE = /^image\d+\.(jpe?g|png|gif)$/i;
 
 // one at a time, in arrival order

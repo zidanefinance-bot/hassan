@@ -1156,8 +1156,10 @@ test("emails that aren't orders are set aside quietly; a customer's query goes t
   const logo = { filename: "image001.jpg", mime: "image/jpeg", buffer: Buffer.alloc(2000, 1) };
   const junk = addMessage(db, dir, { source: "email", message_id: "a", subject: "Inbox zero", body_text: "Tips for a tidy mailbox", files: [logo] });
   const ledger = addMessage(db, dir, { source: "email", message_id: "b", subject: "RE: Commission Ledger – 16 july 2026", body_text: "Please find the ledger.", files: [] });
+  const loc = addMessage(db, dir, { source: "email", message_id: "d", from_addr: "Google Maps <noreply-maps-timeline@google.com>", subject: "Ali is sharing their location with you", body_text: "See where they are and get directions for delivery", files: [] });
   const rfq = addMessage(db, dir, { source: "email", message_id: "c", subject: "RFQ Against PR # 496", body_text: "Kindly share your best rates.", files: [logo] });
-  for (const id of [junk, ledger, rfq]) await processMessage(db, dir, id);
+  for (const id of [junk, ledger, loc, rfq]) await processMessage(db, dir, id);
+  assert.equal(db.prepare("SELECT status FROM inbox_messages WHERE id = ?").get(loc).status, "ignored", "Google location sharing is junk even with 'delivery' in it");
   const st = (id) => db.prepare("SELECT status FROM inbox_messages WHERE id = ?").get(id).status;
   assert.equal(st(junk), "ignored");
   assert.equal(st(ledger), "ignored");
