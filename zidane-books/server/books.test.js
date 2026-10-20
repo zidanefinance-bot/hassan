@@ -1118,3 +1118,28 @@ test("one customer PO makes one Job; a Job made twice by mistake can be deleted"
   B.saveDocument(db, 1, { kind: "dc", contact_id: c, job_id: job, status: "draft", lines: [{ item_id: i, qty: 1, rate: 0 }] });
   assert.throws(() => J.deleteJob(db, 1, job), /belongs to this Job/);
 });
+
+test("finance home: cash now from the opening balance, a 12-week forecast, and how late each customer pays", async () => {
+  const { financeHome, paymentHabits } = await import("./finance.js");
+  const { db, c, s: sup, i } = fresh();
+  const t = B.today ? B.today() : new Date().toISOString().slice(0, 10);
+  const day = (n) => new Date(Date.parse(t) + n * 864e5).toISOString().slice(0, 10);
+  // history: an invoice due 20 days ago, paid 10 days late
+  const old = B.saveDocument(db, 1, { kind: "invoice", contact_id: c, date: day(-50), due_date: day(-20), status: "open", lines: [{ item_id: i, qty: 1, rate: 1000 }] });
+  B.recordPayment(db, 1, { direction: "in", document_id: old, amount: 1000, date: day(-10) });
+  assert.equal(paymentHabits(db)[c].avg_late, 10);
+  // open: an invoice due in 5 days (expected ~15 days out with the habit), a bill due in 2 days
+  B.saveDocument(db, 1, { kind: "invoice", contact_id: c, date: t, due_date: day(5), status: "open", lines: [{ item_id: i, qty: 1, rate: 7000 }] });
+  B.saveDocument(db, 1, { kind: "bill", contact_id: sup, date: t, due_date: day(2), status: "open", lines: [{ item_id: i, qty: 1, rate: 3000 }] });
+  B.setSetting(db, "financeAssumptions", { openingCash: 50000, openingDate: day(-30), monthlyFixed: 52000 });
+  const f = financeHome(db);
+  assert.equal(f.cash.now, 51000, "opening + the receipt since");
+  assert.equal(f.weeks.length, 12);
+  assert.equal(f.weeks[0].out, 3000 + 12000, "the bill and a week of fixed costs");
+  assert.equal(f.weeks[2].in, 7000, "paid ~15 days out, in the third week");
+  assert.equal(f.customers[0].delay_used, 10);
+  assert.equal(f.customers[0].habit_label, "A bit late");
+  // a customer-specific assumption wins over history
+  B.setSetting(db, "financeAssumptions", { openingCash: 50000, openingDate: day(-30), monthlyFixed: 52000, delays: { [c]: 0 } });
+  assert.equal(financeHome(db).weeks[0].in, 7000);
+});

@@ -454,3 +454,20 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
   .table th, .table td { padding: 8px 6px; }
   .stats { grid-template-columns: 1fr 1fr; }
 }
+
+/* finance home: weekly bank balance (green above zero, red below), tap a week for its detail */
+.fc-plot { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; height: 190px; padding-top: 6px; }
+.fc-plot.with-neg { height: 240px; }
+.fc-col { display: grid; grid-template-rows: 1fr auto; background: none; border: none; padding: 0 1px; cursor: pointer; font: inherit; color: var(--muted); border-radius: 6px; }
+.fc-plot.with-neg .fc-col { grid-template-rows: 3fr 1fr auto; }
+.fc-col:hover, .fc-col.on { background: #F4F6F9; }
+.fc-pos, .fc-neg { display: flex; justify-content: center; min-height: 0; }
+.fc-pos { align-items: flex-end; border-bottom: 1px solid var(--line); }
+.fc-neg { align-items: flex-start; }
+.fc-pos i, .fc-neg i { display: block; width: 70%; max-width: 26px; min-height: 2px; }
+.fc-pos i { background: var(--green); border-radius: 4px 4px 0 0; }
+.fc-neg i { background: var(--red); border-radius: 0 0 4px 4px; }
+.fc-col.on i { outline: 2px solid var(--ink); outline-offset: 1px; }
+.fc-col small { font-size: 10px; padding: 4px 0 2px; white-space: nowrap; }
+.fc-week { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin: 12px 0 6px; font-size: 14px; }
+@media (max-width: 600px) { .fc-col small { writing-mode: vertical-rl; transform: rotate(180deg); } }

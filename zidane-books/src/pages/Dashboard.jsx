@@ -1,7 +1,8 @@
 // Role home: "What needs your attention today?" Action queues first, then only the numbers each role needs.
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { addDays, fmtDate, Loading, money, PageHead, today, useAuth, useLoad } from "../lib.jsx";
+import { addDays, api, fmtDate, Loading, money, PageHead, today, useAuth, useLoad } from "../lib.jsx";
+import FinanceHome from "./FinanceHome.jsx";
 
 // period picker presets: [label, from, to]
 const monthStart = (d, back = 0) => { const x = new Date(d); x.setDate(1); x.setMonth(x.getMonth() - back); return x.toISOString().slice(0, 10); };
@@ -99,7 +100,19 @@ function Queue({ q }) {
   );
 }
 
+// each director chooses their home: the full one below, or the finance one (remembered per login)
 export default function Dashboard() {
+  const { user, can } = useAuth();
+  const settings = useLoad(can("reports.finance") ? "/settings" : null);
+  const [view, setView] = useState(null);
+  const chosen = view || settings.data?.homeViews?.[user.id] || "full";
+  const choose = async (v) => { setView(v); await api("/me/home-view", { method: "POST", body: { view: v } }).catch(() => {}); };
+  if (can("reports.finance") && settings.loading && !view) return null;
+  if (can("reports.finance") && chosen === "finance") return <FinanceHome user={user} onFullView={() => choose("full")} />;
+  return <FullHome onFinanceView={can("reports.finance") ? () => choose("finance") : null} />;
+}
+
+function FullHome({ onFinanceView }) {
   const { user, can } = useAuth();
   const [period, setPeriod] = useState("month");
   const [from, to] = PERIODS[period][1]();
@@ -111,6 +124,7 @@ export default function Dashboard() {
         {can("sales.write") && <Link className="btn" to="/jobs/new">+ New Job</Link>}
         {can("buy") && <Link className="btn primary" to="/procurement">What to buy</Link>}
         {can("buy") && <Link className="btn" to="/bills/new">+ Supplier Bill</Link>}
+        {onFinanceView && <button className="btn ghost" onClick={onFinanceView}>Finance view</button>}
         {can("reports.finance") && <select value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Period">{Object.entries(PERIODS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>}
       </PageHead>
       <Loading state={state}>{(d) => {

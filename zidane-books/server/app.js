@@ -13,6 +13,7 @@ import * as J from "./jobs.js";
 import * as I from "./items.js";
 import { procurementXlsx } from "./exports.js";
 import { startFresh } from "./reset.js";
+import { financeHome } from "./finance.js";
 import * as R from "./reports.js";
 import * as C from "./collab.js";
 import * as IN from "./inbox.js";
@@ -128,7 +129,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json(out);
   });
   api.put("/settings", requirePerm("admin"), (req, res) => {
-    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "itemCategories", "invoiceFooter", "autoJobFromPo", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
+    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "itemCategories", "invoiceFooter", "autoJobFromPo", "financeAssumptions", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
     if ("itemCategories" in (req.body || {})) {
       const cats = [...new Set((req.body.itemCategories || []).map((c) => String(c).trim()).filter(Boolean))];
       if (!cats.length) throw httpError(400, "Keep at least one item category");
@@ -711,6 +712,14 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   // ---- reports
   const range = (req) => [req.query.from || today().slice(0, 8) + "01", req.query.to || today()];
   api.get("/reports/home", (req, res) => { const [from, to] = range(req); res.json(R.home(db, req.user, cans(req), { from, to })); });
+  api.get("/reports/finance", requirePerm("reports.finance"), (_req, res) => res.json(financeHome(db)));
+  // each director picks their own home: the full one, or the finance one (kept per login, on every device)
+  api.post("/me/home-view", requirePerm("reports.finance"), (req, res) => {
+    const views = B.getSetting(db, "homeViews") || {};
+    views[req.user.id] = req.body?.view === "finance" ? "finance" : "full";
+    B.setSetting(db, "homeViews", views);
+    res.json({ ok: true });
+  });
   api.get("/reports/pnl", requirePerm("reports.finance"), (req, res) => res.json(R.profitAndLoss(db, ...range(req))));
   api.get("/reports/tax", requirePerm("reports.finance"), (req, res) => res.json(R.taxSummary(db, ...range(req))));
   api.get("/reports/receivables", (req, res) => { need(req.user, ["reports.finance", "sales.read"]); res.json(R.receivables(db)); });
