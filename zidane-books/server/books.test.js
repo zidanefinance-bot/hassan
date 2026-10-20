@@ -1143,3 +1143,25 @@ test("finance home: cash now from the opening balance, a 12-week forecast, and h
   B.setSetting(db, "financeAssumptions", { openingCash: 50000, openingDate: day(-30), monthlyFixed: 52000, delays: { [c]: 0 } });
   assert.equal(financeHome(db).weeks[0].in, 7000);
 });
+
+test("emails that aren't orders are set aside quietly; a customer's query goes to Sales", async () => {
+  const { addMessage, processMessage } = await import("./inbox.js");
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "zb-junk-"));
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const logo = { filename: "image001.jpg", mime: "image/jpeg", buffer: Buffer.alloc(2000, 1) };
+  const junk = addMessage(db, dir, { source: "email", message_id: "a", subject: "Inbox zero", body_text: "Tips for a tidy mailbox", files: [logo] });
+  const ledger = addMessage(db, dir, { source: "email", message_id: "b", subject: "RE: Commission Ledger – 16 july 2026", body_text: "Please find the ledger.", files: [] });
+  const rfq = addMessage(db, dir, { source: "email", message_id: "c", subject: "RFQ Against PR # 496", body_text: "Kindly share your best rates.", files: [logo] });
+  for (const id of [junk, ledger, rfq]) await processMessage(db, dir, id);
+  const st = (id) => db.prepare("SELECT status FROM inbox_messages WHERE id = ?").get(id).status;
+  assert.equal(st(junk), "ignored");
+  assert.equal(st(ledger), "ignored");
+  assert.equal(st(rfq), "error", "kept in To do for Sales");
+  assert.ok(db.prepare("SELECT 1 FROM notifications WHERE title LIKE 'Query by email%'").get());
+  assert.ok(!db.prepare("SELECT 1 FROM notifications WHERE title LIKE '%Inbox zero%'").get(), "no noise for junk");
+});

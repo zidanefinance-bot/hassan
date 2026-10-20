@@ -74,6 +74,21 @@ export async function processMessage(db, uploadDir, id) {
       db.prepare("UPDATE inbox_files SET inbox_id = ? WHERE id = ?").run(nid, f.id);
       await processMessage(db, uploadDir, nid);
     }
+    // emails that aren't orders (newsletters, ledgers, "inbox zero"…) are set aside quietly; a customer's query
+    // without a readable PO goes to Sales to handle by hand while AI reading is off
+    if (!draft && m.source === "email" && !reader.ready()) {
+      const real = files.filter((f) => !(SIGNATURE_IMAGE.test(f.filename) && f.buffer.length < 80 * 1024));
+      const text = `${m.subject || ""}\n${String(m.body_text || "").slice(0, 3000)}`;
+      if (QUERY.test(text)) {
+        db.prepare("UPDATE inbox_messages SET status = 'error', doc_type = 'customer_order', error = ? WHERE id = ?").run("A customer's query or RFQ without a readable PO. Read the email and make the enquiry / quote (AI reading is off).", id);
+        notify(db, [...usersWith(db, "sales.write"), ...usersWith(db, "admin")], { kind: "inbox", title: `Query by email: ${m.subject || m.from_addr || "no subject"}`, body: m.from_addr || "", link: `/inbox?open=${id}` });
+        return;
+      }
+      if (!real.length) {
+        db.prepare("UPDATE inbox_messages SET status = 'ignored', error = ? WHERE id = ?").run("Not an order or a query (no PO attached)", id);
+        return;
+      }
+    }
     if (!draft) {
       if (!reader.ready()) throw new Error(files.length ? "This file has no readable text (a photo or scan). Turn on AI reading, or type the order in." : "Nothing to read automatically. Turn on AI reading, or type the order in.");
       const catalog = db.prepare("SELECT id, name, sku, unit FROM items WHERE active = 1 ORDER BY name").all();
@@ -128,6 +143,10 @@ function attachSource(db, m, entity, entityId, userId) {
     db.prepare("INSERT INTO attachments (entity, entity_id, filename, mime, size, path, label, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(entity, entityId, f.filename, f.mime, f.size, f.path, label, userId);
   }
 }
+
+// words that make an email a customer's order or query; logos in email signatures (image001.jpg …) don't count as files
+const QUERY = /\b(rfq|quotations?|quotes?|enquiry|enquiries|inquiry|requirements?|required|requisition|p\.?\s?o\.?\s*#?\s*\d|purchase\s*orders?|orders?|deliver(y|ies)?|supply|need)\b/i;
+const SIGNATURE_IMAGE = /^image\d+\.(jpe?g|png|gif)$/i;
 
 // one at a time, in arrival order
 let queue = Promise.resolve();
