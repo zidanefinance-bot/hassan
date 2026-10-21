@@ -171,7 +171,7 @@ export default function DocumentView({ kind }) {
             <table className="table paper-lines">
               <thead><tr><th>#</th><th>Item</th><th className="r">Qty</th>{!isDc && <><th className="r">Rate</th><th className="r">Disc</th><th className="r">Tax</th><th className="r">Amount</th></>}</tr></thead>
               <tbody>{d.lines.map((l, i) => (
-                <tr key={l.id}><td>{i + 1}</td><td>{l.item_name || l.description}</td><td className="r">{num(l.qty)} {l.unit || ""}</td>
+                <tr key={l.id}><td>{i + 1}</td><td>{l.item_name || l.description}{l.job_number && <div className="small no-print"><Link to={`/jobs/${l.job_id}`}>for {l.job_number}</Link></div>}</td><td className="r">{num(l.qty)} {l.unit || ""}</td>
                   {!isDc && <><td className="r">{l.rate ? money(l.rate) : <span className="neg">pending</span>}</td><td className="r">{l.discount_pct ? `${l.discount_pct}%` : "—"}</td><td className="r">{l.tax_rate}%</td><td className="r">{money(l.amount)}</td></>}</tr>
               ))}</tbody>
             </table>

@@ -3,6 +3,7 @@
 // how late each customer pays, WHT, margin on orders in hand); anything left blank is worked out from history.
 import { getSetting, round2, today } from "./books.js";
 import { inventory, payables, profitAndLoss, receivables } from "./reports.js";
+import { LINE_COST, LINE_JOB } from "./jobs.js";
 
 const DAY = 864e5;
 const addDays = (d, n) => new Date(Date.parse(d) + n * DAY).toISOString().slice(0, 10);
@@ -85,7 +86,7 @@ export function financeHome(db) {
       (SELECT COALESCE(SUM(qty * sale_rate), 0) FROM job_items WHERE job_id = j.id) AS value_ex,
       (SELECT COALESCE(SUM(qty * sale_rate * (1 + tax_rate / 100.0)), 0) FROM job_items WHERE job_id = j.id) AS value,
       (SELECT COALESCE(SUM(total), 0) FROM documents WHERE job_id = j.id AND kind = 'invoice' AND status = 'open') AS invoiced,
-      (SELECT COALESCE(SUM(subtotal - discount_total - doc_discount + charges), 0) FROM documents WHERE job_id = j.id AND kind = 'bill' AND status IN ('open','draft')) AS billed
+      (SELECT COALESCE(SUM(${LINE_COST}), 0) FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE ${LINE_JOB} = j.id AND d.kind = 'bill' AND d.status IN ('open','draft')) AS billed
     FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE j.closed = 0`).all();
   let inHand = 0;
   for (const j of jobs) {

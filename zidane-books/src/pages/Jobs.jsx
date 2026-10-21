@@ -191,15 +191,44 @@ export function JobForm() {
 function JobCost({ job, settings, onClose, onSaved }) {
   const [e, setE] = useState({ category: settings?.jobExpenseCategories?.[0] || "Freight", amount: "", date: today(), paid_through: "cash", notes: "" });
   const [err, setErr] = useState("");
+  // one cost for goods of several Jobs (a rickshaw for two POs): share it out
+  const [share, setShare] = useState(false);
+  const [others, setOthers] = useState([]);
+  const [mode, setMode] = useState("value");
+  const [preview, setPreview] = useState(null);
+  const jobs = useLoad(share ? "/jobs?scope=active" : null);
+  const ids = [job.id, ...others];
+  useEffect(() => {
+    if (!share || others.length === 0 || !(Number(e.amount) > 0)) return setPreview(null);
+    api("/expenses/split", { method: "POST", body: { ...e, job_ids: ids, mode, preview: true } }).then(setPreview).catch(() => setPreview(null));
+  }, [share, others.join(","), mode, e.amount]); // eslint-disable-line react-hooks/exhaustive-deps
   const b = (k) => ({ value: e[k], onChange: (x) => setE({ ...e, [k]: x.target.value }) });
+  const save = async (x) => {
+    x.preventDefault();
+    try {
+      if (share && others.length) await api("/expenses/split", { method: "POST", body: { ...e, job_ids: ids, mode } });
+      else await api("/expenses", { method: "POST", body: { ...e, job_id: job.id } });
+      onSaved();
+    } catch (y) { setErr(y.message); }
+  };
   return (
     <Modal title={`Add direct cost · ${job.number}`} onClose={onClose}>
-      <form className="form" onSubmit={async (x) => { x.preventDefault(); try { await api("/expenses", { method: "POST", body: { ...e, job_id: job.id } }); onSaved(); } catch (y) { setErr(y.message); } }}>
+      <form className="form" onSubmit={save}>
         <div className="row-2"><Field label="Type"><select {...b("category")}>{(settings?.jobExpenseCategories || ["Freight"]).map((c) => <option key={c}>{c}</option>)}</select></Field><Field label="Amount (Rs)"><input type="number" step="0.01" {...b("amount")} required autoFocus /></Field></div>
         <div className="row-2"><Field label="Date"><input type="date" {...b("date")} /></Field><Field label="Paid by"><select {...b("paid_through")}><option value="cash">Cash</option><option value="bank">Bank</option><option value="online">Online / wallet</option></select></Field></div>
         <Field label="Notes"><input {...b("notes")} placeholder="Vehicle #, labour count…" /></Field>
+        <label className="check"><input type="checkbox" checked={share} onChange={(x) => setShare(x.target.checked)} /> This cost was for other Jobs too (share it)</label>
+        {share && (
+          <div className="share-box">
+            <div className="share-list">{(jobs.data || []).filter((j) => j.id !== job.id).map((j) => (
+              <label key={j.id} className="check"><input type="checkbox" checked={others.includes(j.id)} onChange={(x) => setOthers((o) => (x.target.checked ? [...o, j.id] : o.filter((y) => y !== j.id)))} /> {j.number} · {j.customer_name}{j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""}</label>
+            ))}</div>
+            <Field label="Share it"><select value={mode} onChange={(x) => setMode(x.target.value)}><option value="value">By each Job's value</option><option value="equal">Equally</option></select></Field>
+            {preview && <p className="small">{preview.shares.map((s) => `${s.number}: ${money(s.amount)}`).join(" · ")}</p>}
+          </div>
+        )}
         {err && <div className="form-error">{err}</div>}
-        <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Save</button></div>
+        <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">{share && others.length ? `Save for ${others.length + 1} Jobs` : "Save"}</button></div>
       </form>
     </Modal>
   );

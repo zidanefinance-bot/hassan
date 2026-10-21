@@ -471,3 +471,6 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .fc-col small { font-size: 10px; padding: 4px 0 2px; white-space: nowrap; }
 .fc-week { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin: 12px 0 6px; font-size: 14px; }
 @media (max-width: 600px) { .fc-col small { writing-mode: vertical-rl; transform: rotate(180deg); } }
+.line-job { font-size: 12px; padding: 4px 6px; color: var(--muted); }
+.share-box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; }
+.share-list { max-height: 180px; overflow: auto; display: grid; gap: 4px; }

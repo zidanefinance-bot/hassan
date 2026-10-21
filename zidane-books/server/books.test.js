@@ -1167,3 +1167,43 @@ test("emails that aren't orders are set aside quietly; a customer's query goes t
   assert.ok(db.prepare("SELECT 1 FROM notifications WHERE title LIKE 'Query by email%'").get());
   assert.ok(!db.prepare("SELECT 1 FROM notifications WHERE title LIKE '%Inbox zero%'").get(), "no noise for junk");
 });
+
+test("one supplier bill for two Jobs, and one cost shared by two Jobs: each Job carries its own part", async () => {
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (ck, method, path, body) => { const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json() }; };
+  try {
+    const [sales, pur] = [await login("sales@zidane.com.pk"), await login("purchaser@zidane.com.pk")];
+    void director;
+    const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer'").get().id;
+    const sup = db.prepare("SELECT id FROM contacts WHERE type = 'supplier'").get().id;
+    const it = db.prepare("SELECT id FROM items ORDER BY id LIMIT 1").get().id;
+    const j1 = (await call(sales, "POST", "/jobs", { customer_id: cust, customer_po_number: "A-1", items: [{ item_id: it, qty: 10, sale_rate: 100 }] })).body.id;
+    const j2 = (await call(sales, "POST", "/jobs", { customer_id: cust, customer_po_number: "B-2", items: [{ item_id: it, qty: 20, sale_rate: 100 }] })).body.id;
+    // bearings for both POs on one bill, with Rs 600 freight; the bill itself is "for stock"
+    const r = await call(pur, "POST", "/documents", { kind: "bill", contact_id: sup, reference: "MIX-1", status: "open", charges: 600, lines: [{ item_id: it, qty: 10, rate: 80, job_id: j1 }, { item_id: it, qty: 20, rate: 80, job_id: j2 }] });
+    assert.equal(r.status, 200);
+    const ji = (j) => db.prepare("SELECT procurement_status FROM job_items WHERE job_id = ?").get(j).procurement_status;
+    assert.equal(ji(j1), "bought");
+    assert.equal(ji(j2), "bought");
+    // each Job's cost: its own line plus its share of the freight (by amount: 1/3 and 2/3)
+    assert.equal(J.jobEconomics(db, j1).purchases, 800 + 200);
+    assert.equal(J.jobEconomics(db, j2).purchases, 1600 + 400);
+    assert.ok(J.jobDetail(db, j2, () => true).documents.some((d) => d.id === r.body.id), "the bill shows on both Jobs");
+    // a Rs 900 rickshaw for both: shared by Job value (1000 : 2000)
+    const pv = await call(pur, "POST", "/expenses/split", { category: "Freight", amount: 900, job_ids: [j1, j2], preview: true });
+    assert.deepEqual(pv.body.shares.map((s) => s.amount), [300, 600]);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM expenses WHERE category = 'Freight' AND amount IN (300, 600)").get().n, 0, "preview saves nothing");
+    await call(pur, "POST", "/expenses/split", { category: "Freight", amount: 900, job_ids: [j1, j2] });
+    assert.equal(J.jobEconomics(db, j1).direct_costs, 300);
+    assert.equal(J.jobEconomics(db, j2).direct_costs, 600);
+    const eq = await call(pur, "POST", "/expenses/split", { category: "Labour", amount: 1001, job_ids: [j1, j2], mode: "equal", preview: true });
+    assert.deepEqual(eq.body.shares.map((s) => s.amount), [500.5, 500.5]);
+  } finally {
+    server.close();
+  }
+});

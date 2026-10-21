@@ -128,7 +128,7 @@ export function syncJobBuying(db, userId, jobId) {
 export function deleteJob(db, userId, id) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
   if (!job) throw httpError(404, "Job not found");
-  const doc = db.prepare("SELECT number FROM documents WHERE job_id = ? LIMIT 1").get(id);
+  const doc = db.prepare("SELECT number FROM documents d WHERE d.job_id = ? OR EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = d.id AND l.job_id = ?) LIMIT 1").get(id, id);
   if (doc) throw httpError(400, `${doc.number} belongs to this Job. Delete or move it first.`);
   if (db.prepare("SELECT 1 FROM expenses WHERE job_id = ?").get(id)) throw httpError(400, "This Job has costs recorded. Remove them first.");
   tx(db, () => {
@@ -203,10 +203,14 @@ function updateJobItems(db, job, input) {
 }
 
 // qty per job_item already on issued DCs / invoices / supplier bills
+// the Job a document line belongs to: its own (a bill split across Jobs) or its document's
+export const LINE_JOB = "COALESCE(l.job_id, d.job_id)";
+// a bill line's cost for its Job: the line before tax, plus its share of the bill's charges less discount
+export const LINE_COST = "l.amount * (1 + (d.charges - d.doc_discount) / NULLIF(d.subtotal - d.discount_total, 0))";
 function lineTotals(db, jobId, kind, statuses) {
   const ph = statuses.map(() => "?").join(",");
   const rows = db.prepare(`SELECT l.item_id, l.description, SUM(l.qty) AS qty, SUM(l.amount) AS amount FROM document_lines l JOIN documents d ON d.id = l.document_id
-    WHERE d.job_id = ? AND d.kind = ? AND d.status IN (${ph}) GROUP BY l.item_id, l.description`).all(jobId, kind, ...statuses);
+    WHERE ${LINE_JOB} = ? AND d.kind = ? AND d.status IN (${ph}) GROUP BY l.item_id, l.description`).all(jobId, kind, ...statuses);
   return (ji) => rows.find((r) => (ji.item_id ? r.item_id === ji.item_id : r.description === ji.description)) || { qty: 0, amount: 0 };
 }
 
@@ -216,7 +220,7 @@ export function jobEconomics(db, jobId) {
   const expected = round2(items.reduce((a, i) => a + i.qty * i.sale_rate, 0));
   const invoiced = round2(db.prepare("SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'open'").get(jobId).v);
   // supplier bills before tax, with their freight / charges and less their discount
-  const purchases = round2(db.prepare("SELECT COALESCE(SUM(subtotal - discount_total - doc_discount + charges), 0) AS v FROM documents WHERE job_id = ? AND kind = 'bill' AND status = 'open'").get(jobId).v);
+  const purchases = round2(db.prepare(`SELECT COALESCE(SUM(${LINE_COST}), 0) AS v FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE ${LINE_JOB} = ? AND d.kind = 'bill' AND d.status = 'open'`).get(jobId).v);
   const fromStock = round2(items.filter((i) => i.procurement_status === "from_stock").reduce((a, i) => a + delivered(i).qty * (i.purchase_rate || 0), 0));
   const direct = round2(db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE job_id = ?").get(jobId).v);
   const revenue = invoiced || expected;
@@ -237,7 +241,8 @@ export function jobDetail(db, id, can) {
   const invoiced = lineTotals(db, id, "invoice", ["open"]);
   const bought = lineTotals(db, id, "bill", ["open", "draft"]);
   const ready = readyQty(db, id);
-  const docs = db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.status, d.total, d.submitted_date, d.verified_at, d.signed_at, d.signed_by_name, c.name AS contact_name, ${PAID_SQL} AS paid FROM documents d JOIN contacts c ON c.id = d.contact_id WHERE d.job_id = ? ORDER BY d.id`).all(id);
+  const docs = db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.status, d.total, d.submitted_date, d.verified_at, d.signed_at, d.signed_by_name, c.name AS contact_name, ${PAID_SQL} AS paid FROM documents d JOIN contacts c ON c.id = d.contact_id
+    WHERE d.job_id = ? OR EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = d.id AND l.job_id = ?) ORDER BY d.id`).all(id, id);
   const out = {
     ...job,
     items: items.map((i) => ({
@@ -264,7 +269,7 @@ export function jobList(db, { q = "", status = "", scope = "" } = {}) {
       (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status IN ('issued','signed')) AS dc_count,
       (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status = 'signed') AS signed_dc_count,
       (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'invoice' AND status = 'open') AS invoice_count,
-      (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'bill') AS bill_count,
+      (SELECT COUNT(DISTINCT d.id) FROM documents d JOIN document_lines l ON l.document_id = d.id WHERE ${LINE_JOB} = j.id AND d.kind = 'bill') AS bill_count,
       (SELECT COALESCE(SUM(qty), 0) FROM job_items WHERE job_id = j.id) AS ordered_qty,
       (SELECT COALESCE(SUM(l.qty), 0) FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = j.id AND d.kind = 'dc' AND d.status IN ('issued','signed')) AS out_qty,
       (SELECT COALESCE(SUM(l.qty), 0) FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = j.id AND d.kind = 'dc' AND d.status = 'signed') AS signed_qty,

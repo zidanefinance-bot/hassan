@@ -171,8 +171,10 @@ export function saveDocument(db, userId, input, id = null) {
     for (const l of calc.lines) {
       // cost of what's sold (and of what a credit note brings back), for profit
       const cost = (kind === "invoice" || kind === "credit_note") && l.item_id ? db.prepare("SELECT purchase_rate FROM items WHERE id = ?").get(l.item_id)?.purchase_rate ?? 0 : 0;
-      db.prepare("INSERT INTO document_lines (document_id, item_id, description, qty, rate, discount_pct, tax_rate, cost_rate, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .run(id, l.item_id || null, l.description || null, l.qty, l.rate, l.discount_pct, l.tax_rate, cost, l.amount);
+      // purchases: a line may be for its own Job (else the bill's Job, else stock)
+      const lineJob = ["bill", "po", "vendor_credit"].includes(kind) && Number(l.job_id) && Number(l.job_id) !== Number(input.job_id) ? Number(l.job_id) : null;
+      db.prepare("INSERT INTO document_lines (document_id, item_id, description, qty, rate, discount_pct, tax_rate, cost_rate, amount, job_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(id, l.item_id || null, l.description || null, l.qty, l.rate, l.discount_pct, l.tax_rate, cost, l.amount, lineJob);
     }
     doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
     applyStock(db, doc, calc.lines);

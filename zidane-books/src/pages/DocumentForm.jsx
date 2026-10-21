@@ -112,9 +112,22 @@ export default function DocumentForm({ kind }) {
     if (!isPurchase || !doc?.job_id) return;
     api(`/jobs/${doc.job_id}`).then((j) => setDoc((d) => (d.lines.every((l) => !l.item_id && !l.description)
       // only what earlier bills for this Job haven't covered yet
-      ? { ...d, lines: withBlank(j.items.filter((it) => it.procurement_status !== "from_stock" && it.qty - (it.purchased_qty || 0) > 0.001).map((it) => ({ ...blankLine(), item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: Math.round((it.qty - (it.purchased_qty || 0)) * 1000) / 1000, rate: it.purchase_rate || 0 }))) }
+      ? { ...d, lines: withBlank(jobLines(j)) }
       : d))).catch(() => {});
   }, [doc?.job_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // what a Job still needs bought, as bill lines (for another Job than the bill's, the line carries that Job)
+  const jobLines = (j, lineJob = "") => j.items.filter((it) => it.procurement_status !== "from_stock" && it.qty - (it.purchased_qty || 0) > 0.001)
+    .map((it) => ({ ...blankLine(), item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: Math.round((it.qty - (it.purchased_qty || 0)) * 1000) / 1000, rate: it.purchase_rate || 0, job_id: lineJob }));
+  // one bill for several Jobs (e.g. bearings for two POs bought together): bring in another Job's items
+  const addJobItems = async (jobId) => {
+    if (!jobId) return;
+    const j = await api(`/jobs/${jobId}`);
+    const own = String(jobId) === String(doc.job_id) ? "" : String(jobId);
+    const add = jobLines(j, own);
+    if (!add.length) return toast(`Nothing left to buy for ${j.number}`, "err");
+    setDoc((d) => ({ ...d, lines: [...d.lines.filter((l) => l.item_id || l.description), ...add] }));
+    toast(`${add.length} line(s) for ${j.number} added`);
+  };
 
   if (!doc) return <div className="empty">Loading…</div>;
   const set = (k, v) => setDoc((d) => ({ ...d, [k]: v }));
@@ -130,7 +143,7 @@ export default function DocumentForm({ kind }) {
   };
   const save = async (issue, asEnquiry = false) => {
     setErr("");
-    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, ...l }) => ({ ...cleanLine(l), item_id: l.item_id || null }));
+    const lines = doc.lines.filter((l) => l.item_id || l.description).map(({ key, item_name, unit, id: _id, document_id, amount, cost_rate, hint, job_number, ...l }) => ({ ...cleanLine(l), item_id: l.item_id || null, job_id: isPurchase && l.job_id ? Number(l.job_id) : null }));
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
@@ -193,7 +206,7 @@ export default function DocumentForm({ kind }) {
         {overLimit && <div className="form-error">Over credit limit: {contact.name} owes {money(contact.outstanding)} and the limit is {money(contact.credit_limit)}. You can save a draft; a director has to issue it.</div>}
         {isPurchase && (
           <div className="row-4">
-            <Field label="For Job (optional)" hint="Links the cost to the Job. Leave empty for general stock.">
+            <Field label="For Job (optional)" hint="Links the cost to the Job. Leave empty for general stock. A line can be for another Job (below).">
               <select value={doc.job_id || ""} onChange={(e) => set("job_id", e.target.value)}>
                 <option value="">— general stock —</option>{(jobs.data || []).map((j) => <option key={j.id} value={j.id}>{j.number} · {j.customer_name}</option>)}
               </select>
@@ -215,6 +228,12 @@ export default function DocumentForm({ kind }) {
                     <Picker options={itemOptions(items.data)} value={l.item_id} onChange={(v) => pickItem(i, v)} emptyLabel="— custom line (not an item) —" placeholder="Type item name or SKU…"
                       createLabel="item" onCreate={(name) => setAddingItem({ line: i, name })} />
                     {!l.item_id && <input className="mt" placeholder="Description" value={l.description || ""} onChange={(e) => setLine(i, { description: e.target.value })} />}
+                    {isPurchase && (jobs.data || []).length > 0 && (
+                      <select className="mt line-job" value={l.job_id || ""} onChange={(e) => setLine(i, { job_id: e.target.value })} aria-label="Job for this line">
+                        <option value="">{doc.job_id ? `For the bill's Job` : "For stock (no Job)"}</option>
+                        {(jobs.data || []).filter((j) => String(j.id) !== String(doc.job_id)).map((j) => <option key={j.id} value={j.id}>For {j.number} · {j.customer_name}{j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""}</option>)}
+                      </select>
+                    )}
                     {it && isSale && it.track_stock && Number(l.qty) > it.stock_qty && <small className="neg">Only {it.stock_qty} in stock</small>}
                   </td>
                   <td><input type="number" step="0.01" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>
@@ -232,6 +251,12 @@ export default function DocumentForm({ kind }) {
           </table>
           <button type="button" className="btn ghost" onClick={() => setDoc((d) => ({ ...d, lines: [...d.lines, blankLine()] }))}>+ Add line</button>
           <button type="button" className="btn ghost" onClick={() => setAddingItem({ line: -1, name: "" })}>+ New item (not in list)</button>
+          {isPurchase && (jobs.data || []).length > 0 && (
+            <select className="inline" value="" onChange={(e) => addJobItems(e.target.value).catch((x) => toast(x.message, "err"))} aria-label="Add a Job's items">
+              <option value="">+ Add another Job's items to this bill…</option>
+              {(jobs.data || []).map((j) => <option key={j.id} value={j.id}>{j.number} · {j.customer_name}{j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""}</option>)}
+            </select>
+          )}
         </div>
 
         <div className="doc-bottom">

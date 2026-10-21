@@ -11,6 +11,7 @@ import * as PUSH from "./push.js";
 import * as B from "./books.js";
 import * as J from "./jobs.js";
 import * as I from "./items.js";
+import { tx } from "./db.js";
 import { procurementXlsx } from "./exports.js";
 import { startFresh } from "./reset.js";
 import { financeHome } from "./finance.js";
@@ -366,7 +367,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       applications: isCredit ? db.prepare("SELECT a.*, x.kind, x.number FROM payment_allocations a JOIN documents x ON x.id = a.document_id WHERE a.credit_id = ? ORDER BY a.id").all(d.id) : [],
       refunds: isCredit ? db.prepare("SELECT * FROM refunds WHERE credit_id = ? ORDER BY id").all(d.id) : [],
       contact: db.prepare("SELECT * FROM contacts WHERE id = ?").get(d.contact_id),
-      lines: db.prepare("SELECT l.id, l.item_id, l.description, l.qty, l.rate, l.discount_pct, l.tax_rate, l.amount, i.name AS item_name, i.unit FROM document_lines l LEFT JOIN items i ON i.id = l.item_id WHERE document_id = ? ORDER BY l.id").all(d.id),
+      lines: db.prepare("SELECT l.id, l.item_id, l.description, l.qty, l.rate, l.discount_pct, l.tax_rate, l.amount, l.job_id, j.number AS job_number, i.name AS item_name, i.unit FROM document_lines l LEFT JOIN items i ON i.id = l.item_id LEFT JOIN jobs j ON j.id = l.job_id WHERE document_id = ? ORDER BY l.id").all(d.id),
       payments: db.prepare(`SELECT a.id AS allocation_id, a.amount, a.date AS applied_on, COALESCE(p.id, c.id) AS id, CASE WHEN p.id IS NULL THEN 'credit' ELSE 'payment' END AS source,
         COALESCE(p.number, c.number) AS number, COALESCE(p.date, c.date) AS date, COALESCE(p.mode, CASE c.kind WHEN 'credit_note' THEN 'credit note' ELSE 'vendor credit' END) AS mode, COALESCE(p.reference, c.reference) AS reference, c.kind AS credit_kind
         FROM payment_allocations a LEFT JOIN payments p ON p.id = a.payment_id LEFT JOIN documents c ON c.id = a.credit_id WHERE a.document_id = ? ORDER BY a.id`).all(d.id),
@@ -429,7 +430,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const d = db.prepare("SELECT kind, status, job_id FROM documents WHERE id = ?").get(docId);
     if (d?.status === "open" && beforeStatus !== "open") C.notifyEvent(db, req.user.id, "doc.issued", { docId });
     const out = (s) => ["issued", "signed"].includes(s);
-    if (d?.kind === "bill" && d.job_id) J.syncJobBuying(db, req.user.id, d.job_id);
+    // a bill buys for every Job its lines are for
+    if (d?.kind === "bill") for (const { j } of db.prepare(`SELECT DISTINCT ${J.LINE_JOB} AS j FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.id = ? AND ${J.LINE_JOB} IS NOT NULL`).all(docId)) J.syncJobBuying(db, req.user.id, j);
     if (d?.kind === "dc" && d.job_id) J.syncJobDelivery(db, d.job_id, { removed: out(beforeStatus) && !out(d.status) });
   };
   api.post("/documents/:id/status", docAction(DOC_WRITE, (req, d) => {
@@ -539,6 +541,37 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const r = db.prepare("INSERT INTO expenses (date, category, amount, paid_through, contact_id, job_id, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...expFields(req.body), req.user.id);
     B.log(db, req.user.id, req.body.job_id ? "added job cost" : "added expense", "expense", Number(r.lastInsertRowid), `${req.body.category} · ${req.body.amount}`);
     res.json({ id: Number(r.lastInsertRowid) });
+  });
+  // one cost (a rickshaw for two POs' goods) shared by several Jobs: by each Job's value, or equally.
+  // Each Job gets its own expense line for its share; preview: true only works the shares out.
+  api.post("/expenses/split", (req, res) => {
+    const b = req.body || {};
+    const ids = [...new Set((b.job_ids || []).map(Number).filter(Boolean))];
+    if (ids.length < 2) throw httpError(400, "Pick at least two Jobs to share it");
+    for (const j of ids) if (!canExpense(req.user, j)) throw httpError(403, "You don't have access to this");
+    const amount = round2(Number(b.amount) || 0);
+    if (!(amount > 0)) throw httpError(400, "Amount must be more than zero");
+    const jobs = ids.map((j) => db.prepare("SELECT j.id, j.number, j.closed, (SELECT COALESCE(SUM(qty * sale_rate), 0) FROM job_items WHERE job_id = j.id) AS value FROM jobs j WHERE j.id = ?").get(j));
+    if (jobs.some((j) => !j)) throw httpError(404, "Job not found");
+    if (jobs.some((j) => j.closed)) throw httpError(400, "One of these Jobs is closed");
+    const total = jobs.reduce((a, j) => a + j.value, 0);
+    const byValue = b.mode !== "equal" && total > 0;
+    let left = amount;
+    const shares = jobs.map((j, i) => {
+      const s = i === jobs.length - 1 ? round2(left) : round2(byValue ? (amount * j.value) / total : amount / jobs.length);
+      left = round2(left - s);
+      return { job_id: j.id, number: j.number, amount: s };
+    });
+    if (b.preview) return res.json({ shares, mode: byValue ? "value" : "equal" });
+    const note = `${b.notes ? b.notes + " · " : ""}Part of Rs ${amount.toLocaleString("en-PK")} shared by ${jobs.map((j) => j.number).join(", ")} (${byValue ? "by Job value" : "equally"})`;
+    tx(db, () => {
+      for (const s of shares) {
+        const r = db.prepare("INSERT INTO expenses (date, category, amount, paid_through, contact_id, job_id, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+          .run(...expFields({ ...b, amount: s.amount, job_id: s.job_id, notes: note }), req.user.id);
+        B.log(db, req.user.id, "added job cost", "expense", Number(r.lastInsertRowid), `${b.category} · ${s.amount} (shared)`);
+      }
+    });
+    res.json({ shares });
   });
   const loadExp = (req) => {
     const e = db.prepare("SELECT * FROM expenses WHERE id = ?").get(id(req));

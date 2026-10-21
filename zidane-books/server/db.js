@@ -18,6 +18,8 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   // tax withheld at source on a payment (income tax / sales tax), added after schema 5
   const payCols = db.prepare("PRAGMA table_info(payments)").all().map((c) => c.name);
+  // a supplier bill's lines can each belong to a different Job (one bill for two POs' goods)
+  if (!db.prepare("PRAGMA table_info(document_lines)").all().some((c) => c.name === "job_id")) db.exec("ALTER TABLE document_lines ADD COLUMN job_id INTEGER REFERENCES jobs(id)");
   if (!payCols.includes("wht_income")) db.exec("ALTER TABLE payments ADD COLUMN wht_income REAL NOT NULL DEFAULT 0; ALTER TABLE payments ADD COLUMN wht_sales REAL NOT NULL DEFAULT 0;");
   const hadCategories = db.prepare("SELECT 1 FROM settings WHERE key = 'itemCategories'").get();
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
@@ -146,7 +148,8 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE TABLE IF NOT EXISTS document_lines (
   id INTEGER PRIMARY KEY, document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   item_id INTEGER REFERENCES items(id), description TEXT, qty REAL NOT NULL, rate REAL NOT NULL,
-  discount_pct REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0, cost_rate REAL NOT NULL DEFAULT 0, amount REAL NOT NULL
+  discount_pct REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0, cost_rate REAL NOT NULL DEFAULT 0, amount REAL NOT NULL,
+  job_id INTEGER REFERENCES jobs(id)
 );
 -- A payment (customer receipt or supplier payment) can be split across several invoices/bills through allocations.
 -- Whatever isn't allocated is the contact's advance / unused credit, applied to documents later.
