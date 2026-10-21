@@ -1207,3 +1207,12 @@ test("one supplier bill for two Jobs, and one cost shared by two Jobs: each Job 
     server.close();
   }
 });
+
+test("what each open Job still needs per item (for splitting a combined bill), leaving out the bill being edited", () => {
+  const { db, c, s: sup, i } = fresh();
+  const j1 = J.createJob(db, 1, { customer_id: c, customer_po_number: "P-1400", items: [{ item_id: i, qty: 42, sale_rate: 240 }] });
+  const j2 = J.createJob(db, 1, { customer_id: c, customer_po_number: "P-2100", items: [{ item_id: i, qty: 100, sale_rate: 240 }] });
+  const bill = B.saveDocument(db, 1, { kind: "bill", contact_id: sup, job_id: j1, status: "open", lines: [{ item_id: i, qty: 142, rate: 210 }] });
+  assert.deepEqual(J.jobNeeds(db).map((n) => [n.job_id, n.left]), [[j2, 100]], "the bill (all on P-1400's name) covers P-1400 only");
+  assert.deepEqual(J.jobNeeds(db, bill).map((n) => [n.job_id, n.left]), [[j1, 42], [j2, 100]], "re-matching that bill sees both needs");
+});

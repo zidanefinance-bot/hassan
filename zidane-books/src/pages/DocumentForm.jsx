@@ -118,6 +118,29 @@ export default function DocumentForm({ kind }) {
   // what a Job still needs bought, as bill lines (for another Job than the bill's, the line carries that Job)
   const jobLines = (j, lineJob = "") => j.items.filter((it) => it.procurement_status !== "from_stock" && it.qty - (it.purchased_qty || 0) > 0.001)
     .map((it) => ({ ...blankLine(), item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: Math.round((it.qty - (it.purchased_qty || 0)) * 1000) / 1000, rate: it.purchase_rate || 0, job_id: lineJob }));
+  // a bill bought together for several Jobs: split each line over the Jobs that still need that item (oldest first);
+  // what's left over stays for stock. A line already given a Job is left alone.
+  const matchToJobs = async () => {
+    const needs = await api(`/procurement/needs${id ? `?exclude=${id}` : ""}`);
+    const left = needs.map((n) => ({ ...n }));
+    let split = 0;
+    const out = [];
+    for (const l of doc.lines) {
+      if (!l.item_id || l.job_id || !(Number(l.qty) > 0)) { out.push(l); continue; }
+      let qty = Number(l.qty);
+      for (const n of left.filter((x) => String(x.item_id) === String(l.item_id) && x.left > 0)) {
+        if (qty <= 0) break;
+        const take = Math.min(qty, n.left);
+        n.left -= take; qty -= take; split++;
+        out.push({ ...l, key: Math.random(), qty: Math.round(take * 1000) / 1000, job_id: String(n.job_id) });
+      }
+      if (qty > 0.0005) out.push({ ...l, key: Math.random(), qty: Math.round(qty * 1000) / 1000, job_id: "" });
+    }
+    if (!split) return toast("No open Job needs these items", "err");
+    // each line now names its Job, so the bill itself is "general stock" and anything left over is stock
+    setDoc((d) => ({ ...d, job_id: "", lines: out }));
+    toast("Lines matched to Jobs. Check them, then save.");
+  };
   // one bill for several Jobs (e.g. bearings for two POs bought together): bring in another Job's items
   const addJobItems = async (jobId) => {
     if (!jobId) return;
@@ -251,6 +274,7 @@ export default function DocumentForm({ kind }) {
           </table>
           <button type="button" className="btn ghost" onClick={() => setDoc((d) => ({ ...d, lines: [...d.lines, blankLine()] }))}>+ Add line</button>
           <button type="button" className="btn ghost" onClick={() => setAddingItem({ line: -1, name: "" })}>+ New item (not in list)</button>
+          {isPurchase && (jobs.data || []).length > 0 && <button type="button" className="btn" onClick={() => matchToJobs().catch((x) => toast(x.message, "err"))}>Match lines to Jobs</button>}
           {isPurchase && (jobs.data || []).length > 0 && (
             <select className="inline" value="" onChange={(e) => addJobItems(e.target.value).catch((x) => toast(x.message, "err"))} aria-label="Add a Job's items">
               <option value="">+ Add another Job's items to this bill…</option>

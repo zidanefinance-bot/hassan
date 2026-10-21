@@ -325,6 +325,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (ji && before !== "material_ready" && db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(ji.job_id)?.ops_status === "material_ready") C.notifyEvent(db, req.user.id, "job.ready", { jobId: ji.job_id });
     res.json({ ok: true });
   });
+  api.get("/procurement/needs", (req, res) => { need(req.user, ["buy", "ops.read"]); res.json(J.jobNeeds(db, Number(req.query.exclude) || 0)); });
   api.get("/procurement", (req, res) => { need(req.user, ["buy", "ops.read"]); res.json(J.procurementList(db)); });
   api.get("/procurement.xlsx", async (req, res) => {
     need(req.user, ["buy", "ops.read"]);

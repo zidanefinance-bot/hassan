@@ -279,6 +279,17 @@ export function jobList(db, { q = "", status = "", scope = "" } = {}) {
   return rows.filter((j) => (!status || j.ops_status === status) && (scope !== "active" || !j.closed));
 }
 
+// For splitting a supplier bill: which open Jobs still need each item, and how much (not counting the bill being
+// edited, so its own lines can be re-matched). Oldest need first.
+export function jobNeeds(db, excludeDocId = 0) {
+  return db.prepare(`SELECT ji.job_id, ji.item_id, j.number, j.customer_po_number, c.name AS customer_name,
+      ji.qty - COALESCE((SELECT SUM(l.qty) FROM document_lines l JOIN documents d ON d.id = l.document_id
+        WHERE ${LINE_JOB} = ji.job_id AND l.item_id = ji.item_id AND d.kind = 'bill' AND d.status IN ('open','draft') AND d.id != ?), 0) AS left
+    FROM job_items ji JOIN jobs j ON j.id = ji.job_id JOIN contacts c ON c.id = j.customer_id
+    WHERE ${ACTIVE} AND ji.item_id IS NOT NULL AND ji.procurement_status != 'from_stock' ORDER BY COALESCE(j.required_date, '9999'), j.id`).all(excludeDocId)
+    .filter((r) => r.left > 0.001).map((r) => ({ ...r, left: round2(r.left) }));
+}
+
 // What Operations must buy: open lines of active Jobs, grouped by item across Jobs (master procurement list)
 export function procurementList(db) {
   const rows = db.prepare(`SELECT ji.id, ji.job_id, ji.item_id, ji.description, ji.qty, ji.procurement_status, j.number AS job_number, j.required_date, j.priority, j.fulfilment_type,
