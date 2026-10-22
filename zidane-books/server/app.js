@@ -21,6 +21,7 @@ import * as IN from "./inbox.js";
 import { norm } from "./matching.js";
 import { emailDocuments, mailReady } from "./mailer.js";
 import { documentPdf } from "./pdf.js";
+import * as AS from "./assistant.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -77,7 +78,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!API_ALLOWED.some((r) => r.test(route))) return next(httpError(403, "API keys can only read, add to the inbox, comment and save drafts. Do this in the app."));
     if (/documents/.test(route) && !["draft", "enquiry"].includes(req.body?.status || "draft")) return next(httpError(403, "API keys can only save drafts. Issue it in the app."));
     if (/^PUT/.test(route) && !["draft", "enquiry"].includes(db.prepare("SELECT status FROM documents WHERE id = ?").get(Number(req.path.split("/")[2]))?.status)) return next(httpError(403, "API keys can only change drafts"));
-    B.log(db, req.user.id, "API", "api", req.viaApi, route);
+    B.log(db, req.user.id, "API", req.viaApi === "assistant" ? "assistant" : "api", req.viaApi === "assistant" ? null : req.viaApi, route);
     next();
   });
   api.get("/auth/me", (req, res) => res.json({ ...req.user, role_label: ROLE_LABELS[req.user.role], perms: ROLES[req.user.role] }));
@@ -762,6 +763,16 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.get("/reports/sales-by-customer", (req, res) => { need(req.user, ["reports.finance", "sales.read"]); res.json(R.salesByCustomer(db, ...range(req))); });
   api.get("/reports/sales-by-item", requirePerm("reports.finance"), (req, res) => res.json(R.salesByItem(db, ...range(req))));
   api.get("/reports/job-profit", requirePerm("profit.view"), (req, res) => res.json(R.jobProfit(db, ...range(req))));
+
+  // ---- in-app assistant (chat). Not callable by API keys or by the assistant itself.
+  const noHelpers = (req) => { if (req.viaApi) throw httpError(403, "Use the assistant from the app"); };
+  api.get("/assistant/status", (req, res) => { noHelpers(req); res.json({ ready: IN.readerReady() }); });
+  api.post("/assistant/chat", async (req, res) => {
+    noHelpers(req);
+    const base = `http://127.0.0.1:${req.socket.localPort}`;
+    res.json(await AS.chat({ user: req.user, chatId: req.body?.chat_id, text: req.body?.text, base }));
+  });
+  api.delete("/assistant/chat/:id", (req, res) => { noHelpers(req); AS.forgetChat(req.user, req.params.id); res.json({ ok: true }); });
 
   app.use("/api", api);
   app.use("/api", (_req, _res, next) => next(httpError(404, "Not found")));

@@ -19,6 +19,7 @@ import Settings from "./pages/Settings.jsx";
 import Inbox from "./pages/Inbox.jsx";
 import Account from "./pages/Account.jsx";
 import Bell from "./components/Notifications.jsx";
+import Assistant from "./components/Assistant.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
 import { registerServiceWorker, useInstall } from "./pwa.js";
 
@@ -81,6 +82,7 @@ function Shell() {
           <NavLink className="user" to="/account" title="My account"><div className="avatar">{user.name[0]}</div><div><b>{user.name}</b><small>{user.role_label}</small></div></NavLink>
           <button className="btn ghost signout" onClick={logout} title="Sign out"><span className="so-text">Sign out</span><span className="so-icon" aria-hidden>⏻</span></button>
         </header>
+        <Assistant />
         <main className="content">
           <Routes>
             <Route path="/" element={<Dashboard />} />

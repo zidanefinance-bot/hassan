@@ -47,10 +47,31 @@ export function createApiKey(db, userId, name) {
   db.prepare("INSERT INTO api_keys (user_id, name, prefix, key_hash) VALUES (?, ?, ?, ?)").run(userId, String(name || "API key").slice(0, 60), prefix, hashKey(key));
   return key;
 }
+// The in-app assistant (assistant.js) calls the API as the signed-in user with a short-lived token, under the same
+// read-and-draft limits as an API key. Tokens live in memory only.
+const assistantTokens = new Map();
+export function issueAssistantToken(user, minutes = 10) {
+  const token = randomBytes(24).toString("hex");
+  assistantTokens.set(token, { user, exp: Date.now() + minutes * 60e3 });
+  return token;
+}
+export const revokeAssistantToken = (token) => assistantTokens.delete(token);
+setInterval(() => { for (const [k, t] of assistantTokens) if (t.exp < Date.now()) assistantTokens.delete(k); }, 15 * 60e3).unref();
+
 const apiKeysOn = (db) => JSON.parse(db.prepare("SELECT value FROM settings WHERE key = 'apiKeysEnabled'").get()?.value || "false") === true;
 
 export function authMiddleware(db) {
   return (req, _res, next) => {
+    const helper = req.headers["x-zb-assistant"];
+    if (helper) {
+      const t = assistantTokens.get(String(helper));
+      const row = t && t.exp > Date.now() && db.prepare("SELECT id, name, email, role, active FROM users WHERE id = ?").get(t.user.id);
+      if (row?.active) {
+        req.user = { id: row.id, name: row.name, email: row.email, role: row.role };
+        req.viaApi = "assistant";
+      }
+      return next();
+    }
     const bearer = req.headers.authorization?.match(/^Bearer (zb_[a-f0-9]{8}_[\w-]+)$/)?.[1];
     if (bearer) {
       if (!apiKeysOn(db)) return next();
