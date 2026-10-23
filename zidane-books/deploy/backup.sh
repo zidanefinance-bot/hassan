@@ -13,7 +13,7 @@ set -euo pipefail
 ENV_FILE=/etc/zidane-books.env
 # cron starts with a bare PATH: use the same node the app's service runs on
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-UNIT_NODE=$(sed -n 's/^ExecStart=\([^ ]*node\) .*/\1/p' /etc/systemd/system/zidane-books.service 2>/dev/null | head -1)
+UNIT_NODE=$(sed -n 's/^ExecStart=\([^ ]*node\) .*/\1/p' /etc/systemd/system/zidane-books.service 2>/dev/null | head -1 || true)
 [ -n "$UNIT_NODE" ] && [ -x "$UNIT_NODE" ] && export PATH="$(dirname "$UNIT_NODE"):$PATH"
 command -v node >/dev/null || { echo "node not found"; exit 1; }
 DATA=/var/lib/zidane-books
