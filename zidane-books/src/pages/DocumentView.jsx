@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
@@ -114,6 +114,17 @@ export default function DocumentView({ kind }) {
   const act = async (fn, msg) => { try { const r = await fn(); if (msg) toast(msg); state.reload(); return r; } catch (x) { toast(x.message, "err"); } };
   const post = (path, body, msg) => act(() => api(`/documents/${id}${path}`, { method: "POST", body }), msg);
   const writer = WRITE[kind].some(can);
+  // the browser's own "Print / PDF" (window.print) names the saved file after document.title, which this
+  // app otherwise hardcodes to "Zidane Books" (see Notifications.jsx) -- so every downloaded quote/invoice/DC/bill
+  // PDF came out named "Zidane Books.pdf" with no way to tell them apart. Swap it to the document number while
+  // this page is open, and put the app's title back on the way out.
+  useEffect(() => {
+    if (!state.data) return;
+    const prev = document.title;
+    document.title = state.data.number;
+    return () => { document.title = prev; };
+  }, [state.data?.number]);
+
 
   return (
     <Loading state={state}>{(d) => {
