@@ -131,7 +131,10 @@ export function syncJobBuying(db, userId, jobId) {
 export function deleteJob(db, userId, id) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id);
   if (!job) throw httpError(404, "Job not found");
-  const doc = db.prepare("SELECT number FROM documents d WHERE d.job_id = ? OR EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = d.id AND l.job_id = ?) LIMIT 1").get(id, id);
+  // the Job's own quote (the one that became this Job) doesn't count as "belongs to this Job" -- it's meant
+  // to be freed up below so it can become a Job again, but the unqualified job_id match caught it too and
+  // blocked every delete of a quote-sourced Job with its own quote number as the reason, before that code ever ran
+  const doc = db.prepare("SELECT number FROM documents d WHERE (d.job_id = ? AND NOT (d.kind = 'quote' AND d.id = ?)) OR EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = d.id AND l.job_id = ?) LIMIT 1").get(id, job.quote_id || 0, id);
   if (doc) throw httpError(400, `${doc.number} belongs to this Job. Delete or move it first.`);
   if (db.prepare("SELECT 1 FROM expenses WHERE job_id = ?").get(id)) throw httpError(400, "This Job has costs recorded. Remove them first.");
   tx(db, () => {
