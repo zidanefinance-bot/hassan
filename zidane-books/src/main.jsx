@@ -16,6 +16,7 @@ import Payments, { PaymentView, RecordPayment } from "./pages/Payments.jsx";
 import Expenses from "./pages/Expenses.jsx";
 import Reports from "./pages/Reports.jsx";
 import Accounts, { AccountLedger, Journals } from "./pages/Accounts.jsx";
+import Kits from "./pages/Kits.jsx";
 import Settings from "./pages/Settings.jsx";
 import Inbox from "./pages/Inbox.jsx";
 import Account from "./pages/Account.jsx";
@@ -33,6 +34,7 @@ const NAV = [
   { group: "Sales", any: ["sales.read"] },
   { to: "/customers", label: "Customers", icon: "☺", any: ["sales.read"] },
   { to: "/quotes", label: "Enquiries & Quotes", icon: "✎", any: ["sales.read"] },
+  { to: "/ration-kits", label: "Ration Kits", icon: "▦", any: ["sales.read", "ops.read"] },
   { to: "/delivery-challans", label: "Delivery Challans", icon: "⇥", any: ["sales.read"] },
   { to: "/invoices", label: "Invoices", icon: "▤", any: ["sales.read"] },
   { to: "/credit-notes", label: "Credit Notes", icon: "↺", any: ["sales.read"] },
@@ -113,6 +115,7 @@ function Shell() {
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/accounts" element={<Accounts />} />
+            <Route path="/ration-kits" element={<Kits />} />
             <Route path="/accounts/:id" element={<AccountLedger />} />
             <Route path="/journals" element={<Journals />} />
             <Route path="/settings" element={<Settings />} />

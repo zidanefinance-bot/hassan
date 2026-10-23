@@ -23,6 +23,7 @@ import { emailDocuments, mailReady } from "./mailer.js";
 import { documentPdf } from "./pdf.js";
 import * as AS from "./assistant.js";
 import * as L from "./ledger.js";
+import * as RA from "./ration.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -307,8 +308,11 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (req.body.status === "material_ready" && before !== "material_ready") C.notifyEvent(db, req.user.id, "job.ready", { jobId: id(req) });
     res.json({ ok: true });
   });
-  api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req), { admin: can(req.user, "admin") }) }));
-  api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req)) }));
+  api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req), { admin: can(req.user, "admin"), bags: req.body?.bags }) }));
+  api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req), { bags: req.body?.bags, show_as: req.body?.show_as }) }));
+  // ration orders: packing progress (Operations / the packing team), recorded in bags
+  api.post("/jobs/:id/packing", (req, res) => { need(req.user, ["ops.write", "buy", "admin"]); res.json({ id: RA.addPacking(db, req.user.id, id(req), req.body || {}) }); });
+  api.delete("/packing/:id", (req, res) => { need(req.user, ["ops.write", "admin"]); RA.deletePacking(db, req.user.id, id(req)); res.json({ ok: true }); });
   // "Material arrived": delivery challan + invoice in one go, optionally emailed to the customer as PDFs
   api.post("/jobs/:id/deliver", requirePerm("sales.write"), async (req, res) => {
     const out = { dc_id: null, invoice_id: null, invoice_status: null, email: null };
@@ -420,6 +424,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     }
     jobDocChecks(req, { ...d, job_id: req.body.job_id === undefined ? d.job_id : Number(req.body.job_id) || null }, d.kind, newStatus, req.body.lines || []);
     B.saveDocument(db, req.user.id, { ...req.body, kind: d.kind, _admin: can(req.user, "admin") }, d.id);
+    RA.syncBags(db, d.id);
     afterSave(req, d.id, d.status);
     if (d.verified_at) db.prepare("UPDATE documents SET verified_at = NULL, verified_by = NULL WHERE id = ?").run(d.id); // changed after verification → verify again
     res.json({ id: d.id });
@@ -782,6 +787,19 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.get("/reports/sales-by-customer", (req, res) => { need(req.user, ["reports.finance", "sales.read"]); res.json(R.salesByCustomer(db, ...range(req))); });
   api.get("/reports/sales-by-item", requirePerm("reports.finance"), (req, res) => res.json(R.salesByItem(db, ...range(req))));
   api.get("/reports/job-profit", requirePerm("profit.view"), (req, res) => res.json(R.jobProfit(db, ...range(req))));
+
+  // ---- ration kits: what one bag holds and the rate of each item in it (Sales prices them; costs need cost.view)
+  const kitShape = (req, k) => (can(req.user, "cost.view") ? k : { ...k, cost_per_bag: undefined, margin_per_bag: undefined, margin_pct: undefined, lines: k.lines.map(({ purchase_rate, ...l }) => l) });
+  api.get("/kits", (req, res) => { need(req.user, ["sales.read", "ops.read"]); res.json(RA.kitList(db).map((k) => kitShape(req, k))); });
+  api.get("/kits/:id", (req, res) => { need(req.user, ["sales.read", "ops.read"]); res.json(kitShape(req, RA.kitDetail(db, id(req)))); });
+  api.post("/kits", requirePerm("sales.write"), (req, res) => res.json({ id: RA.saveKit(db, req.body || {}) }));
+  api.put("/kits/:id", requirePerm("sales.write"), (req, res) => { RA.kitDetail(db, id(req)); res.json({ id: RA.saveKit(db, req.body || {}, id(req)) }); });
+  api.post("/kits/:id/quote", requirePerm("sales.write"), (req, res) => res.json({ id: RA.quoteFromKit(db, req.user.id, id(req), req.body || {}) }));
+  // a ration document is shown to the customer as bags (default) or item by item
+  api.post("/documents/:id/show-as", docAction(DOC_WRITE, (req, d) => {
+    if (!(d.bags > 0)) throw httpError(400, "This isn't a ration document");
+    RA.markBags(db, d.id, d.bags, d.kit_name, req.body?.show_as);
+  }));
 
   // ---- accounts: Chart of Accounts, general ledger, manual entries, trial balance, balance sheet
   // Anyone who records money picks the account (names only); Accounts and directors see balances and the books.

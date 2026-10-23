@@ -397,9 +397,12 @@ export function cloneDocument(db, userId, id) {
   const lines = db.prepare("SELECT item_id, description, qty, rate, discount_pct, tax_rate FROM document_lines WHERE document_id = ?").all(id);
   const c = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(d.contact_id);
   const days = c?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
-  return saveDocument(db, userId, { kind: d.kind, contact_id: d.contact_id, status: d.kind === "quote" ? "draft" : "draft", date: today(),
+  const newId = saveDocument(db, userId, { kind: d.kind, contact_id: d.contact_id, status: d.kind === "quote" ? "draft" : "draft", date: today(),
     due_date: ["invoice", "bill"].includes(d.kind) ? new Date(Date.now() + days * 864e5).toISOString().slice(0, 10) : null,
-    notes: d.notes, terms: d.terms, doc_discount: d.doc_discount, charges: d.charges, charges_label: d.charges_label, adjustment: d.adjustment, return_stock: d.return_stock, lines });
+    notes: d.notes, terms: d.terms, doc_discount: d.doc_discount, charges: d.charges, charges_label: d.charges_label, adjustment: d.adjustment, return_stock: d.return_stock, lines,
+  });
+  if (d.bags > 0) db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ? WHERE id = ?").run(d.bags, d.kit_name, d.show_as, newId);
+  return newId;
 }
 
 // credit limit check for a customer: what they owe now against their limit

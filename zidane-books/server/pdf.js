@@ -4,6 +4,7 @@ import PDFDocument from "pdfkit";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getSetting } from "./books.js";
+import { bagView } from "./ration.js";
 
 const TITLE = { quote: "QUOTATION", invoice: "INVOICE", dc: "DELIVERY CHALLAN", po: "PURCHASE ORDER", bill: "SUPPLIER BILL", credit_note: "CREDIT NOTE", vendor_credit: "VENDOR CREDIT" };
 const LOGO = join(import.meta.dirname, "logo.png");
@@ -65,11 +66,37 @@ export function documentPdf(db, docId) {
   };
   pdf.rect(L, y - 4, W, 18).fill("#F3F4F7");
   row(cols.map((c) => c[0].toUpperCase()), true);
-  lines.forEach((l, i) => {
+  const itemName = (l) => {
     const name = l.item_name || l.description || "";
-    const label = l.item_name && l.description && l.description !== l.item_name ? `${name}\n${l.description}` : name;
-    row(isDc ? [i + 1, label, `${qty(l.qty)} ${l.unit || ""}`] : [i + 1, label, `${qty(l.qty)} ${l.unit || ""}`, rs(l.rate), `${qty(l.tax_rate)}%`, rs(l.amount)]);
-  });
+    return l.item_name && l.description && l.description !== l.item_name ? `${name}\n${l.description}` : name;
+  };
+  // a ration order: one line for the bags, then what one bag holds (with each item's rate on quotes and invoices)
+  const bag = bagView(d, lines);
+  if (bag) {
+    const taxes = [...new Set(lines.map((l) => l.tax_rate))];
+    row(isDc ? [1, bag.kit_name, `${qty(bag.bags)} bags`] : [1, bag.kit_name, `${qty(bag.bags)} bags`, rs(bag.rate_per_bag), taxes.length === 1 ? `${qty(taxes[0])}%` : "see below", rs(bag.amount)]);
+    y += 8;
+    pdf.font("Helvetica-Bold").fontSize(9).fillColor(INK).text(isDc ? "Each bag contains" : "Each bag contains (rate per bag)", L, y);
+    y = pdf.y + 4;
+    const sub = isDc ? [["Item", W - 260, "left"], ["Per bag", 120, "right"], ["Total", 140, "right"]] : [["Item", W - 300, "left"], ["Per bag", 90, "right"], ["Rate", 100, "right"], ["Amount / bag", 110, "right"]];
+    const subRow = (vals, bold) => {
+      let x = L;
+      const h = Math.max(...vals.map((v, i) => pdf.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(8.5).heightOfString(String(v), { width: sub[i][1] - 6 })));
+      if (y + h > pdf.page.height - 120) { pdf.addPage(); y = 48; }
+      vals.forEach((v, i) => { pdf.fillColor(bold ? MUTED : INK).text(String(v), x + 3, y, { width: sub[i][1] - 6, align: sub[i][2] }); x += sub[i][1]; });
+      y += h + 5;
+    };
+    subRow(sub.map((c) => c[0].toUpperCase()), true);
+    for (const l of bag.contents) subRow(isDc ? [itemName(l), `${qty(l.per_bag)} ${l.unit || ""}`, `${qty(l.qty)} ${l.unit || ""}`] : [itemName(l), `${qty(l.per_bag)} ${l.unit || ""}`, rs(l.rate), rs(l.amount_per_bag)]);
+    if (!isDc) subRow(["One bag", "", "", rs(bag.rate_per_bag)], true);
+    pdf.moveTo(L, y).lineTo(L + W, y).strokeColor(LINE).lineWidth(0.5).stroke();
+    y += 4;
+  } else {
+    lines.forEach((l, i) => {
+      const label = itemName(l);
+      row(isDc ? [i + 1, label, `${qty(l.qty)} ${l.unit || ""}`] : [i + 1, label, `${qty(l.qty)} ${l.unit || ""}`, rs(l.rate), `${qty(l.tax_rate)}%`, rs(l.amount)]);
+    });
+  }
 
   if (!isDc) {
     y += 6;

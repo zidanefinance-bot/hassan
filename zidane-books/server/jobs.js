@@ -4,6 +4,7 @@
 import { tx } from "./db.js";
 import { getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
 import { DOC_READ } from "./collab.js";
+import * as RA from "./ration.js";
 
 export const OPS_STATUSES = ["new", "procurement_started", "partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"];
 // an ordered item is always supplied: there is no "not available" (the old value is turned back into to_buy at start-up)
@@ -36,7 +37,9 @@ export function createJob(db, userId, input) {
       db.prepare("INSERT INTO job_items (job_id, item_id, description, qty, sale_rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)").run(id, i.item_id || null, i.description || null, Number(i.qty) || 0, Number(i.sale_rate ?? i.rate) || 0, Number(i.tax_rate) || 0);
     }
     if (input.quote_id) db.prepare("UPDATE documents SET status = 'converted', job_id = ? WHERE id = ? AND kind = 'quote'").run(id, input.quote_id);
-    log(db, userId, "created job", "job", id, `${number}`);
+    // a ration order: N bags, each holding the lines divided by N
+    if (Number(input.bags) > 0) db.prepare("UPDATE jobs SET bags = ?, kit_name = ? WHERE id = ?").run(round2(Number(input.bags)), input.kit_name || null, id);
+    log(db, userId, "created job", "job", id, `${number}${Number(input.bags) > 0 ? ` · ${input.bags} bags` : ""}`);
     return id;
   });
 }
@@ -47,7 +50,7 @@ export function jobFromQuote(db, userId, quoteId, extra = {}) {
   if (q.status === "converted") throw httpError(400, "A Job already exists for this quote");
   const lines = db.prepare("SELECT item_id, description, qty, rate AS sale_rate, tax_rate, discount_pct FROM document_lines WHERE document_id = ?").all(q.id)
     .map((l) => ({ ...l, sale_rate: round2(l.sale_rate * (1 - l.discount_pct / 100)) }));
-  return createJob(db, userId, { customer_id: q.contact_id, quote_id: q.id, items: lines, instructions: q.notes, ...extra });
+  return createJob(db, userId, { customer_id: q.contact_id, quote_id: q.id, items: lines, instructions: q.notes, bags: q.bags, kit_name: q.kit_name, ...extra });
 }
 
 const step = (s) => OPS_STATUSES.indexOf(s);
@@ -256,9 +259,26 @@ export function jobDetail(db, id, can) {
     documents: docs.filter((d) => DOC_READ[d.kind].some(can)).map((d) => (can("money") ? d : { ...d, paid: undefined })),
     expenses: can("ops.read") ? db.prepare("SELECT e.*, a.name AS account_name FROM expenses e LEFT JOIN accounts a ON a.id = e.account_id WHERE e.job_id = ? ORDER BY e.date").all(id) : [],
     economics: can("profit.view") ? jobEconomics(db, id) : null,
+    ration: rationFor(db, job, can),
   };
   if (!can("sales.read")) delete out.customer_phone; // operations only needs who and where
   return out;
+}
+
+function rationFor(db, job, can) {
+  const st = RA.rationStatus(db, job);
+  if (!st) return null;
+  if (!can("price.view")) { delete st.price_per_bag; st.contents = st.contents.map(({ sale_rate, tax_rate, ...c }) => c); }
+  if (can("profit.view")) {
+    const e = jobEconomics(db, job.id);
+    // one bag: its goods at today's purchase rates, plus this order's labour, packing, loading and delivery shared per bag
+    const goods = round2(db.prepare("SELECT COALESCE(SUM(ji.qty * COALESCE(i.purchase_rate, 0)), 0) AS v FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.job_id = ?").get(job.id).v / job.bags);
+    st.direct_costs = e?.direct_costs || 0;
+    st.goods_cost_per_bag = goods;
+    st.other_cost_per_bag = round2(st.direct_costs / job.bags);
+    st.cost_per_bag = round2(goods + st.other_cost_per_bag);
+  }
+  return st;
 }
 
 export function jobList(db, { q = "", status = "", scope = "" } = {}) {
@@ -383,6 +403,11 @@ export function deliverPrecheck(db, jobId) {
   if (job.closed) throw httpError(400, "This Job is closed");
   const draft = db.prepare("SELECT number, kind FROM documents WHERE job_id = ? AND kind IN ('dc','invoice') AND status = 'draft'").get(jobId);
   if (draft) throw httpError(400, `${draft.number} is already a draft ${draft.kind === "dc" ? "delivery challan" : "invoice"} for this Job. Issue or delete it first.`);
+  if (RA.isRation(job)) {
+    if (RA.bagsAllowed(db, job, "dc") <= 0) throw httpError(400, "No packed bags are waiting to go out. Record the packing first.");
+    if (RA.bagsAllowed(db, job, "invoice") <= 0 && RA.rationStatus(db, job).invoiced >= job.bags - 0.001) throw httpError(400, "This order is already fully invoiced. Use 'Create DC' to send the bags.");
+    return;
+  }
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
   const invoiced = lineTotals(db, jobId, "invoice", ["open"]);
@@ -392,11 +417,21 @@ export function deliverPrecheck(db, jobId) {
   if (items.every((i) => invoiced(i).qty >= i.qty - 0.001)) throw httpError(400, "This Job is already fully invoiced. Use 'Create DC' to send the goods.");
 }
 
-export function dcFromJob(db, userId, jobId, { admin = false } = {}) {
+export function dcFromJob(db, userId, jobId, { admin = false, bags } = {}) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
   const draft = db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'draft'").get(jobId);
   if (draft) throw httpError(400, `${draft.number} is already a draft delivery challan for this Job. Issue or delete it first.`);
+  if (RA.isRation(job)) {
+    if (job.closed) throw httpError(400, "This Job is closed");
+    const allowed = RA.bagsAllowed(db, job, "dc", { admin });
+    const n = round2(Number(bags) || allowed);
+    if (allowed <= 0) throw httpError(400, "No packed bags are waiting to go out. Record the packing first.");
+    if (n > allowed + 0.001) throw httpError(400, `Only ${allowed} packed bags are left to send`);
+    const id = saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, lines: RA.bagLines(db, job, n).map((l) => ({ ...l, rate: 0 })) });
+    RA.markBags(db, id, n, job.kit_name);
+    return id;
+  }
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
   if (job.closed) throw httpError(400, "This Job is closed");
@@ -409,11 +444,22 @@ export function dcFromJob(db, userId, jobId, { admin = false } = {}) {
 }
 
 // Sales: draft invoice for delivered-but-not-invoiced quantities (or the whole Job when nothing has a DC yet)
-export function invoiceFromJob(db, userId, jobId) {
+export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
   const draft = db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'draft'").get(jobId);
   if (draft) throw httpError(400, `${draft.number} is already a draft invoice for this Job. Issue or delete it first.`);
+  if (RA.isRation(job)) {
+    if (job.closed) throw httpError(400, "This Job is closed");
+    const allowed = RA.bagsAllowed(db, job, "invoice");
+    const n = round2(Number(bags) || allowed);
+    if (allowed <= 0) throw httpError(400, "Every bag sent is already invoiced");
+    if (n > allowed + 0.001) throw httpError(400, `Only ${allowed} bags are left to invoice`);
+    const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
+    const id = saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: new Date(Date.now() + days * 864e5).toISOString().slice(0, 10), reference: job.customer_po_number || job.number, lines: RA.bagLines(db, job, n) });
+    RA.markBags(db, id, n, job.kit_name, show_as);
+    return id;
+  }
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
   const invoiced = lineTotals(db, jobId, "invoice", ["open", "draft"]);

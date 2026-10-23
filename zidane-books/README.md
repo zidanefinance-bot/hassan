@@ -62,7 +62,9 @@ AI, email and Telegram need keys on the server: see **[deploy/SETUP-AI-EMAIL.md]
 
 - **Accounts (double entry):** a Chart of Accounts (cash, each bank and wallet, receivables, payables, inventory, GST, tax withheld, capital, sales, COGS, one expense account per category). Every payment, refund and expense says which cash/bank account it went through. The general ledger is worked out from the records themselves, so old data is included; journal entries and transfers cover the rest. Balance sheet, trial balance and each account's ledger are under Chart of Accounts and Reports.
 
-Not yet (later phases): ration-bag kits, bank reconciliation, WHT certificates,
+- **Ration programs:** a kit says what one bag holds and each item's rate. "Make quotation" turns a kit into a quote for N bags; the Job keeps the bags, packing is recorded in bags, and DCs / invoices are made for a number of bags. Customers see "N bags × rate" with one bag's contents underneath (or item by item, one click). Inside, everything stays item-wise, so buying, stock, cost of goods and the ledger work as for any Job. Labour, packing material, loading and delivery are the Job's direct costs and count in the cost per bag.
+
+Not yet (later phases): bank reconciliation, WHT certificates,
 cheques, purchaser wallet, investors/loans, WhatsApp to customers.
 
 ## Put it online

@@ -504,3 +504,17 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
   .ai-fab { right: 14px; bottom: 14px; padding: 12px 14px; } .ai-fab span { display: none; }
   .ai-panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw; height: 100dvh; border-radius: 0; border: 0; }
 }
+
+/* ---- ration orders */
+.ration-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ration-head h3 { margin-bottom: 4px; }
+.ration-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+.ration-bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 14px 0 8px; }
+.ration-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-bottom: 4px; }
+.ration-bar i { display: block; height: 100%; background: var(--green); }
+.card.ration h4 { margin: 10px 0 6px; font-size: 13px; color: var(--ink); }
+.bag-sub { margin: 14px 0 4px; font-size: 13px; color: var(--ink); }
+.bag-contents td, .bag-contents th { font-size: 13px; }
+.kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.kit-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+@media (max-width: 760px) { .ration-bars { grid-template-columns: 1fr; } }

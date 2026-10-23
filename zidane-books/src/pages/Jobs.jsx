@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OPS_STEPS, PageHead, Search, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import RationPanel from "../components/RationPanel.jsx";
 import AccountSelect from "../components/AccountSelect.jsx";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
@@ -270,13 +271,14 @@ export function JobView() {
             {can("buy") && <Link className="btn" to={`/bills/new?job=${id}`}>+ Supplier bill</Link>}
             {can("buy") && <button className="btn" onClick={() => setCost(true)}>+ Freight / direct cost</button>}
             {can("sales.write") && !j.closed && canDeliver && <button className="btn primary" onClick={() => setDeliver(true)}>{step >= 4 ? "Material arrived" : "Send what's in hand"} → DC + invoice</button>}
-            {can("sales.write") && !j.closed && toDeliverLeft && (canDeliver || can("admin")) && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
+            {can("sales.write") && !j.closed && !j.ration && toDeliverLeft && (canDeliver || can("admin")) && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/dc`, { method: "POST" }), "Draft DC created"); if (r) nav(`/delivery-challans/${r.id}`); }}>Create DC</button>}
             {can("sales.write") && !j.closed && toDeliverLeft && !canDeliver && <span className="muted small self-center">DC unlocks when Operations marks items bought or the material ready</span>}
-            {can("sales.write") && !j.closed && canInvoice && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/invoice`, { method: "POST" }), "Draft invoice created"); if (r) nav(`/invoices/${r.id}`); }}>Create invoice</button>}
+            {can("sales.write") && !j.closed && !j.ration && canInvoice && <button className="btn" onClick={async () => { const r = await act(() => api(`/jobs/${id}/invoice`, { method: "POST" }), "Draft invoice created"); if (r) nav(`/invoices/${r.id}`); }}>Create invoice</button>}
             {can("admin") && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/close`, { method: "POST", body: { closed: !j.closed } }), j.closed ? "Job reopened" : "Job closed")}>{j.closed ? "Reopen" : "Close job"}</button>}
           </PageHead>
 
           <div className="steps">{OPS_STEPS.map((s, i) => <div key={s} className={`step ${i <= step ? "done" : ""} ${i === step ? "now" : ""}`}><i />{label(s)}</div>)}</div>
+          {j.ration && <RationPanel job={j} onChange={state.reload} />}
 
           <div className="grid-2">
             <section className="card">
