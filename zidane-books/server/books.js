@@ -1,5 +1,6 @@
 // Business rules: document totals, numbering, stock effects, balances and statuses.
 import { tx } from "./db.js";
+import { moneyAccount } from "./ledger.js";
 
 export const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const today = () => new Date().toISOString().slice(0, 10);
@@ -300,8 +301,8 @@ export function recordPayment(db, userId, p) {
     const totalAlloc = round2(allocations.reduce((a, x) => a + (Number(x.amount) || 0), 0));
     if (totalAlloc > settled + 0.001) throw httpError(400, "You've applied more than the payment amount (plus tax withheld)");
     const number = nextNumber(db, p.direction === "in" ? "receipt" : "payment");
-    const r = db.prepare("INSERT INTO payments (number, direction, contact_id, date, amount, mode, reference, notes, created_by, wht_income, wht_sales) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .run(number, p.direction, contactId, p.date || today(), amount, p.mode || "cash", p.reference || null, p.notes || null, userId ?? null, whtIncome, whtSales);
+    const r = db.prepare("INSERT INTO payments (number, direction, contact_id, date, amount, mode, reference, notes, created_by, wht_income, wht_sales, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(number, p.direction, contactId, p.date || today(), amount, p.mode || "cash", p.reference || null, p.notes || null, userId ?? null, whtIncome, whtSales, moneyAccount(db, p.account_id, p.mode || "cash"));
     const id = Number(r.lastInsertRowid);
     const source = loadSource(db, { payment_id: id });
     for (const a of allocations) allocate(db, userId, source, a.document_id, a.amount, p.date || today());
@@ -343,8 +344,8 @@ export function recordRefund(db, userId, input) {
     const source = loadSource(db, input);
     if (amount > source.unused() + 0.001) throw httpError(400, `${source.number} only has ${source.unused()} unused`);
     const number = nextNumber(db, "refund");
-    const r = db.prepare(`INSERT INTO refunds (number, contact_id, ${source.col}, date, amount, mode, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(number, source.contact_id, source.id, input.date || today(), amount, input.mode || "bank", input.reference || null, input.notes || null, userId ?? null);
+    const r = db.prepare(`INSERT INTO refunds (number, contact_id, ${source.col}, date, amount, mode, reference, notes, created_by, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(number, source.contact_id, source.id, input.date || today(), amount, input.mode || "bank", input.reference || null, input.notes || null, userId ?? null, moneyAccount(db, input.account_id, input.mode || "bank"));
     log(db, userId, "refunded", "refund", Number(r.lastInsertRowid), `${number} · ${amount} from ${source.number}`);
     return Number(r.lastInsertRowid);
   });

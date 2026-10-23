@@ -254,7 +254,7 @@ export function jobDetail(db, id, can) {
     })),
     // each side only sees its own paperwork on the Job (credit notes are Sales', vendor credits Operations')
     documents: docs.filter((d) => DOC_READ[d.kind].some(can)).map((d) => (can("money") ? d : { ...d, paid: undefined })),
-    expenses: can("ops.read") ? db.prepare("SELECT * FROM expenses WHERE job_id = ? ORDER BY date").all(id) : [],
+    expenses: can("ops.read") ? db.prepare("SELECT e.*, a.name AS account_name FROM expenses e LEFT JOIN accounts a ON a.id = e.account_id WHERE e.job_id = ? ORDER BY e.date").all(id) : [],
     economics: can("profit.view") ? jobEconomics(db, id) : null,
   };
   if (!can("sales.read")) delete out.customer_phone; // operations only needs who and where

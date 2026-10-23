@@ -2,6 +2,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { setupAccounts } from "./ledger.js";
 
 export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   if (file !== ":memory:") mkdirSync(dirname(file), { recursive: true });
@@ -26,6 +27,7 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
     db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(k, JSON.stringify(v));
   }
   if (!hadCategories) tidyItems(db);
+  setupAccounts(db); // Chart of Accounts, and "paid through" on money records made before it
   // "delivered" only comes from a signed DC: a Job whose signed DC was removed earlier steps back
   db.prepare(`UPDATE jobs SET ops_status = CASE WHEN EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'issued') THEN 'dispatched' ELSE 'material_ready' END
     WHERE closed = 0 AND ops_status = 'delivered' AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'signed')`).run();

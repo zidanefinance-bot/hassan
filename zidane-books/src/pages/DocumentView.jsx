@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import AccountSelect from "../components/AccountSelect.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
@@ -9,7 +10,7 @@ const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.wr
 const ATTACH_LABELS = { quote: ["Customer enquiry", "Customer PO"], invoice: ["Customer PO", "Submission receipt"], dc: ["Signed DC", "Gate pass"], credit_note: ["Return note"], po: ["Supplier quotation"], bill: ["Supplier bill photo", "Delivery note"], vendor_credit: ["Return note"] };
 
 export function PaymentModal({ doc, onClose, onSaved }) {
-  const [p, setP] = useState({ amount: doc.balance, wht_income: "", wht_sales: "", date: today(), mode: "bank", reference: "", notes: "" });
+  const [p, setP] = useState({ amount: doc.balance, wht_income: "", wht_sales: "", date: today(), mode: "bank", account_id: "", reference: "", notes: "" });
   const withheld = (Number(p.wht_income) || 0) + (Number(p.wht_sales) || 0);
   const settles = Math.round(((Number(p.amount) || 0) + withheld) * 100) / 100;
   // the customer kept some tax: what reaches the bank is the balance less that
@@ -35,9 +36,9 @@ export function PaymentModal({ doc, onClose, onSaved }) {
         <div className="row-2"><Field label={withheld ? "Received in bank / cash (Rs)" : "Amount (Rs)"} hint={withheld ? `Settles ${money(settles)} of the invoice` : null}><input type="number" step="0.01" {...bind("amount")} required autoFocus /></Field><Field label="Date"><input type="date" {...bind("date")} /></Field></div>
         <div className="row-2">
           <Field label="Mode"><select {...bind("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
-          <Field label="Reference"><input {...bind("reference")} placeholder="Bank / cheque # / transaction ID" /></Field>
+          <Field label={doc.kind === "invoice" ? "Received into *" : "Paid from *"}><AccountSelect value={p.account_id} mode={p.mode} onChange={(v) => setP((x) => ({ ...x, account_id: v }))} /></Field>
         </div>
-        <Field label="Notes"><input {...bind("notes")} /></Field>
+        <div className="row-2"><Field label="Reference"><input {...bind("reference")} placeholder="Bank / cheque # / transaction ID" /></Field><Field label="Notes"><input {...bind("notes")} /></Field></div>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Record payment</button></div>
       </form>

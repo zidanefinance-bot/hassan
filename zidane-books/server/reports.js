@@ -41,10 +41,11 @@ export const receivables = (db) => ({ ...aging(balances(db, "invoice")), advance
 export const payables = (db) => ({ ...aging(balances(db, "bill")), advances: advances(db, "out") });
 
 export function profitAndLoss(db, from, to) {
-  const sales = db.prepare(`SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v, COALESCE(SUM(tax_total), 0) AS tax FROM documents WHERE kind = 'invoice' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to);
+  // net of line discounts, the invoice-level discount, delivery/other charges and round-off; before tax (as in the ledger)
+  const sales = db.prepare(`SELECT COALESCE(SUM(total - tax_total), 0) AS v, COALESCE(SUM(tax_total), 0) AS tax FROM documents WHERE kind = 'invoice' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to);
   const cogsSold = db.prepare(`SELECT COALESCE(SUM(l.qty * l.cost_rate), 0) AS v FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.kind = 'invoice' AND d.${ISSUED} AND d.date BETWEEN ? AND ?`).get(from, to).v;
   // credit notes take the sale back, and the cost too when the goods came back into stock
-  const returns = db.prepare(`SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v FROM documents WHERE kind = 'credit_note' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to).v;
+  const returns = db.prepare(`SELECT COALESCE(SUM(total - tax_total), 0) AS v FROM documents WHERE kind = 'credit_note' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to).v;
   const returnedCost = db.prepare(`SELECT COALESCE(SUM(l.qty * l.cost_rate), 0) AS v FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.kind = 'credit_note' AND d.${ISSUED} AND d.return_stock = 1 AND d.date BETWEEN ? AND ?`).get(from, to).v;
   const cogs = cogsSold - returnedCost;
   const exp = db.prepare("SELECT category, SUM(amount) AS amount FROM expenses WHERE date BETWEEN ? AND ? GROUP BY category ORDER BY amount DESC").all(from, to)
@@ -52,6 +53,10 @@ export function profitAndLoss(db, from, to) {
   // freight / other charges added on supplier bills are a cost as well
   const billCharges = round2(db.prepare(`SELECT COALESCE(SUM(charges), 0) AS v FROM documents WHERE kind = 'bill' AND ${ISSUED} AND date BETWEEN ? AND ?`).get(from, to).v);
   if (billCharges) exp.push({ category: "Freight & charges on supplier bills", amount: billCharges });
+  // manual journal entries on income / expense accounts (depreciation, corrections...): income counts as a negative cost here
+  const journal = db.prepare(`SELECT a.name, a.type, SUM(l.debit - l.credit) AS v FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id JOIN accounts a ON a.id = l.account_id
+    WHERE a.type IN ('income','expense') AND e.date BETWEEN ? AND ? GROUP BY a.id`).all(from, to);
+  for (const j of journal) if (Math.abs(j.v) >= 0.005) exp.push({ category: `${j.name} (journal)`, amount: round2(j.v) });
   const expenses = round2(exp.reduce((a, e) => a + e.amount, 0));
   const revenue = round2(sales.v - returns), gross = round2(revenue - cogs);
   return { from, to, revenue, returns: round2(returns), cogs: round2(cogs), gross_profit: gross, gross_margin: revenue ? round2((gross / revenue) * 100) : 0, expenses, expense_breakdown: exp, net_profit: round2(gross - expenses), tax_collected: round2(sales.tax) };

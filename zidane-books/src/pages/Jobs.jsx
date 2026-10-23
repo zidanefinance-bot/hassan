@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OPS_STEPS, PageHead, Search, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import AccountSelect from "../components/AccountSelect.jsx";
 import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import Attachments from "../components/Attachments.jsx";
@@ -189,7 +190,7 @@ export function JobForm() {
 }
 
 function JobCost({ job, settings, onClose, onSaved }) {
-  const [e, setE] = useState({ category: settings?.jobExpenseCategories?.[0] || "Freight", amount: "", date: today(), paid_through: "cash", notes: "" });
+  const [e, setE] = useState({ category: settings?.jobExpenseCategories?.[0] || "Freight", amount: "", date: today(), paid_through: "cash", account_id: "", notes: "" });
   const [err, setErr] = useState("");
   // one cost for goods of several Jobs (a rickshaw for two POs): share it out
   const [share, setShare] = useState(false);
@@ -216,6 +217,7 @@ function JobCost({ job, settings, onClose, onSaved }) {
       <form className="form" onSubmit={save}>
         <div className="row-2"><Field label="Type"><select {...b("category")}>{(settings?.jobExpenseCategories || ["Freight"]).map((c) => <option key={c}>{c}</option>)}</select></Field><Field label="Amount (Rs)"><input type="number" step="0.01" {...b("amount")} required autoFocus /></Field></div>
         <div className="row-2"><Field label="Date"><input type="date" {...b("date")} /></Field><Field label="Paid by"><select {...b("paid_through")}><option value="cash">Cash</option><option value="bank">Bank</option><option value="online">Online / wallet</option></select></Field></div>
+        <Field label="Paid from account *"><AccountSelect value={e.account_id} mode={e.paid_through} onChange={(v) => setE((x) => ({ ...x, account_id: v }))} /></Field>
         <Field label="Notes"><input {...b("notes")} placeholder="Vehicle #, labour count…" /></Field>
         <label className="check"><input type="checkbox" checked={share} onChange={(x) => setShare(x.target.checked)} /> This cost was for other Jobs too (share it)</label>
         {share && (
@@ -335,7 +337,7 @@ export function JobView() {
             <section className="card flush">
               <h3 className="pad">Direct costs</h3>
               <table className="table"><thead><tr><th>Date</th><th>Type</th><th>Paid by</th><th>Notes</th><th className="r">Amount</th></tr></thead>
-                <tbody>{j.expenses.map((e) => <tr key={e.id}><td>{fmtDate(e.date)}</td><td>{e.category}</td><td>{e.paid_through}</td><td className="muted">{e.notes}</td><td className="r">{money(e.amount)}</td></tr>)}</tbody></table>
+                <tbody>{j.expenses.map((e) => <tr key={e.id}><td>{fmtDate(e.date)}</td><td>{e.category}</td><td>{e.account_name || e.paid_through}</td><td className="muted">{e.notes}</td><td className="r">{money(e.amount)}</td></tr>)}</tbody></table>
             </section>
           )}
           <Attachments entity="job" id={j.id} labels={["Customer PO", "Delivery photo", "Supplier quotation", "Other evidence"]} />

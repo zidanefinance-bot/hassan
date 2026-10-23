@@ -22,6 +22,7 @@ import { norm } from "./matching.js";
 import { emailDocuments, mailReady } from "./mailer.js";
 import { documentPdf } from "./pdf.js";
 import * as AS from "./assistant.js";
+import * as L from "./ledger.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -505,16 +506,16 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
 
   // ---- payments (Accounts): receipts and supplier payments, split across documents; leftovers are advances
   api.get("/payments", requirePerm("money"), (req, res) => {
-    res.json(db.prepare(`SELECT p.*, c.name AS contact_name, ${B.UNUSED_SQL} AS unused,
+    res.json(db.prepare(`SELECT p.*, c.name AS contact_name, ac.name AS account_name, ${B.UNUSED_SQL} AS unused,
       (SELECT GROUP_CONCAT(d.number, ', ') FROM payment_allocations a JOIN documents d ON d.id = a.document_id WHERE a.payment_id = p.id) AS applied_to
-      FROM payments p JOIN contacts c ON c.id = p.contact_id WHERE p.direction = ? ORDER BY p.date DESC, p.id DESC LIMIT 500`).all(req.query.direction === "out" ? "out" : "in")
+      FROM payments p JOIN contacts c ON c.id = p.contact_id LEFT JOIN accounts ac ON ac.id = p.account_id WHERE p.direction = ? ORDER BY p.date DESC, p.id DESC LIMIT 500`).all(req.query.direction === "out" ? "out" : "in")
       .map((p) => ({ ...p, unused: round2(p.unused) })));
   });
   api.get("/payments/:id", requirePerm("money"), (req, res) => {
-    const p = db.prepare(`SELECT p.*, c.name AS contact_name, c.type AS contact_type, ${B.UNUSED_SQL} AS unused FROM payments p JOIN contacts c ON c.id = p.contact_id WHERE p.id = ?`).get(id(req));
+    const p = db.prepare(`SELECT p.*, c.name AS contact_name, c.type AS contact_type, ac.name AS account_name, ${B.UNUSED_SQL} AS unused FROM payments p JOIN contacts c ON c.id = p.contact_id LEFT JOIN accounts ac ON ac.id = p.account_id WHERE p.id = ?`).get(id(req));
     if (!p) throw httpError(404, "Not found");
     const allocations = db.prepare("SELECT a.*, d.kind, d.number, d.total FROM payment_allocations a JOIN documents d ON d.id = a.document_id WHERE a.payment_id = ? ORDER BY a.id").all(p.id);
-    const refunds = db.prepare("SELECT * FROM refunds WHERE payment_id = ? ORDER BY id").all(p.id);
+    const refunds = db.prepare("SELECT r.*, ac.name AS account_name FROM refunds r LEFT JOIN accounts ac ON ac.id = r.account_id WHERE payment_id = ? ORDER BY r.id").all(p.id);
     res.json({ ...p, unused: round2(p.unused), allocations, refunds, created_by_name: db.prepare("SELECT name FROM users WHERE id = ?").get(p.created_by)?.name });
   });
   api.post("/payments", requirePerm("money"), (req, res) => {
@@ -545,16 +546,17 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   const canExpense = (user, jobId) => can(user, "expenses") || (jobId && can(user, "buy"));
   api.get("/expenses", requirePerm("expenses"), (req, res) => {
     const from = req.query.from || "0000-01-01", to = req.query.to || "9999-12-31";
-    res.json(db.prepare("SELECT e.*, c.name AS contact_name, j.number AS job_number FROM expenses e LEFT JOIN contacts c ON c.id = e.contact_id LEFT JOIN jobs j ON j.id = e.job_id WHERE date BETWEEN ? AND ? ORDER BY date DESC, e.id DESC").all(from, to));
+    res.json(db.prepare("SELECT e.*, c.name AS contact_name, j.number AS job_number, ac.name AS account_name FROM expenses e LEFT JOIN contacts c ON c.id = e.contact_id LEFT JOIN jobs j ON j.id = e.job_id LEFT JOIN accounts ac ON ac.id = e.account_id WHERE date BETWEEN ? AND ? ORDER BY date DESC, e.id DESC").all(from, to));
   });
   const expFields = (b) => {
     if (!b.category) throw httpError(400, "Category is required");
     if (!(Number(b.amount) > 0)) throw httpError(400, "Amount must be more than zero");
-    return [b.date || today(), b.category, round2(b.amount), b.paid_through || "cash", b.contact_id || null, b.job_id || null, b.reference || null, b.notes || null];
+    L.expenseAccountFor(db, b.category); // a new category gets its own expense account
+    return [b.date || today(), b.category, round2(b.amount), b.paid_through || "cash", b.contact_id || null, b.job_id || null, b.reference || null, b.notes || null, L.moneyAccount(db, b.account_id, b.paid_through || "cash")];
   };
   api.post("/expenses", (req, res) => {
     if (!canExpense(req.user, req.body.job_id)) throw httpError(403, "You don't have access to this");
-    const r = db.prepare("INSERT INTO expenses (date, category, amount, paid_through, contact_id, job_id, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...expFields(req.body), req.user.id);
+    const r = db.prepare("INSERT INTO expenses (date, category, amount, paid_through, contact_id, job_id, reference, notes, account_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...expFields(req.body), req.user.id);
     B.log(db, req.user.id, req.body.job_id ? "added job cost" : "added expense", "expense", Number(r.lastInsertRowid), `${req.body.category} · ${req.body.amount}`);
     res.json({ id: Number(r.lastInsertRowid) });
   });
@@ -582,7 +584,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const note = `${b.notes ? b.notes + " · " : ""}Part of Rs ${amount.toLocaleString("en-PK")} shared by ${jobs.map((j) => j.number).join(", ")} (${byValue ? "by Job value" : "equally"})`;
     tx(db, () => {
       for (const s of shares) {
-        const r = db.prepare("INSERT INTO expenses (date, category, amount, paid_through, contact_id, job_id, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        const r = db.prepare("INSERT INTO expenses (date, category, amount, paid_through, contact_id, job_id, reference, notes, account_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
           .run(...expFields({ ...b, amount: s.amount, job_id: s.job_id, notes: note }), req.user.id);
         B.log(db, req.user.id, "added job cost", "expense", Number(r.lastInsertRowid), `${b.category} · ${s.amount} (shared)`);
       }
@@ -597,7 +599,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   };
   api.put("/expenses/:id", (req, res) => {
     const e = loadExp(req);
-    db.prepare("UPDATE expenses SET date=?, category=?, amount=?, paid_through=?, contact_id=?, job_id=?, reference=?, notes=? WHERE id=?").run(...expFields({ ...req.body, job_id: e.job_id }), e.id);
+    db.prepare("UPDATE expenses SET date=?, category=?, amount=?, paid_through=?, contact_id=?, job_id=?, reference=?, notes=?, account_id=? WHERE id=?").run(...expFields({ ...req.body, job_id: e.job_id }), e.id);
     res.json({ ok: true });
   });
   api.delete("/expenses/:id", (req, res) => { const e = loadExp(req); db.prepare("DELETE FROM expenses WHERE id = ?").run(e.id); res.json({ ok: true }); });
@@ -780,6 +782,66 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.get("/reports/sales-by-customer", (req, res) => { need(req.user, ["reports.finance", "sales.read"]); res.json(R.salesByCustomer(db, ...range(req))); });
   api.get("/reports/sales-by-item", requirePerm("reports.finance"), (req, res) => res.json(R.salesByItem(db, ...range(req))));
   api.get("/reports/job-profit", requirePerm("profit.view"), (req, res) => res.json(R.jobProfit(db, ...range(req))));
+
+  // ---- accounts: Chart of Accounts, general ledger, manual entries, trial balance, balance sheet
+  // Anyone who records money picks the account (names only); Accounts and directors see balances and the books.
+  const books = (req) => need(req.user, ["reports.finance"]);
+  const recordsMoney = (req) => need(req.user, ["money", "expenses", "buy", "reports.finance"]);
+  api.get("/accounts/money", (req, res) => { recordsMoney(req); res.json(db.prepare(`SELECT id, code, name, kind, bank_name, account_number FROM accounts WHERE active = 1 AND kind IN ('cash','bank','wallet') ORDER BY CAST(code AS INTEGER)`).all()); });
+  api.get("/accounts", (req, res) => { books(req); res.json(L.balances(db, { to: req.query.to || today() })); });
+  const accFields = (b, a) => {
+    const name = String(b.name ?? a?.name ?? "").trim();
+    if (!name) throw httpError(400, "Name is required");
+    const type = a?.system_key || a?.expense_category ? a.type : b.type ?? a?.type;
+    if (!L.TYPES.includes(type)) throw httpError(400, "Pick a type");
+    const kind = a?.system_key ? a.kind : type === "asset" && ["cash", "bank", "wallet"].includes(b.kind ?? a?.kind) ? (b.kind ?? a?.kind) : "other";
+    const code = String(b.code ?? a?.code ?? "").trim();
+    if (!/^[0-9A-Za-z.-]{1,12}$/.test(code)) throw httpError(400, "Code: up to 12 letters or numbers");
+    return { name, type, kind, code, bank_name: b.bank_name ?? a?.bank_name ?? null, account_number: b.account_number ?? a?.account_number ?? null,
+      opening_balance: round2(Number(b.opening_balance ?? a?.opening_balance) || 0), opening_date: (b.opening_date ?? a?.opening_date) || null, notes: b.notes ?? a?.notes ?? null,
+      active: b.active === undefined ? (a?.active ?? 1) : b.active ? 1 : 0 };
+  };
+  const dupCode = (e) => { if (String(e.message).includes("UNIQUE")) throw httpError(400, "Another account already has this code"); throw e; };
+  api.post("/accounts", (req, res) => {
+    books(req);
+    const f = accFields({ ...req.body, code: String(req.body?.code || "").trim() || L.nextCode(db, req.body?.type in { asset: 1, liability: 1, equity: 1, income: 1, expense: 1 } ? req.body.type : "asset") });
+    try {
+      const r = db.prepare("INSERT INTO accounts (code, name, type, kind, bank_name, account_number, opening_balance, opening_date, notes, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(f.code, f.name, f.type, f.kind, f.bank_name, f.account_number, f.opening_balance, f.opening_date, f.notes, f.active);
+      B.log(db, req.user.id, "added account", "account", Number(r.lastInsertRowid), `${f.code} ${f.name}`);
+      res.json({ id: Number(r.lastInsertRowid) });
+    } catch (e) { dupCode(e); }
+  });
+  api.put("/accounts/:id", (req, res) => {
+    books(req);
+    const a = db.prepare("SELECT * FROM accounts WHERE id = ?").get(id(req));
+    if (!a) throw httpError(404, "Not found");
+    const f = accFields(req.body || {}, a);
+    if (!f.active && a.system_key) throw httpError(400, "This account is used by the books and can't be closed");
+    try {
+      db.prepare("UPDATE accounts SET code=?, name=?, type=?, kind=?, bank_name=?, account_number=?, opening_balance=?, opening_date=?, notes=?, active=? WHERE id=?")
+        .run(f.code, f.name, f.type, f.kind, f.bank_name, f.account_number, f.opening_balance, f.opening_date, f.notes, f.active, a.id);
+    } catch (e) { dupCode(e); }
+    B.log(db, req.user.id, "changed account", "account", a.id, `${f.code} ${f.name}`);
+    res.json({ ok: true });
+  });
+  api.get("/accounts/:id/ledger", (req, res) => { books(req); res.json(L.accountLedger(db, id(req), req.query.from || "0000-01-01", req.query.to || today())); });
+  api.get("/journals", (req, res) => {
+    books(req);
+    res.json(db.prepare(`SELECT j.*, (SELECT SUM(debit) FROM journal_lines WHERE entry_id = j.id) AS amount, u.name AS created_by_name FROM journal_entries j LEFT JOIN users u ON u.id = j.created_by ORDER BY j.date DESC, j.id DESC LIMIT 500`).all());
+  });
+  api.get("/journals/:id", (req, res) => { books(req); res.json(L.getJournal(db, id(req))); });
+  api.post("/journals", (req, res) => { books(req); res.json({ id: L.saveJournal(db, req.user.id, req.body || {}) }); });
+  api.post("/transfers", (req, res) => { need(req.user, ["money", "reports.finance"]); res.json({ id: L.transfer(db, req.user.id, req.body || {}) }); });
+  api.delete("/journals/:id", (req, res) => {
+    books(req);
+    const j = L.getJournal(db, id(req));
+    db.prepare("DELETE FROM journal_entries WHERE id = ?").run(j.id);
+    B.log(db, req.user.id, "deleted journal entry", "journal", j.id, j.number);
+    res.json({ ok: true });
+  });
+  api.get("/reports/trial-balance", (req, res) => { books(req); res.json(L.trialBalance(db, req.query.to || today())); });
+  api.get("/reports/balance-sheet", (req, res) => { books(req); res.json(L.balanceSheet(db, req.query.to || today())); });
 
   // ---- in-app assistant (chat). Not callable by API keys or by the assistant itself.
   const noHelpers = (req) => { if (req.viaApi) throw httpError(403, "Use the assistant from the app"); };

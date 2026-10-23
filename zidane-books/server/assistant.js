@@ -41,6 +41,7 @@ Useful endpoints (all GET unless noted):
 /payments?direction=in|out    /payments/{id}    /expenses
 /reports/home    /reports/receivables    /reports/payables    /reports/pnl?from=&to=    /reports/sales-by-customer?from=&to=    /reports/sales-by-item?from=&to=    /reports/job-profit    /reports/inventory    /reports/tax?from=&to=
 /inbox    /inbox/{id}    /comments?entity=&entity_id=    /notifications
+/accounts (Chart of Accounts with balances)    /accounts/{id}/ledger?from=&to=    /reports/balance-sheet?to=    /reports/trial-balance?to=    /journals
 Dates are YYYY-MM-DD.
 A draft document body: {"kind":"quote","status":"draft","contact_id":12,"date":"2026-10-22","reference":"customer PO no. if any","lines":[{"item_id":5,"description":"Super Fine Atta 10kg","qty":40,"rate":1850,"discount_pct":0,"tax_rate":0}],"notes":""}.
 Find contact_id and item_id first (search or /contacts, /items). Use the last rate for that customer or supplier when the user gives no rate, and say so.

@@ -15,6 +15,7 @@ import DocumentView from "./pages/DocumentView.jsx";
 import Payments, { PaymentView, RecordPayment } from "./pages/Payments.jsx";
 import Expenses from "./pages/Expenses.jsx";
 import Reports from "./pages/Reports.jsx";
+import Accounts, { AccountLedger, Journals } from "./pages/Accounts.jsx";
 import Settings from "./pages/Settings.jsx";
 import Inbox from "./pages/Inbox.jsx";
 import Account from "./pages/Account.jsx";
@@ -40,10 +41,12 @@ const NAV = [
   { to: "/purchase-orders", label: "Purchase Orders", icon: "✉", any: ["ops.read"] },
   { to: "/bills", label: "Supplier Bills", icon: "▥", any: ["ops.read"] },
   { to: "/vendor-credits", label: "Vendor Credits", icon: "↻", any: ["ops.read"] },
-  { group: "Accounts", any: ["money", "expenses"] },
+  { group: "Accounts", any: ["money", "expenses", "reports.finance"] },
   { to: "/payments-received", label: "Payments Received", icon: "↓", any: ["money"] },
   { to: "/payments-made", label: "Payments Made", icon: "↑", any: ["money"] },
   { to: "/expenses", label: "Expenses", icon: "₨", any: ["expenses"] },
+  { to: "/accounts", label: "Chart of Accounts", icon: "☰", any: ["reports.finance"] },
+  { to: "/journals", label: "Journal & Transfers", icon: "⇄", any: ["reports.finance"] },
   { group: "Business", any: ["reports.finance", "sales.read", "admin"] },
   { to: "/reports", label: "Reports", icon: "▲", any: ["reports.finance", "sales.read"] },
   { to: "/settings", label: "Settings", icon: "⚙", any: ["admin"] },
@@ -109,6 +112,9 @@ function Shell() {
             <Route path="/payments/:id" element={<PaymentView />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/accounts" element={<Accounts />} />
+            <Route path="/accounts/:id" element={<AccountLedger />} />
+            <Route path="/journals" element={<Journals />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/account" element={<Account />} />
             <Route path="*" element={<Navigate to="/" />} />

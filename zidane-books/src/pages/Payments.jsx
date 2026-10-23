@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Field, fmtDate, KIND, Loading, Modal, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
+import AccountSelect from "../components/AccountSelect.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
 import Picker from "../components/Picker.jsx";
@@ -20,10 +21,10 @@ export default function Payments({ direction }) {
       </PageHead>
       <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No payments yet.</div> : (
         <div className="card flush"><table className="table">
-          <thead><tr><th>Date</th><th>Number</th><th>{isIn(direction) ? "Customer" : "Supplier"}</th><th>Applied to</th><th>Mode</th><th className="r">Amount</th><th className="r">Unused (advance)</th></tr></thead>
+          <thead><tr><th>Date</th><th>Number</th><th>{isIn(direction) ? "Customer" : "Supplier"}</th><th>Applied to</th><th>Account</th><th className="r">Amount</th><th className="r">Unused (advance)</th></tr></thead>
           <tbody>{rows.map((p) => (
             <tr key={p.id} className="click" onClick={() => nav(`/payments/${p.id}`)}>
-              <td>{fmtDate(p.date)}</td><td><b>{p.number}</b></td><td>{p.contact_name}</td><td className="muted small">{p.applied_to || "—"}</td><td>{p.mode}</td>
+              <td>{fmtDate(p.date)}</td><td><b>{p.number}</b></td><td>{p.contact_name}</td><td className="muted small">{p.applied_to || "—"}</td><td>{p.account_name || p.mode}<div className="muted small">{p.mode}</div></td>
               <td className="r">{money(p.amount)}{p.wht_income + p.wht_sales > 0 && <div className="muted small">+ {money(p.wht_income + p.wht_sales)} tax withheld</div>}</td><td className={`r ${p.unused > 0 ? "pos" : "muted"}`}>{p.unused > 0 ? money(p.unused) : "—"}</td>
             </tr>
           ))}</tbody>
@@ -68,7 +69,7 @@ export function RecordPayment() {
   const direction = params.get("direction") === "out" ? "out" : "in";
   const type = isIn(direction) ? "customer" : "supplier";
   const contacts = useLoad(`/contacts?type=${type}`);
-  const [p, setP] = useState({ contact_id: params.get("contact") || "", amount: "", wht_income: "", wht_sales: "", date: today(), mode: "bank", reference: "", notes: "" });
+  const [p, setP] = useState({ contact_id: params.get("contact") || "", amount: "", wht_income: "", wht_sales: "", date: today(), mode: "bank", account_id: "", reference: "", notes: "" });
   const [docs, setDocs] = useState([]);
   const [values, setValues] = useState({});
   const [err, setErr] = useState("");
@@ -106,6 +107,9 @@ export function RecordPayment() {
           <Field label="Mode"><select {...bind("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
         </div>
         <div className="row-4">
+          <Field label={isIn(direction) ? "Received into *" : "Paid from *"}><AccountSelect value={p.account_id} mode={p.mode} onChange={(v) => setP((x) => ({ ...x, account_id: v }))} /></Field>
+        </div>
+        <div className="row-4">
           <Field label={isIn(direction) ? "Income tax they withheld (Rs)" : "Income tax we withheld (Rs)"} hint="WHT deducted at source"><input type="number" step="0.01" min="0" {...bind("wht_income")} /></Field>
           <Field label={isIn(direction) ? "Sales tax they withheld (Rs)" : "Sales tax we withheld (Rs)"}><input type="number" step="0.01" min="0" {...bind("wht_sales")} /></Field>
           <Field label="Reference"><input {...bind("reference")} placeholder="Bank / cheque # / transaction ID" /></Field><Field label="Notes"><input {...bind("notes")} /></Field>
@@ -126,7 +130,7 @@ export function RecordPayment() {
 
 // give back an unused advance or credit note: source = { payment_id } or { credit_id }
 export function RefundModal({ source, number, unused, onClose, onSaved }) {
-  const [r, setR] = useState({ amount: unused, date: today(), mode: "bank", reference: "", notes: "" });
+  const [r, setR] = useState({ amount: unused, date: today(), mode: "bank", account_id: "", reference: "", notes: "" });
   const [err, setErr] = useState("");
   const b = (k) => ({ value: r[k], onChange: (e) => setR({ ...r, [k]: e.target.value }) });
   return (
@@ -135,6 +139,7 @@ export function RefundModal({ source, number, unused, onClose, onSaved }) {
         <p className="muted">Unused: <b>{money(unused)}</b></p>
         <div className="row-2"><Field label="Amount (Rs)"><input type="number" step="0.01" {...b("amount")} required autoFocus /></Field><Field label="Date"><input type="date" {...b("date")} /></Field></div>
         <div className="row-2"><Field label="Mode"><select {...b("mode")}><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field><Field label="Reference"><input {...b("reference")} /></Field></div>
+        <Field label="Paid from / into *"><AccountSelect value={r.account_id} mode={r.mode} onChange={(v) => setR((x) => ({ ...x, account_id: v }))} /></Field>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Record refund</button></div>
       </form>
@@ -160,7 +165,7 @@ export function PaymentView() {
           {p.allocations.length === 0 && p.refunds.length === 0 && <button className="btn ghost danger" onClick={() => confirm(`Delete ${p.number}?`) && act(async () => { await api(`/payments/${id}`, { method: "DELETE" }); nav(p.direction === "in" ? "/payments-received" : "/payments-made"); }, "Payment deleted")}>Delete</button>}
         </PageHead>
         <div className="stats">
-          <div className="stat"><small>Amount</small><b>{money(p.amount)}</b><span className="muted">{p.mode}{p.reference ? ` · ${p.reference}` : ""}</span></div>
+          <div className="stat"><small>Amount</small><b>{money(p.amount)}</b><span className="muted">{p.account_name ? `${p.account_name} · ` : ""}{p.mode}{p.reference ? ` · ${p.reference}` : ""}</span></div>
           {p.wht_income + p.wht_sales > 0 && <div className="stat"><small>Tax withheld</small><b>{money(p.wht_income + p.wht_sales)}</b><span className="muted">{[p.wht_income > 0 && `income tax ${money(p.wht_income)}`, p.wht_sales > 0 && `sales tax ${money(p.wht_sales)}`].filter(Boolean).join(" · ")}</span></div>}
           <div className="stat"><small>Applied</small><b>{money(p.amount + p.wht_income + p.wht_sales - p.unused)}</b></div>
           <div className="stat"><small>Unused (advance)</small><b className={p.unused > 0 ? "pos" : ""}>{money(p.unused)}</b></div>
@@ -191,7 +196,7 @@ export function PaymentView() {
         )}
         {p.refunds.length > 0 && (
           <section className="card flush"><h3 className="pad">Refunds</h3>
-            <table className="table"><tbody>{p.refunds.map((r) => <tr key={r.id}><td><b>{r.number}</b></td><td>{fmtDate(r.date)}</td><td>{r.mode}</td><td className="muted">{r.reference}</td><td className="r">{money(r.amount)}</td>
+            <table className="table"><tbody>{p.refunds.map((r) => <tr key={r.id}><td><b>{r.number}</b></td><td>{fmtDate(r.date)}</td><td>{r.account_name || r.mode}</td><td className="muted">{r.reference}</td><td className="r">{money(r.amount)}</td>
               <td className="r"><button className="btn sm ghost danger" onClick={() => confirm(`Delete refund ${r.number}?`) && act(() => api(`/refunds/${r.id}`, { method: "DELETE" }), "Refund deleted")}>Delete</button></td></tr>)}</tbody></table>
           </section>
         )}

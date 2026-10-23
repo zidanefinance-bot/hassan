@@ -60,7 +60,9 @@ API (`server/auth.js` caps, `server/app.js`), and the tests check them over HTTP
 
 AI, email and Telegram need keys on the server: see **[deploy/SETUP-AI-EMAIL.md](deploy/SETUP-AI-EMAIL.md)**.
 
-Not yet (later phases): ration-bag kits, double-entry ledger with chart of accounts, banks and reconciliation, WHT,
+- **Accounts (double entry):** a Chart of Accounts (cash, each bank and wallet, receivables, payables, inventory, GST, tax withheld, capital, sales, COGS, one expense account per category). Every payment, refund and expense says which cash/bank account it went through. The general ledger is worked out from the records themselves, so old data is included; journal entries and transfers cover the rest. Balance sheet, trial balance and each account's ledger are under Chart of Accounts and Reports.
+
+Not yet (later phases): ration-bag kits, bank reconciliation, WHT certificates,
 cheques, purchaser wallet, investors/loans, WhatsApp to customers.
 
 ## Put it online

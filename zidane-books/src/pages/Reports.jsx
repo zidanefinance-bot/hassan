@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Badge, fmtDate, KIND, Loading, money, num, PageHead, today, useAuth, useLoad } from "../lib.jsx";
 
-const TABS = [["pnl", "Profit & Loss", "reports.finance"], ["job-profit", "Job profit", "profit.view"], ["receivables", "Receivables", "*"], ["payables", "Payables", "reports.finance"], ["inventory", "Inventory", "reports.finance"], ["sales-by-customer", "Sales by customer", "*"], ["sales-by-item", "Sales by item", "reports.finance"], ["tax", "Sales tax", "reports.finance"]];
+const TABS = [["pnl", "Profit & Loss", "reports.finance"], ["job-profit", "Job profit", "profit.view"], ["receivables", "Receivables", "*"], ["payables", "Payables", "reports.finance"], ["inventory", "Inventory", "reports.finance"], ["sales-by-customer", "Sales by customer", "*"], ["sales-by-item", "Sales by item", "reports.finance"], ["tax", "Sales tax", "reports.finance"], ["balance-sheet", "Balance sheet", "reports.finance"], ["trial-balance", "Trial balance", "reports.finance"]];
+const AS_OF = ["balance-sheet", "trial-balance"];
 const RANGED = ["pnl", "job-profit", "sales-by-customer", "sales-by-item", "tax"];
 
 function csv(name, header, rows) {
@@ -102,6 +103,33 @@ function Report({ tab, data: d }) {
       </>}
     </dl><p className="muted small">A summary from your documents, to help with filing. Check figures with your tax advisor.</p></div>
   );
+  if (tab === "balance-sheet") {
+    const Section = ({ title, rows, total }) => (
+      <><dt className="sub">{title}</dt><dd className="sub">{money(total)}</dd>
+        {rows.map((a) => <React.Fragment key={a.id}><dt className="indent"><Link to={`/accounts/${a.id}`}>{a.name}</Link></dt><dd className={`muted ${a.balance < 0 ? "neg" : ""}`}>{money(a.balance)}</dd></React.Fragment>)}</>
+    );
+    return (
+      <div className="card pnl">
+        <p className="muted">As of {fmtDate(d.to)}</p>
+        <dl className="statement">
+          <Section title="Assets" rows={d.assets} total={d.total_assets} />
+          <Section title="Liabilities" rows={d.liabilities} total={d.total_liabilities} />
+          <Section title="Equity" rows={d.equity} total={d.total_equity - d.profit_to_date} />
+          <dt className="indent">Profit to date (not yet moved to equity)</dt><dd className={`muted ${d.profit_to_date < 0 ? "neg" : ""}`}>{money(d.profit_to_date)}</dd>
+          <dt className="grand">Liabilities + equity</dt><dd className="grand">{money(d.total_liabilities + d.total_equity)}</dd>
+        </dl>
+        <p className={`small ${d.balanced ? "pos" : "neg"}`}>{d.balanced ? "✓ Balanced: assets = liabilities + equity." : "✕ Not balanced. Please tell us."}</p>
+        <p className="muted small">Accounts receivable is net of customers' unused advances. Inventory is at the cost on bills less the cost of what was sold, so it can differ from the stock report.</p>
+      </div>
+    );
+  }
+  if (tab === "trial-balance") return (
+    <div className="card flush"><table className="table">
+      <thead><tr><th>Code</th><th>Account</th><th className="r">Debit</th><th className="r">Credit</th></tr></thead>
+      <tbody>{d.rows.map((r) => <tr key={r.id}><td className="muted">{r.code}</td><td><Link to={`/accounts/${r.id}`}>{r.name}</Link></td><td className="r">{r.debit ? money(r.debit) : ""}</td><td className="r">{r.credit ? money(r.credit) : ""}</td></tr>)}</tbody>
+      <tfoot><tr><td /><td>Total {d.balanced ? "✓" : "✕ not equal"}</td><td className="r">{money(d.debit)}</td><td className="r">{money(d.credit)}</td></tr></tfoot>
+    </table></div>
+  );
   return null;
 }
 
@@ -112,6 +140,8 @@ function toCsv(tab, d) {
   if (tab === "sales-by-customer") return [["Customer", "Invoices", "Sales", "Total"], d.map((r) => [r.name, r.invoices, r.sales, r.total])];
   if (tab === "sales-by-item") return [["Item", "Qty", "Sales", "Cost", "Profit"], d.map((r) => [r.name, r.qty, r.sales, r.cost, r.profit])];
   if (tab === "job-profit") return [["Job", "Customer", "Status", "Revenue", "Purchases", "Direct costs", "Gross profit", "Margin %"], d.map((j) => [j.number, j.customer_name, j.ops_status, j.revenue_basis === "invoiced" ? j.invoiced_revenue : j.expected_revenue, j.purchases + j.stock_cost, j.direct_costs, j.gross_profit, j.margin_pct])];
+  if (tab === "trial-balance") return [["Code", "Account", "Debit", "Credit"], d.rows.map((r) => [r.code, r.name, r.debit, r.credit])];
+  if (tab === "balance-sheet") return [["Section", "Account", "Balance"], [...d.assets.map((a) => ["Assets", a.name, a.balance]), ...d.liabilities.map((a) => ["Liabilities", a.name, a.balance]), ...d.equity.map((a) => ["Equity", a.name, a.balance]), ["Equity", "Profit to date", d.profit_to_date]]];
   return [["Line", "Amount"], [["Output tax", d.output_tax], ["Input tax", d.input_tax], ["Net payable", d.net_payable]]];
 }
 
@@ -123,12 +153,13 @@ export default function Reports() {
   const [tab, setTab] = useState(tabs.some(([k]) => k === qs.get("tab")) ? qs.get("tab") : tabs[0][0]);
   const [from, setFrom] = useState(qs.get("from") || today().slice(0, 8) + "01");
   const [to, setTo] = useState(qs.get("to") || today());
-  const path = `/reports/${tab}${RANGED.includes(tab) ? `?from=${from}&to=${to}` : ""}`;
+  const path = `/reports/${tab}${RANGED.includes(tab) ? `?from=${from}&to=${to}` : AS_OF.includes(tab) ? `?to=${to}` : ""}`;
   const loaded = useLoad(path);
   const state = loaded.path === path ? loaded : { ...loaded, data: null, loading: true }; // don't render one tab's data with another tab's view
   return (
     <>
       <PageHead title="Reports">
+        {AS_OF.includes(tab) && <><span className="muted">As of</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></>}
         {RANGED.includes(tab) && <><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /><span className="muted">to</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></>}
         <button className="btn" disabled={!state.data} onClick={() => csv(`zidane-${tab}-${today()}`, ...toCsv(tab, state.data))}>Export CSV</button>
         <button className="btn" onClick={() => window.print()}>Print</button>

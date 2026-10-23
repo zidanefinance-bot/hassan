@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { api, Field, fmtDate, Loading, Modal, money, PageHead, today, useForm, useLoad, useToast } from "../lib.jsx";
+import AccountSelect from "../components/AccountSelect.jsx";
 
 function ExpenseForm({ initial, categories, onClose, onSaved }) {
-  const [f, bind] = useForm(initial || { date: today(), category: categories[0] || "", amount: "", paid_through: "cash", reference: "", notes: "" });
+  const [f, bind, setF] = useForm(initial || { date: today(), category: categories[0] || "", amount: "", paid_through: "cash", account_id: "", reference: "", notes: "" });
   const [err, setErr] = useState("");
   const save = async (e) => {
     e.preventDefault();
@@ -14,8 +15,9 @@ function ExpenseForm({ initial, categories, onClose, onSaved }) {
         <div className="row-2"><Field label="Date"><input type="date" {...bind("date")} /></Field><Field label="Amount (Rs) *"><input type="number" step="0.01" {...bind("amount")} required autoFocus /></Field></div>
         <div className="row-2">
           <Field label="Category"><select {...bind("category")}>{categories.map((c) => <option key={c}>{c}</option>)}</select></Field>
-          <Field label="Paid through"><select {...bind("paid_through")}><option value="cash">Cash</option><option value="bank">Bank</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
+          <Field label="Paid by"><select {...bind("paid_through")}><option value="cash">Cash</option><option value="bank">Bank</option><option value="cheque">Cheque</option><option value="online">Online / wallet</option></select></Field>
         </div>
+        <Field label="Paid from account *"><AccountSelect value={f.account_id ? String(f.account_id) : ""} mode={f.paid_through} onChange={(v) => setF((x) => ({ ...x, account_id: v }))} /></Field>
         <div className="row-2"><Field label="Reference"><input {...bind("reference")} /></Field><Field label="Notes"><input {...bind("notes")} /></Field></div>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Save</button></div>
@@ -44,9 +46,9 @@ export default function Expenses() {
         return rows.length === 0 ? <div className="empty">No expenses this month.</div> : (
           <div className="grid-2 wide-left">
             <div className="card flush"><table className="table">
-              <thead><tr><th>Date</th><th>Category</th><th>Paid through</th><th>Notes</th><th className="r">Amount</th><th /></tr></thead>
+              <thead><tr><th>Date</th><th>Category</th><th>Paid from</th><th>Notes</th><th className="r">Amount</th><th /></tr></thead>
               <tbody>{rows.map((e) => (
-                <tr key={e.id} className="click" onClick={() => setEditing(e)}><td>{fmtDate(e.date)}</td><td>{e.category}</td><td>{e.paid_through}</td><td className="muted">{e.notes || e.reference}</td><td className="r">{money(e.amount)}</td>
+                <tr key={e.id} className="click" onClick={() => setEditing(e)}><td>{fmtDate(e.date)}</td><td>{e.category}</td><td>{e.account_name || e.paid_through}</td><td className="muted">{e.notes || e.reference}</td><td className="r">{money(e.amount)}</td>
                   <td className="r"><button className="icon-btn" aria-label="Delete" onClick={async (ev) => { ev.stopPropagation(); if (confirm("Delete this expense?")) { await api(`/expenses/${e.id}`, { method: "DELETE" }); toast("Deleted"); state.reload(); } }}>×</button></td></tr>
               ))}</tbody>
               <tfoot><tr><td colSpan={4}>Total</td><td className="r">{money(total)}</td><td /></tr></tfoot>
