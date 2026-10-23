@@ -25,6 +25,12 @@ if [ -f "$NG" ] && ! grep -q proxy_read_timeout "$NG"; then
   sed -i 's#proxy_pass http://127.0.0.1:\([0-9]*\);#proxy_pass http://127.0.0.1:\1;\n        proxy_read_timeout 180s;#' "$NG"
   nginx -t && systemctl reload nginx
 fi
+# the daily backup now also covers attachments and can go off-site (deploy/backup.sh); older installs move over to it
+CRON_FILE=/etc/cron.d/zidane-books-backup
+if [ -f "$CRON_FILE" ] && ! grep -q deploy/backup.sh "$CRON_FILE"; then
+  echo "30 2 * * * root bash $SRC/zidane-books/deploy/backup.sh >> /var/log/zidane-books-backup.log 2>&1" > "$CRON_FILE"
+  echo "==> Daily backup now includes attachments (deploy/backup.sh)"
+fi
 # backup right before the switch, so nothing typed during the build is missed if we ever have to roll back
 echo "==> Backup before update"
 mkdir -p "$DATA/backups"

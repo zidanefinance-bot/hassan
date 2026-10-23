@@ -42,7 +42,7 @@ Script password poochegi. Yeh Director ka password hoga, kam az kam 8 characters
 - App ko **service** bana dena, taake server restart par bhi khud chal jaaye
 - nginx mein `books.zidane.com.pk` ki nayi file
 - **HTTPS (SSL) certificate** (free, Let's Encrypt)
-- **Roz raat 2:30 baje backup**, 30 din tak rakhe jaate hain (`/var/lib/zidane-books/backups`)
+- **Roz raat 2:30 baje backup** (database + attachments), 30 din tak rakhe jaate hain (`/var/lib/zidane-books/backups`). Google Drive par encrypted copy ke liye: **[BACKUP.md](BACKUP.md)**
 
 Aakhir mein likha aayega: `Done. Open https://books.zidane.com.pk`
 

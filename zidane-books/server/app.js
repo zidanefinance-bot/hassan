@@ -57,10 +57,24 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   };
 
   // ---- auth
+  // password guessing: 8 wrong tries for an email or 30 from one address within 15 minutes → wait 15 minutes
+  const fails = new Map(); // key -> [timestamps]
+  const WINDOW = 15 * 60e3;
+  const recent = (k) => (fails.get(k) || []).filter((t) => t > Date.now() - WINDOW);
+  const blocked = (ip, email) => recent(`e:${email}`).length >= 8 || recent(`i:${ip}`).length >= 30;
+  const failed = (ip, email) => { for (const k of [`e:${email}`, `i:${ip}`]) fails.set(k, [...recent(k), Date.now()]); };
+  setInterval(() => { for (const k of fails.keys()) if (!recent(k).length) fails.delete(k); }, WINDOW).unref();
   api.post("/auth/login", (req, res) => {
     const { email, password } = req.body || {};
+    const who = String(email || "").trim().toLowerCase();
+    if (blocked(req.ip, who)) throw httpError(429, "Too many wrong tries. Wait 15 minutes and try again.");
     const u = db.prepare("SELECT * FROM users WHERE email = ? AND active = 1").get(String(email || "").trim());
-    if (!u || !checkPassword(String(password || ""), u.password_hash)) throw httpError(401, "Wrong email or password");
+    if (!u || !checkPassword(String(password || ""), u.password_hash)) {
+      failed(req.ip, who);
+      B.log(db, u?.id ?? null, "failed sign-in", "user", u?.id ?? null, `${who} from ${req.ip}`);
+      throw httpError(401, "Wrong email or password");
+    }
+    fails.delete(`e:${who}`);
     const s = createSession(db, u.id);
     res.cookie("zb_session", s.token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.INSECURE_COOKIE !== "1", maxAge: s.maxAge });
     res.json({ id: u.id, name: u.name, email: u.email, role: u.role, role_label: ROLE_LABELS[u.role], perms: ROLES[u.role] });
@@ -702,7 +716,10 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   // ---- orders inbox (AI reads POs and supplier bills)
   const aiReady = () => IN.readerReady();
   const needInbox = (req) => { if (!IN.canUseInbox(req.user)) throw httpError(403, "You don't have access to this"); };
-  api.get("/setup-status", (_req, res) => res.json({ ai: aiReady(), email_in: Boolean(process.env.IMAP_HOST && process.env.IMAP_USER), email_out: mailReady(), telegram: TG.telegramReady() }));
+  // the daily backup (deploy/backup.sh) writes how it went; directors see it in Settings
+  const lastBackup = () => { try { return JSON.parse(readFileSync(join(dirname(process.env.DB_FILE || "data/zidane-books.db"), "backups", "last-backup.json"), "utf8")); } catch { return null; } };
+  api.get("/setup-status", (req, res) => res.json({ ai: aiReady(), email_in: Boolean(process.env.IMAP_HOST && process.env.IMAP_USER), email_out: mailReady(), telegram: TG.telegramReady(),
+    ...(can(req.user, "admin") ? { backup: lastBackup() } : {}) }));
   api.get("/inbox", (req, res) => { needInbox(req); res.json(IN.listInbox(db, req.user, req.query)); });
   api.get("/inbox/files/:id", (req, res) => {
     needInbox(req);

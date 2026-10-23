@@ -45,7 +45,8 @@ API (`server/auth.js` caps, `server/app.js`), and the tests check them over HTTP
 - **Attachments:** photos or PDFs (signed DC, customer PO, supplier bill photo, payment proof) on any document, Job or payment, 10 MB max.
 - **Copy** any document as a new draft. Invoices and bills take a flat discount, delivery/other charges and a round-off.
 - **Customer and supplier terms:** payment terms set due dates. A credit limit means an invoice that goes over it needs a director to issue. Opening balances show in outstanding and on the ledger.
-- **Backup:** Settings → Download backup gives a consistent copy of the whole database (director only).
+- **Backup:** every night the server packs the database and all attachments, keeps 30 days, and can send an encrypted copy off-site (Google Drive etc.); Settings shows the last run, and `deploy/restore.sh` tests or restores a backup. See [deploy/BACKUP.md](deploy/BACKUP.md). Settings → Download backup still gives a copy of the database on demand (director only).
+- **Sign-in protection:** 8 wrong passwords for one email (or 30 from one address) in 15 minutes lock sign-in for 15 minutes; failed tries are in the activity log.
 - **Stock:** bills bring stock in. On Jobs the DC takes it out, and the invoice doesn't take it out again. Direct-delivery Jobs never touch the warehouse. Manual adjustments and stock history are kept.
 - **Master procurement list:** the same item is totalled across all active Jobs, e.g. 500 + 250 = 750, with a per-Job breakdown.
 - **Reports:** P&L, Job profit, receivables and payables ageing, inventory, sales by customer and by item, sales tax. CSV export and print.

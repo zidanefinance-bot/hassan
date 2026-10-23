@@ -142,9 +142,9 @@ if grep -q '^ADMIN_PASSWORD=' "$ENV_FILE"; then
   sed -i '/^ADMIN_PASSWORD=/d' "$ENV_FILE"
 fi
 
-echo "==> Daily backup at 2:30am (keeps 30 days in $DATA/backups)"
+echo "==> Daily backup at 2:30am: database + attachments, kept 30 days in $DATA/backups (off-site: see deploy/BACKUP.md)"
 cat > /etc/cron.d/zidane-books-backup <<CRON
-30 2 * * * $APP_USER cd $SRC/zidane-books && $(command -v node) --disable-warning=ExperimentalWarning -e "const{DatabaseSync}=require('node:sqlite');new DatabaseSync('$DATA/zidane-books.db').exec(\"VACUUM INTO '$DATA/backups/zidane-books-\"+new Date().toISOString().slice(0,10)+\".db'\")" && find $DATA/backups -name '*.db' -mtime +30 -delete
+30 2 * * * root bash $SRC/zidane-books/deploy/backup.sh >> /var/log/zidane-books-backup.log 2>&1
 CRON
 
 echo

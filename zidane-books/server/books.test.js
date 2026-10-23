@@ -1234,3 +1234,21 @@ test("company renamed to Zidane Corporation on start, unless the name was change
   assert.equal(B.getSetting(db, "company").name, "Zidane Pvt Ltd", "a name typed in Settings is never overwritten");
   db.close();
 });
+
+test("sign-in: 8 wrong passwords lock that email for a while, even the right password; others still get in", async () => {
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = (email, password) => fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+  try {
+    for (let i = 0; i < 8; i++) assert.equal((await login("sales@zidane.com.pk", "guess" + i)).status, 401);
+    assert.equal((await login("sales@zidane.com.pk", "demo1234")).status, 429, "locked after 8 wrong tries");
+    assert.equal((await login("Sales@Zidane.com.pk ", "x")).status, 429, "same email in other case/spaces is the same lock");
+    assert.equal((await login(director.email, director.password)).status, 200, "another account is not locked");
+    assert.ok(db.prepare("SELECT COUNT(*) c FROM activity WHERE action = 'failed sign-in'").get().c >= 8, "wrong tries are logged");
+  } finally {
+    server.close();
+  }
+});

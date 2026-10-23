@@ -94,6 +94,23 @@ function StartFresh() {
   );
 }
 
+// what the server's nightly backup (deploy/backup.sh) last did
+function BackupStatus() {
+  const st = useLoad("/setup-status");
+  const b = st.data?.backup;
+  if (st.loading) return null;
+  if (!b) return <p className="neg">No automatic backup has run on the server yet. See deploy/BACKUP.md.</p>;
+  const hours = Math.round((Date.now() - Date.parse(b.at)) / 36e5);
+  const stale = hours > 30;
+  const when = new Date(b.at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return (
+    <p className={!b.ok || stale ? "neg" : b.offsite === "done" ? "pos" : ""}>
+      {b.ok ? "✓" : "✕"} Last automatic backup: {when} ({hours < 1 ? "just now" : `${hours} h ago`}), {Math.round(b.size / 1024)} KB, {b.offsite === "done" ? "copied off-site" : "on this server only"}.
+      {!b.ok && ` Problem: ${b.message}.`}{stale && " It hasn't run in over a day."}{b.ok && b.offsite !== "done" && " Set up an off-site copy (deploy/BACKUP.md) so a server failure can't take the backups with it."}
+    </p>
+  );
+}
+
 export default function Settings() {
   const state = useLoad("/settings");
   const [s, setS] = useState(null);
@@ -170,6 +187,7 @@ export default function Settings() {
           <Password />
           <section className="card">
             <h3>Backup</h3>
+            <BackupStatus />
             <p className="muted">Download a full copy of all your data (one file). Keep it somewhere safe, for example Google Drive, at least once a week.</p>
             <a className="btn" href="/api/admin/backup">Download backup</a>
           </section>
