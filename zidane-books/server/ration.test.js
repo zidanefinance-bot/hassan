@@ -126,3 +126,38 @@ test("ration quote can hide each item's rate: contents and the bag rate only", a
   RA.markBags(db, q, 200, "Standard bag", "nonsense");
   assert.equal(db.prepare("SELECT show_as FROM documents WHERE id = ?").get(q).show_as, "bags", "unknown modes fall back to bags");
 });
+
+test("one order, three delivery points: each DC for one point, its own address, its own bag limit", async () => {
+  const { db, cust, kit } = setup();
+  const jobId = J.jobFromQuote(db, 1, RA.quoteFromKit(db, 1, kit, { contact_id: cust, bags: 500 }));
+  db.prepare("UPDATE job_items SET procurement_status = 'from_stock' WHERE job_id = ?").run(jobId);
+  assert.throws(() => RA.savePoints(db, 1, jobId, [{ name: "A", bags: 400 }, { name: "B", bags: 200 }]), /add up to 600 bags, but the order is 500/);
+  RA.savePoints(db, 1, jobId, [
+    { name: "Korangi office", address: "Plot 12, Sector 23, Korangi", contact: "Imran", phone: "0300 1111111", bags: 200 },
+    { name: "SITE factory", address: "D-45, SITE", contact: "Asif", bags: 180 },
+    { name: "Landhi warehouse", bags: 120 },
+  ]);
+  const [korangi, site, landhi] = RA.deliveryPoints(db, jobId);
+  RA.addPacking(db, 1, jobId, { bags: 500 });
+  assert.throws(() => J.dcFromJob(db, 1, jobId, { bags: 50 }), /Pick which one/);
+  const dcA = J.dcFromJob(db, 1, jobId, { point_id: korangi.id });
+  const a = db.prepare("SELECT * FROM documents WHERE id = ?").get(dcA);
+  assert.equal(a.bags, 200, "defaults to what that point still needs");
+  assert.match(a.deliver_to, /Korangi office\nPlot 12, Sector 23, Korangi\nImran · 0300 1111111/);
+  assert.throws(() => J.dcFromJob(db, 1, jobId, { point_id: korangi.id }), /already a draft delivery challan for Korangi office/);
+  assert.throws(() => J.dcFromJob(db, 1, jobId, { point_id: site.id, bags: 200 }), /SITE factory needs only 180 more bags/);
+  const dcB = J.dcFromJob(db, 1, jobId, { point_id: site.id }); // a second point's draft at the same time is fine
+  B.setStatus(db, 1, dcA, "issued");
+  B.setStatus(db, 1, dcB, "issued");
+  const dcC = J.dcFromJob(db, 1, jobId, { point_id: landhi.id });
+  assert.equal(db.prepare("SELECT bags FROM documents WHERE id = ?").get(dcC).bags, 120);
+  B.setStatus(db, 1, dcC, "issued");
+  const st = RA.rationStatus(db, db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId));
+  assert.deepEqual(st.points.map((p) => [p.sent, p.left]), [[200, 0], [180, 0], [120, 0]]);
+  assert.equal(st.delivered, 500);
+  assert.throws(() => RA.savePoints(db, 1, jobId, [{ id: korangi.id, name: "Korangi office", bags: 200 }]), /already has a delivery challan/);
+  const { documentPdf } = await import("./pdf.js");
+  assert.ok((await documentPdf(db, dcB)).buffer.length > 1000);
+  const inv = J.invoiceFromJob(db, 1, jobId);
+  assert.equal(db.prepare("SELECT bags FROM documents WHERE id = ?").get(inv).bags, 500, "one invoice for all three deliveries");
+});

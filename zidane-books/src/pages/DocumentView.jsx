@@ -200,7 +200,7 @@ export default function DocumentView({ kind }) {
                 <div className="muted small">Date: {fmtDate(d.date)}{d.due_date && <><br />Due: {fmtDate(d.due_date)}</>}{d.reference && d.reference !== d.job?.customer_po_number && <><br />Ref: {d.reference}</>}{d.job?.customer_po_number && <><br />Customer PO: {d.job.customer_po_number}</>}</div></div>
             </header>
             <div className="paper-to"><small className="muted">{K.contact === "customer" ? (isDc ? "Deliver to" : "Bill to") : "Supplier"}</small><b>{d.contact.name}</b>
-              <div className="muted small">{d.contact.company}{(d.job?.delivery_location || d.contact.address) && <><br />{isDc && d.job?.delivery_location ? d.job.delivery_location : d.contact.address}</>}{d.contact.phone && <><br />{d.contact.phone}</>}{d.contact.ntn && <><br />NTN {d.contact.ntn}</>}</div></div>
+              <div className="muted small">{d.contact.company}{(d.deliver_to || d.job?.delivery_location || d.contact.address) && <><br /><span className="pre">{isDc && (d.deliver_to || d.job?.delivery_location) ? `At: ${d.deliver_to || d.job.delivery_location}` : d.contact.address}</span></>}{d.contact.phone && <><br />{d.contact.phone}</>}{d.contact.ntn && <><br />NTN {d.contact.ntn}</>}</div></div>
             {bag ? (
               <>
                 <table className="table paper-lines">

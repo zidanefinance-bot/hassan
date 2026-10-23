@@ -50,7 +50,8 @@ export function documentPdf(db, docId) {
   pdf.fillColor(MUTED).fontSize(8).text(d.kind === "po" || d.kind === "bill" || d.kind === "vendor_credit" ? "SUPPLIER" : isDc ? "DELIVER TO" : "BILL TO", L, y);
   pdf.fillColor(INK).font("Helvetica-Bold").fontSize(11).text(c.name, L, pdf.y + 2);
   // a DC goes to the Job's delivery location (store / plant), when it has one
-  pdf.font("Helvetica").fontSize(9).fillColor(MUTED).text([isDc && job?.delivery_location ? `At: ${job.delivery_location}` : null, c.company, isDc && job?.delivery_location ? null : c.address, c.phone, c.ntn && `NTN ${c.ntn}`].filter(Boolean).join("\n"));
+  const at = isDc ? d.deliver_to || job?.delivery_location : null; // a DC for one of several delivery points prints that point
+  pdf.font("Helvetica").fontSize(9).fillColor(MUTED).text([at ? `At: ${at}` : null, c.company, at ? null : c.address, c.phone, c.ntn && `NTN ${c.ntn}`].filter(Boolean).join("\n"));
   y = pdf.y + 16;
 
   // lines

@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS kit_items (
   id INTEGER PRIMARY KEY, kit_id INTEGER NOT NULL REFERENCES kits(id) ON DELETE CASCADE, item_id INTEGER REFERENCES items(id),
   description TEXT, qty REAL NOT NULL, rate REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0
 );
+-- one order, several places to deliver (each its own DC with its own address)
+CREATE TABLE IF NOT EXISTS job_delivery_points (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE, name TEXT NOT NULL, address TEXT,
+  contact TEXT, phone TEXT, bags REAL
+);
 CREATE TABLE IF NOT EXISTS job_packing (
   id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE, date TEXT NOT NULL, bags REAL NOT NULL CHECK (bags > 0),
   notes TEXT, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -25,6 +30,7 @@ export function setupRation(db) {
   const has = (t, c) => db.prepare(`PRAGMA table_info(${t})`).all().some((x) => x.name === c);
   if (!has("jobs", "bags")) db.exec("ALTER TABLE jobs ADD COLUMN bags REAL; ALTER TABLE jobs ADD COLUMN kit_name TEXT;");
   if (!has("documents", "bags")) db.exec("ALTER TABLE documents ADD COLUMN bags REAL; ALTER TABLE documents ADD COLUMN kit_name TEXT; ALTER TABLE documents ADD COLUMN show_as TEXT;");
+  if (!has("documents", "deliver_to")) db.exec("ALTER TABLE documents ADD COLUMN deliver_to TEXT; ALTER TABLE documents ADD COLUMN delivery_point_id INTEGER REFERENCES job_delivery_points(id);");
   // the costs that vary per ration order, as Job cost types (added once; a director can rename or remove them)
   const row = db.prepare("SELECT value FROM settings WHERE key = 'jobExpenseCategories'").get();
   const flag = db.prepare("SELECT 1 FROM settings WHERE key = 'rationCostTypesAdded'").get();
@@ -106,7 +112,8 @@ export function rationStatus(db, job) {
   const contents = perBag(db, job);
   const pricePerBag = round2(contents.reduce((s, l) => s + l.per_bag * l.sale_rate, 0));
   const packing = db.prepare("SELECT p.*, u.name AS by_name FROM job_packing p LEFT JOIN users u ON u.id = p.created_by WHERE job_id = ? ORDER BY date, id").all(job.id);
-  return { bags: job.bags, kit_name: job.kit_name, packed, delivered, invoiced, to_pack: round2(job.bags - packed), ready_to_send: round2(packed - delivered), price_per_bag: pricePerBag, contents, packing };
+  const inDraft = docBags(db, job.id, "dc", ["draft"]);
+  return { bags: job.bags, kit_name: job.kit_name, packed, delivered, invoiced, in_draft_dc: inDraft, to_pack: round2(job.bags - packed), ready_to_send: round2(packed - delivered - inDraft), price_per_bag: pricePerBag, contents, packing, points: deliveryPoints(db, job.id) };
 }
 
 export function addPacking(db, userId, jobId, { bags, date, notes }) {
@@ -138,7 +145,7 @@ export function bagLines(db, job, n) {
 // how many bags a new DC / invoice may carry
 export function bagsAllowed(db, job, kind, { admin = false } = {}) {
   const st = rationStatus(db, job);
-  if (kind === "dc") return round2((admin ? job.bags : st.packed) - st.delivered);
+  if (kind === "dc") return round2((admin ? job.bags : st.packed) - st.delivered - docBags(db, job.id, "dc", ["draft"])); // drafts already claim their bags
   const draftDc = docBags(db, job.id, "dc", ["draft"]);
   const base = st.delivered > 0 || draftDc > 0 ? st.delivered : job.bags; // like item Jobs: bill what went out, or the whole order before any DC
   return round2(base - st.invoiced);
@@ -167,4 +174,42 @@ export function syncBags(db, docId) {
   const coversAll = [...per.keys()].every((k) => lines.some((l) => key(l) === k));
   const bags = same ? round2(ratios[0]) : coversAll ? Math.floor(Math.min(...ratios.filter((r) => r !== null))) : 0;
   db.prepare("UPDATE documents SET bags = ?, show_as = ? WHERE id = ?").run(bags > 0 ? bags : null, same ? d.show_as : "items", docId);
+}
+
+// ---- delivery points: where the bags of one order go. Each DC is for one point and prints that point's address.
+export function deliveryPoints(db, jobId) {
+  return db.prepare(`SELECT p.*,
+      (SELECT COALESCE(SUM(d.bags), 0) FROM documents d WHERE d.delivery_point_id = p.id AND d.kind = 'dc' AND d.status IN ('issued','signed')) AS sent,
+      (SELECT COALESCE(SUM(d.bags), 0) FROM documents d WHERE d.delivery_point_id = p.id AND d.kind = 'dc' AND d.status = 'draft') AS drafted
+    FROM job_delivery_points p WHERE p.job_id = ? ORDER BY p.id`).all(jobId)
+    .map((p) => ({ ...p, sent: round2(p.sent), drafted: round2(p.drafted), left: p.bags ? round2(p.bags - p.sent - p.drafted) : null }));
+}
+export const pointLabel = (p) => [p.name, p.address, [p.contact, p.phone].filter(Boolean).join(" · ")].filter(Boolean).join("\n");
+
+// replace the Job's list of points; a point that already has a DC stays (its details can still be corrected)
+export function savePoints(db, userId, jobId, points) {
+  const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
+  if (!job) throw httpError(404, "Job not found");
+  const clean = (points || []).map((p) => ({ id: Number(p.id) || null, name: String(p.name || "").trim(), address: p.address || null, contact: p.contact || null, phone: p.phone || null, bags: Number(p.bags) > 0 ? round2(Number(p.bags)) : null }))
+    .filter((p) => p.name || p.address);
+  if (clean.some((p) => !p.name)) throw httpError(400, "Give every delivery point a name");
+  const planned = round2(clean.reduce((s, p) => s + (p.bags || 0), 0));
+  if (job.bags > 0 && planned > job.bags + 0.001) throw httpError(400, `The points add up to ${planned} bags, but the order is ${job.bags}`);
+  const existing = deliveryPoints(db, jobId);
+  return tx(db, () => {
+    for (const e of existing) {
+      const keep = clean.find((p) => p.id === e.id);
+      const used = e.sent > 0 || e.drafted > 0;
+      if (!keep && used) throw httpError(400, `${e.name} already has a delivery challan, so it can't be removed`);
+      if (keep && keep.bags !== null && keep.bags < e.sent + e.drafted - 0.001) throw httpError(400, `${e.name} has already been sent ${e.sent + e.drafted} bags`);
+      if (!keep) db.prepare("DELETE FROM job_delivery_points WHERE id = ?").run(e.id);
+    }
+    for (const p of clean) {
+      if (p.id && existing.some((e) => e.id === p.id)) db.prepare("UPDATE job_delivery_points SET name=?, address=?, contact=?, phone=?, bags=? WHERE id=?").run(p.name, p.address, p.contact, p.phone, p.bags, p.id);
+      else db.prepare("INSERT INTO job_delivery_points (job_id, name, address, contact, phone, bags) VALUES (?, ?, ?, ?, ?, ?)").run(jobId, p.name, p.address, p.contact, p.phone, p.bags);
+    }
+    // a draft DC follows the corrected address
+    for (const e of deliveryPoints(db, jobId)) db.prepare("UPDATE documents SET deliver_to = ? WHERE delivery_point_id = ? AND status = 'draft'").run(pointLabel(e), e.id);
+    db.prepare("INSERT INTO activity (user_id, action, entity, entity_id, summary) VALUES (?, 'set delivery points', 'job', ?, ?)").run(userId ?? null, jobId, clean.map((p) => `${p.name}${p.bags ? ` (${p.bags})` : ""}`).join(", "));
+  });
 }

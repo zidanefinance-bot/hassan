@@ -308,7 +308,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (req.body.status === "material_ready" && before !== "material_ready") C.notifyEvent(db, req.user.id, "job.ready", { jobId: id(req) });
     res.json({ ok: true });
   });
-  api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req), { admin: can(req.user, "admin"), bags: req.body?.bags }) }));
+  api.post("/jobs/:id/dc", requirePerm("sales.write"), (req, res) => res.json({ id: J.dcFromJob(db, req.user.id, id(req), { admin: can(req.user, "admin"), bags: req.body?.bags, point_id: req.body?.point_id }) }));
+  api.put("/jobs/:id/delivery-points", requirePerm("sales.write"), (req, res) => { RA.savePoints(db, req.user.id, id(req), req.body?.points); res.json({ ok: true }); });
   api.post("/jobs/:id/invoice", requirePerm("sales.write"), (req, res) => res.json({ id: J.invoiceFromJob(db, req.user.id, id(req), { bags: req.body?.bags, show_as: req.body?.show_as }) }));
   // ration orders: packing progress (Operations / the packing team), recorded in bags
   api.post("/jobs/:id/packing", (req, res) => { need(req.user, ["ops.write", "buy", "admin"]); res.json({ id: RA.addPacking(db, req.user.id, id(req), req.body || {}) }); });

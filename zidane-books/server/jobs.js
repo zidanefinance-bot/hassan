@@ -417,21 +417,33 @@ export function deliverPrecheck(db, jobId) {
   if (items.every((i) => invoiced(i).qty >= i.qty - 0.001)) throw httpError(400, "This Job is already fully invoiced. Use 'Create DC' to send the goods.");
 }
 
-export function dcFromJob(db, userId, jobId, { admin = false, bags } = {}) {
+export function dcFromJob(db, userId, jobId, { admin = false, bags, point_id } = {}) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
-  const draft = db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'draft'").get(jobId);
-  if (draft) throw httpError(400, `${draft.number} is already a draft delivery challan for this Job. Issue or delete it first.`);
   if (RA.isRation(job)) {
     if (job.closed) throw httpError(400, "This Job is closed");
-    const allowed = RA.bagsAllowed(db, job, "dc", { admin });
-    const n = round2(Number(bags) || allowed);
+    const points = RA.deliveryPoints(db, jobId);
+    const point = point_id ? points.find((p) => p.id === Number(point_id)) : points.length === 1 ? points[0] : null;
+    if (point_id && !point) throw httpError(400, "That delivery point isn't on this Job");
+    if (!point && points.length > 1) throw httpError(400, "This order has several delivery points. Pick which one this DC is for.");
+    // several points can each have a draft DC at the same time; one point (or an order without points) one at a time
+    const draft = db.prepare(`SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'draft' AND ${point ? "delivery_point_id = ?" : "delivery_point_id IS NULL"}`).get(...(point ? [jobId, point.id] : [jobId]));
+    if (draft) throw httpError(400, `${draft.number} is already a draft delivery challan${point ? ` for ${point.name}` : ""}. Issue or delete it first.`);
+    let allowed = RA.bagsAllowed(db, job, "dc", { admin });
     if (allowed <= 0) throw httpError(400, "No packed bags are waiting to go out. Record the packing first.");
-    if (n > allowed + 0.001) throw httpError(400, `Only ${allowed} packed bags are left to send`);
+    if (point?.left !== null && point?.left !== undefined) {
+      if (point.left <= 0) throw httpError(400, `${point.name} already has all its ${point.bags} bags`);
+      allowed = Math.min(allowed, point.left);
+    }
+    const n = round2(Number(bags) || allowed);
+    if (n > allowed + 0.001) throw httpError(400, point?.left !== null && point?.left !== undefined && point.left < RA.bagsAllowed(db, job, "dc", { admin }) ? `${point.name} needs only ${point.left} more bags` : `Only ${allowed} packed bags are left to send`);
     const id = saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, lines: RA.bagLines(db, job, n).map((l) => ({ ...l, rate: 0 })) });
     RA.markBags(db, id, n, job.kit_name);
+    if (point) db.prepare("UPDATE documents SET delivery_point_id = ?, deliver_to = ? WHERE id = ?").run(point.id, RA.pointLabel(point), id);
     return id;
   }
+  const draft = db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status = 'draft'").get(jobId);
+  if (draft) throw httpError(400, `${draft.number} is already a draft delivery challan for this Job. Issue or delete it first.`);
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
   if (job.closed) throw httpError(400, "This Job is closed");
