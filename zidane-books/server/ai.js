@@ -40,7 +40,7 @@ export const Extraction = z.object({
   notes: z.string().nullable().describe("Anything important that doesn't fit above: special instructions, missing information, doubts"),
 });
 
-const SYSTEM = `You read business paperwork for Zidane Wholesale Solutions, a B2B grocery and FMCG supplier in Karachi, Pakistan.
+const SYSTEM = `You read business paperwork for Zidane Corporation, a B2B grocery and FMCG supplier in Karachi, Pakistan.
 Messages may be in English, Urdu or Roman Urdu, and may be emails, WhatsApp-style text, photos of handwritten or printed paper, or PDFs.
 Extract what is actually written. Never invent quantities, rates or dates; use null when something isn't there.
 Match products to OUR ITEMS only when they are clearly the same product and pack size (e.g. "atta 10 kg bag" = "Super Fine Atta 10kg"); otherwise item_match_id = null.

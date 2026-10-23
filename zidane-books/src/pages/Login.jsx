@@ -15,7 +15,7 @@ export default function Login() {
   return (
     <div className="login">
       <form className="login-card" onSubmit={submit}>
-        <img src="/logo.svg" alt="Zidane Wholesale Solutions" className="login-logo" />
+        <img src="/logo.svg" alt="Zidane Corporation" className="login-logo" />
         <h1>Zidane Books</h1>
         <p className="muted">Sign in to manage sales, purchases and stock.</p>
         <label className="field"><span>Email</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required /></label>

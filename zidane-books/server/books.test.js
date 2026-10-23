@@ -1216,3 +1216,21 @@ test("what each open Job still needs per item (for splitting a combined bill), l
   assert.deepEqual(J.jobNeeds(db).map((n) => [n.job_id, n.left]), [[j2, 100]], "the bill (all on P-1400's name) covers P-1400 only");
   assert.deepEqual(J.jobNeeds(db, bill).map((n) => [n.job_id, n.left]), [[j1, 42], [j2, 100]], "re-matching that bill sees both needs");
 });
+
+test("company renamed to Zidane Corporation on start, unless the name was changed by hand", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "zb-name-"));
+  const file = join(dir, "a.db");
+  let db = openDb(file);
+  db.prepare("UPDATE settings SET value = ? WHERE key = 'company'").run(JSON.stringify({ name: "Zidane Wholesale Solutions", phone: "021 1" }));
+  db.close();
+  db = openDb(file);
+  assert.deepEqual(B.getSetting(db, "company"), { name: "Zidane Corporation", phone: "021 1" }, "old default name moves over, the rest is kept");
+  db.prepare("UPDATE settings SET value = ? WHERE key = 'company'").run(JSON.stringify({ name: "Zidane Pvt Ltd" }));
+  db.close();
+  db = openDb(file);
+  assert.equal(B.getSetting(db, "company").name, "Zidane Pvt Ltd", "a name typed in Settings is never overwritten");
+  db.close();
+});

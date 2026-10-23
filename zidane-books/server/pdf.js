@@ -1,9 +1,13 @@
 // Printable PDF of a document (invoice, delivery challan, quote, purchase order...) for emailing.
 // Delivery challans carry quantities only, no rates, with a receiving signature box.
 import PDFDocument from "pdfkit";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { getSetting } from "./books.js";
 
 const TITLE = { quote: "QUOTATION", invoice: "INVOICE", dc: "DELIVERY CHALLAN", po: "PURCHASE ORDER", bill: "SUPPLIER BILL", credit_note: "CREDIT NOTE", vendor_credit: "VENDOR CREDIT" };
+const LOGO = join(import.meta.dirname, "logo.png");
+const LOGO_W = 1000, LOGO_H = 392; // server/logo.png size in pixels
 const RED = "#C22A2F", INK = "#1D2433", MUTED = "#6B7587", LINE = "#E2E5EB";
 const rs = (n) => `Rs ${Number(n || 0).toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const qty = (n) => Number(n || 0).toLocaleString("en-PK", { maximumFractionDigits: 2 });
@@ -31,7 +35,9 @@ export function documentPdf(db, docId) {
   const W = pdf.page.width - 96, L = 48;
 
   // header: company left, document title right
-  pdf.fillColor(RED).font("Helvetica-Bold").fontSize(20).text(co.name || "Zidane Wholesale Solutions", L, 48, { width: W * 0.6 });
+  // the logo already carries the company name; without the file the name is printed instead
+  if (existsSync(LOGO)) { pdf.image(LOGO, L, 44, { width: 150 }); pdf.y = 44 + 150 * (LOGO_H / LOGO_W) + 2; }
+  else pdf.fillColor(RED).font("Helvetica-Bold").fontSize(20).text(co.name || "Zidane Corporation", L, 48, { width: W * 0.6 });
   pdf.fillColor(MUTED).font("Helvetica").fontSize(9).text([co.address, co.phone, co.email, co.website, co.ntn && `NTN ${co.ntn}`, co.strn && `STRN ${co.strn}`].filter(Boolean).join("\n"), L, pdf.y + 4, { width: W * 0.6 });
   const headBottom = pdf.y;
   pdf.fillColor(RED).font("Helvetica-Bold").fontSize(18).text(TITLE[d.kind], L, 48, { width: W, align: "right" });

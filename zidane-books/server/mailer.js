@@ -28,10 +28,10 @@ export async function emailDocuments(db, userId, docIds, { to, cc, message } = {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+(\s*,\s*[^@\s]+@[^@\s]+\.[^@\s]+)*$/.test(toAddr)) throw httpError(400, `No valid email for ${docs[0].contact_name}. Add it on the contact or type one.`);
   const co = getSetting(db, "company") || {};
   const names = docs.map((d) => `${LABEL[d.kind] || d.kind} ${d.number}`).join(" and ");
-  const subject = `${names} from ${co.name || "Zidane Wholesale Solutions"}`;
+  const subject = `${names} from ${co.name || "Zidane Corporation"}`;
   const inv = docs.find((d) => d.kind === "invoice");
   const text = [`Dear ${docs[0].contact_name},`, "", message || `Please find attached ${names}.${inv ? ` Amount due: Rs ${inv.total.toLocaleString("en-PK")}${inv.due_date ? `, by ${inv.due_date}` : ""}.` : ""}`,
-    "", "Regards,", co.name || "Zidane Wholesale Solutions", co.phone || "", co.website || ""].join("\n");
+    "", "Regards,", co.name || "Zidane Corporation", co.phone || "", co.website || ""].join("\n");
   const attachments = [];
   for (const d of docs) { const p = await documentPdf(db, d.id); attachments.push({ filename: p.filename, content: p.buffer, contentType: "application/pdf" }); }
   const mail = { from: process.env.MAIL_FROM || `${co.name || "Zidane Books"} <${process.env.SMTP_USER}>`, to: toAddr, cc: cc || undefined, subject, text, attachments };
