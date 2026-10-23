@@ -44,7 +44,10 @@ export default function Bell() {
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(t); window.removeEventListener("focus", onFocus); };
   }, [load]);
-  useEffect(() => { document.title = data.unread ? `(${data.unread}) Zidane Books` : "Zidane Books"; }, [data.unread]);
+  // a document page (quote/invoice/DC/bill/PO) takes over the title while open, so its "Print / PDF"
+  // saves the file under the document number -- this poll (every 45s, or on window focus) must not
+  // clobber that mid-visit, so it backs off while window.__docTitleLock is set (see DocumentView.jsx)
+  useEffect(() => { if (!window.__docTitleLock) document.title = data.unread ? `(${data.unread}) Zidane Books` : "Zidane Books"; }, [data.unread]);
   useEffect(() => {
     if (!open) return;
     const close = (e) => !wrap.current?.contains(e.target) && setOpen(false);

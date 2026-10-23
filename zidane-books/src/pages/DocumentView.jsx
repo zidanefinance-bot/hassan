@@ -122,7 +122,8 @@ export default function DocumentView({ kind }) {
     if (!state.data) return;
     const prev = document.title;
     document.title = state.data.number;
-    return () => { document.title = prev; };
+    window.__docTitleLock = true; // tell Notifications.jsx's 45s poll to leave the title alone for now
+    return () => { window.__docTitleLock = false; document.title = prev; };
   }, [state.data?.number]);
 
 
