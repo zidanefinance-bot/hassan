@@ -62,6 +62,26 @@ function SignModal({ doc, onClose, onSaved }) {
   );
 }
 
+function JobBagsModal({ doc, onClose, onCreated }) {
+  const [bags, setBags] = useState(doc.bags || 1);
+  const [err, setErr] = useState("");
+  const submit = async (e) => {
+    e.preventDefault();
+    try { onCreated(await api(`/documents/${doc.id}/job`, { method: "POST", body: { bags: Number(bags) } })); }
+    catch (x) { setErr(x.message); }
+  };
+  return (
+    <Modal title={`Create Job · ${doc.number}`} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <p className="muted">This quote was priced per bag ({doc.kit_name || "ration kit"}). How many bags did the customer confirm?</p>
+        <Field label="Bags"><input type="number" min="1" step="1" value={bags} onChange={(e) => setBags(e.target.value)} required autoFocus /></Field>
+        {err && <div className="form-error">{err}</div>}
+        <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary" disabled={!(Number(bags) > 0)}>Create Job</button></div>
+      </form>
+    </Modal>
+  );
+}
+
 // a ration document shown as bags: one line for N bags, then what one bag holds (same rule as server/ration.js bagView)
 export function bagView(d) {
   if (!(d.bags > 0) || d.show_as === "items" || ["po", "bill", "vendor_credit"].includes(d.kind)) return null;
@@ -155,7 +175,7 @@ export default function DocumentView({ kind }) {
             sub={`${K.label} · ${d.contact.name}${d.job ? ` · ${d.job.number}` : ""}`}>
             {writer && kind === "quote" && d.status === "enquiry" && <button className="btn primary" onClick={() => post("/status", { status: "sent" }, "Marked sent")}>Rates added, mark sent</button>}
             {writer && kind === "quote" && d.status === "sent" && <><button className="btn" onClick={() => post("/status", { status: "accepted" }, "Customer confirmed")}>Customer confirmed</button><button className="btn" onClick={() => post("/status", { status: "declined" }, "Marked declined")}>Declined</button></>}
-            {writer && kind === "quote" && ["sent", "accepted", "draft"].includes(d.status) && <button className="btn primary" onClick={async () => { const r = await post("/job", {}, "Job created and sent to Operations"); if (r) nav(`/jobs/${r.id}`); }}>Create Job</button>}
+            {writer && kind === "quote" && ["sent", "accepted", "draft"].includes(d.status) && <button className="btn primary" onClick={async () => { if (d.bags > 0) { setModal("job-bags"); return; } const r = await post("/job", {}, "Job created and sent to Operations"); if (r) nav(`/jobs/${r.id}`); }}>Create Job</button>}
             {writer && d.status === "draft" && kind !== "quote" && <button className="btn primary" onClick={() => post("/status", { status: { invoice: "open", bill: "open", po: "issued", dc: "issued", credit_note: "open", vendor_credit: "open" }[kind] }, "Issued")}>Issue</button>}
             {can("money") && isCredit && d.status === "open" && d.balance > 0 && <button className="btn primary" onClick={() => api(`/contacts/${d.contact_id}/open-documents`).then(setAllocDocs)}>Apply to {kind === "credit_note" ? "invoices" : "bills"}</button>}
             {can("money") && isCredit && d.status === "open" && d.balance > 0 && <button className="btn" onClick={() => setModal("refund")}>Refund</button>}
@@ -284,6 +304,7 @@ export default function DocumentView({ kind }) {
           {modal === "credits" && <ApplyCreditsModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
           {modal === "email" && <EmailModal doc={d} onClose={() => setModal(null)} onSent={(r) => { setModal(null); toast(`Emailed to ${r.to}`); state.reload(); }} />}
           {modal === "sign" && <SignModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Signed DC recorded. Job marked delivered."); state.reload(); }} />}
+          {modal === "job-bags" && <JobBagsModal doc={d} onClose={() => setModal(null)} onCreated={(r) => { setModal(null); toast("Job created and sent to Operations"); nav(`/jobs/${r.id}`); }} />}
         </>
       );
     }}</Loading>
