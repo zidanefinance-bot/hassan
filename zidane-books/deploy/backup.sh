@@ -3,7 +3,8 @@
 # Run by cron at 2:30am (see install-on-server.sh / update-on-server.sh), or by hand:  sudo bash deploy/backup.sh
 #
 # 1. A consistent copy of the database is taken while the app keeps running (VACUUM INTO).
-# 2. Database + uploads go into one file: zidane-books-YYYY-MM-DD.tar.gz in /var/lib/zidane-books/backups (kept 30 days).
+# 2. Database + uploads go into one file: zidane-books-YYYY-MM-DD.tar.gz in /var/lib/zidane-books/backups (kept 14 days,
+#    fewer if the disk gets below 5 GB free; at least 3 are always kept).
 # 3. Off-site (optional, strongly recommended): when BACKUP_REMOTE is set in /etc/zidane-books.env, the file is
 #    encrypted with BACKUP_PASSPHRASE and copied there with rclone (Google Drive, Dropbox, another server...).
 #    Off-site copies are kept BACKUP_KEEP_DAYS days (default 90). See deploy/BACKUP.md.
@@ -27,7 +28,8 @@ fi
 DB="${DB_FILE:-$DATA/zidane-books.db}"
 UPLOADS="${UPLOAD_DIR:-$DATA/uploads}"
 OUT="$DATA/backups"
-KEEP_LOCAL="${BACKUP_KEEP_LOCAL_DAYS:-30}"
+KEEP_LOCAL="${BACKUP_KEEP_LOCAL_DAYS:-14}"
+MIN_FREE_GB="${BACKUP_MIN_FREE_GB:-5}" # never let backups fill the disk the website and other apps share
 KEEP_REMOTE="${BACKUP_KEEP_DAYS:-90}"
 STAMP=$(date +%Y-%m-%d)
 NAME="zidane-books-$STAMP.tar.gz"
@@ -59,6 +61,12 @@ mv "$OUT/$NAME.part" "$OUT/$NAME"
 chmod 600 "$OUT/$NAME"
 SIZE=$(stat -c %s "$OUT/$NAME")
 find "$OUT" -maxdepth 1 \( -name 'zidane-books-*.tar.gz' -o -name 'zidane-books-*.db' \) -mtime +"$KEEP_LOCAL" -delete
+# every backup carries all attachments, so on a small disk keep fewer: drop the oldest while free space is low (keep 3)
+while [ "$(df -Pk "$OUT" | awk 'NR==2 {print $4}')" -lt $((MIN_FREE_GB * 1024 * 1024)) ]; do
+  OLDEST=$(ls -1tr "$OUT"/zidane-books-*.tar.gz "$OUT"/zidane-books-*.db 2>/dev/null | head -1)
+  [ "$(ls -1 "$OUT"/zidane-books-*.tar.gz 2>/dev/null | wc -l)" -le 3 ] && { echo "!! Less than ${MIN_FREE_GB} GB free on the disk"; break; }
+  echo "    disk low: removing old $OLDEST"; rm -f "$OLDEST"
+done
 echo "    $OUT/$NAME ($((SIZE / 1024)) KB)"
 
 OFFSITE=skipped

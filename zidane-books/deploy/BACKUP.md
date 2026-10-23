@@ -5,7 +5,7 @@ Books ka saara data do jagah hota hai: **database** (`/var/lib/zidane-books/zida
 dono ko ek file mein pack karta hai:
 
 ```
-/var/lib/zidane-books/backups/zidane-books-2026-10-23.tar.gz     (30 din tak rakhi jaati hain)
+/var/lib/zidane-books/backups/zidane-books-2026-10-23.tar.gz     (14 din tak rakhi jaati hain; disk mein 5 GB se kam jagah bache to purani pehle hat jaati hain, kam az kam 3 rehti hain)
 ```
 
 Settings → Backup mein director ko dikhta hai ke aakhri backup kab hua, aur off-site gaya ya nahi.

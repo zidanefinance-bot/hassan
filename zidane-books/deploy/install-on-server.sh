@@ -142,7 +142,7 @@ if grep -q '^ADMIN_PASSWORD=' "$ENV_FILE"; then
   sed -i '/^ADMIN_PASSWORD=/d' "$ENV_FILE"
 fi
 
-echo "==> Daily backup at 2:30am: database + attachments, kept 30 days in $DATA/backups (off-site: see deploy/BACKUP.md)"
+echo "==> Daily backup at 2:30am: database + attachments, kept 14 days in $DATA/backups (off-site: see deploy/BACKUP.md)"
 cat > /etc/cron.d/zidane-books-backup <<CRON
 30 2 * * * root bash $SRC/zidane-books/deploy/backup.sh >> /var/log/zidane-books-backup.log 2>&1
 CRON
