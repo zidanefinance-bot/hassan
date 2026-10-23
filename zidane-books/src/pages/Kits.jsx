@@ -43,14 +43,23 @@ function KitForm({ initial, items, onClose, onSaved }) {
 
 function QuoteModal({ kit, onClose }) {
   const customers = useLoad("/contacts?type=customer");
-  const [q, setQ] = useState({ contact_id: "", bags: 100 });
+  const [q, setQ] = useState({ contact_id: "", bags: 100, show_as: "bags" });
   const [err, setErr] = useState("");
   const nav = useNavigate();
   return (
     <Modal title={`Quotation · ${kit.name}`} onClose={onClose}>
       <form className="form" onSubmit={async (e) => { e.preventDefault(); try { const r = await api(`/kits/${kit.id}/quote`, { method: "POST", body: q }); nav(`/quotes/${r.id}`); } catch (x) { setErr(x.message); } }}>
         <Field label="Customer *"><Picker options={(customers.data || []).map((c) => ({ id: c.id, label: c.name, sub: c.company || "" }))} value={q.contact_id} onChange={(v) => setQ({ ...q, contact_id: v })} placeholder="Type customer name…" /></Field>
-        <Field label="How many bags? *"><input type="number" min="1" step="1" value={q.bags} onChange={(e) => setQ({ ...q, bags: e.target.value })} required /></Field>
+        <div className="row-2">
+          <Field label="How many bags? *"><input type="number" min="1" step="1" value={q.bags} onChange={(e) => setQ({ ...q, bags: e.target.value })} required /></Field>
+          <Field label="Show the customer">
+            <select value={q.show_as} onChange={(e) => setQ({ ...q, show_as: e.target.value })}>
+              <option value="bags">Each item's rate + bag total</option>
+              <option value="bags_total">Items & qty only, bag total (rates hidden)</option>
+              <option value="items">Item by item (full quantities)</option>
+            </select>
+          </Field>
+        </div>
         <p className="muted">{num(q.bags || 0)} bags × {money(kit.price_per_bag)} = <b>{money((Number(q.bags) || 0) * kit.price_per_bag)}</b> (before tax). You can change rates and add discount or delivery charges on the draft.</p>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Make draft quotation</button></div>

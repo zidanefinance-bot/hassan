@@ -518,3 +518,4 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
 .kit-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 @media (max-width: 760px) { .ration-bars { grid-template-columns: 1fr; } }
+.show-as { max-width: 230px; }

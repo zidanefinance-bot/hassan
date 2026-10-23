@@ -67,7 +67,7 @@ export function bagView(d) {
   if (!(d.bags > 0) || d.show_as === "items" || ["po", "bill", "vendor_credit"].includes(d.kind)) return null;
   const r2 = (n) => Math.round(n * 100) / 100;
   const net = r2(d.lines.reduce((s, l) => s + l.amount, 0));
-  return { bags: d.bags, kit_name: d.kit_name || "Ration bag", rate_per_bag: r2(net / d.bags), amount: net,
+  return { bags: d.bags, kit_name: d.kit_name || "Ration bag", rate_per_bag: r2(net / d.bags), amount: net, item_rates: d.show_as !== "bags_total",
     contents: d.lines.map((l) => ({ ...l, per_bag: r2(l.qty / d.bags), amount_per_bag: r2(l.amount / d.bags) })) };
 }
 
@@ -75,7 +75,7 @@ function waText(d, company) {
   const isDc = d.kind === "dc";
   const bag = bagView(d);
   const lines = bag
-    ? `${bag.kit_name}: ${num(bag.bags)} bags${isDc ? "" : ` × ${money(bag.rate_per_bag)} = ${money(bag.amount)}`}\nEach bag contains:\n${bag.contents.map((l) => `• ${l.item_name || l.description} × ${num(l.per_bag)}${isDc ? ` ${l.unit || ""}` : ` @ ${money(l.rate)}`}`).join("\n")}`
+    ? `${bag.kit_name}: ${num(bag.bags)} bags${isDc ? "" : ` × ${money(bag.rate_per_bag)} = ${money(bag.amount)}`}\nEach bag contains:\n${bag.contents.map((l) => `• ${l.item_name || l.description} × ${num(l.per_bag)}${isDc || !bag.item_rates ? ` ${l.unit || ""}` : ` @ ${money(l.rate)}`}`).join("\n")}`
     : d.lines.map((l) => `• ${l.item_name || l.description} × ${num(l.qty)}${isDc ? ` ${l.unit || ""}` : ` = ${money(l.amount)}`}`).join("\n");
   const head = `Assalam o Alaikum ${d.contact.name},\n\n${KIND[d.kind].label} ${d.number} from ${company.name}\nDate: ${fmtDate(d.date)}${d.due_date ? `\nDue: ${fmtDate(d.due_date)}` : ""}${d.job?.customer_po_number ? `\nYour PO: ${d.job.customer_po_number}` : ""}`;
   const tail = isDc ? "" : `\n\nTotal: ${money(d.total)}${d.paid ? `\nPaid: ${money(d.paid)}\nBalance: ${money(d.balance)}` : ""}`;
@@ -169,7 +169,13 @@ export default function DocumentView({ kind }) {
             {writer && kind === "po" && d.status === "issued" && <button className="btn primary" onClick={async () => { const r = await post("/convert", {}, "Bill created"); if (r) nav(`/bills/${r.id}`); }}>Convert to bill</button>}
             {editable && <Link className="btn" to={`/${K.path}/${id}/edit`}>Edit</Link>}
             {writer && <button className="btn" onClick={async () => { const r = await post("/clone", {}, "Copied as a new draft"); if (r) nav(`/${K.path}/${r.id}/edit`); }}>Copy</button>}
-            {d.bags > 0 && writer && !["po", "bill", "vendor_credit"].includes(kind) && <button className="btn ghost" onClick={() => act(() => api(`/documents/${d.id}/show-as`, { method: "POST", body: { show_as: bag ? "items" : "bags" } }), bag ? "Now shown item by item" : `Now shown as ${num(d.bags)} bags`)}>{bag ? "Show item by item" : "Show as bags"}</button>}
+            {d.bags > 0 && writer && !["po", "bill", "vendor_credit"].includes(kind) && (
+              <select className="show-as" value={d.show_as || "bags"} title="How the customer sees it" onChange={(e) => act(() => api(`/documents/${d.id}/show-as`, { method: "POST", body: { show_as: e.target.value } }), "Customer view changed")}>
+                <option value="bags">{isDc ? "Bags + contents" : "Bags + each item's rate"}</option>
+                {!isDc && <option value="bags_total">Bags + contents, bag rate only</option>}
+                <option value="items">Item by item</option>
+              </select>
+            )}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
             {writer && !["draft", "void", "enquiry"].includes(d.status) && <button className="btn" onClick={() => setModal("email")}>Email</button>}
             {phone && <a className="btn wa-btn" href={`https://wa.me/${phone}?text=${encodeURIComponent(waText(d, company))}`} target="_blank" rel="noreferrer">WhatsApp</a>}
@@ -203,9 +209,9 @@ export default function DocumentView({ kind }) {
                 </table>
                 <h4 className="bag-sub">Each bag contains</h4>
                 <table className="table compact paper-lines bag-contents">
-                  <thead><tr><th>Item</th><th className="r">Per bag</th>{isDc ? <th className="r">Total</th> : <><th className="r">Rate</th><th className="r">Amount / bag</th></>}</tr></thead>
-                  <tbody>{bag.contents.map((l) => <tr key={l.id}><td>{l.item_name || l.description}</td><td className="r">{num(l.per_bag)} {l.unit || ""}</td>{isDc ? <td className="r">{num(l.qty)} {l.unit || ""}</td> : <><td className="r">{money(l.rate)}</td><td className="r">{money(l.amount_per_bag)}</td></>}</tr>)}</tbody>
-                  {!isDc && <tfoot><tr><td colSpan={3}>One bag</td><td className="r">{money(bag.rate_per_bag)}</td></tr></tfoot>}
+                  <thead><tr><th>Item</th><th className="r">Per bag</th>{isDc ? <th className="r">Total</th> : bag.item_rates && <><th className="r">Rate</th><th className="r">Amount / bag</th></>}</tr></thead>
+                  <tbody>{bag.contents.map((l) => <tr key={l.id}><td>{l.item_name || l.description}</td><td className="r">{num(l.per_bag)} {l.unit || ""}</td>{isDc ? <td className="r">{num(l.qty)} {l.unit || ""}</td> : bag.item_rates && <><td className="r">{money(l.rate)}</td><td className="r">{money(l.amount_per_bag)}</td></>}</tr>)}</tbody>
+                  {!isDc && <tfoot><tr><td colSpan={bag.item_rates ? 3 : 1}>{bag.item_rates ? "One bag" : "Rate per bag"}</td><td className="r">{money(bag.rate_per_bag)}</td></tr></tfoot>}
                 </table>
               </>
             ) : (

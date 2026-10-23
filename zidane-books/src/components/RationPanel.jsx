@@ -87,7 +87,8 @@ function BagDocModal({ job, kind, onClose, onSaved }) {
         {kind === "invoice" && (
           <Field label="Show the customer">
             <select value={b.show_as} onChange={(e) => setB({ ...b, show_as: e.target.value })}>
-              <option value="bags">Bags × rate, with one bag's contents</option>
+              <option value="bags">Bags × rate, with each item's rate in the bag</option>
+              <option value="bags_total">Bags × rate, contents only (item rates hidden)</option>
               <option value="items">Item by item</option>
             </select>
           </Field>

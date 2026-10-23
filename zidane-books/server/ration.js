@@ -69,20 +69,24 @@ export function saveKit(db, input, id = null) {
   });
 }
 
-// mark a document as a ration document: shown as bags unless show_as = 'items'
+// how a ration document is shown to the customer:
+//   bags        N bags × rate, then one bag's contents with each item's rate
+//   bags_total  N bags × rate, then one bag's contents (items and quantities only, no item rates)
+//   items       item by item, like any document
+export const SHOW_AS = ["bags", "bags_total", "items"];
 export function markBags(db, docId, bags, kitName, showAs = "bags") {
-  db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ? WHERE id = ?").run(bags ? round2(bags) : null, kitName || null, showAs === "items" ? "items" : "bags", docId);
+  db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ? WHERE id = ?").run(bags ? round2(bags) : null, kitName || null, SHOW_AS.includes(showAs) ? showAs : "bags", docId);
 }
 
 // a quotation for N bags from a kit: the lines hold the full quantities, the PDF shows one bag and × N
-export function quoteFromKit(db, userId, kitId, { contact_id, bags, date, notes, terms, reference } = {}) {
+export function quoteFromKit(db, userId, kitId, { contact_id, bags, date, notes, terms, reference, show_as } = {}) {
   const k = kitDetail(db, kitId);
   const n = Number(bags);
   if (!contact_id) throw httpError(400, "Pick the customer");
   if (!(n > 0)) throw httpError(400, "How many bags?");
   const lines = k.lines.map((l) => ({ item_id: l.item_id, description: l.item_id ? null : l.description, qty: round2(l.qty * n), rate: l.rate, tax_rate: l.tax_rate }));
   const id = saveDocument(db, userId, { kind: "quote", contact_id, status: "draft", date: date || today(), notes: notes ?? k.notes, terms, reference, lines });
-  markBags(db, id, n, k.name);
+  markBags(db, id, n, k.name, show_as);
   return id;
 }
 
@@ -145,7 +149,7 @@ export function bagView(doc, lines) {
   if (!(doc.bags > 0) || doc.show_as === "items" || ["po", "bill", "vendor_credit"].includes(doc.kind)) return null;
   const contents = lines.map((l) => ({ ...l, per_bag: round2(l.qty / doc.bags), amount_per_bag: round2(l.amount / doc.bags) }));
   const net = round2(lines.reduce((s, l) => s + l.amount, 0));
-  return { bags: doc.bags, kit_name: doc.kit_name || "Ration bag", rate_per_bag: round2(net / doc.bags), amount: net, contents };
+  return { bags: doc.bags, kit_name: doc.kit_name || "Ration bag", rate_per_bag: round2(net / doc.bags), amount: net, contents, item_rates: doc.show_as !== "bags_total" };
 }
 
 // after a ration DC / invoice is edited by hand: count the bags again from its lines; if the lines no longer make

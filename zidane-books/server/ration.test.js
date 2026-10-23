@@ -110,3 +110,19 @@ test("ration API: Operations packs and sees no selling rates; Sales makes the qu
     server.close();
   }
 });
+
+test("ration quote can hide each item's rate: contents and the bag rate only", async () => {
+  const { db, cust, kit } = setup();
+  const q = RA.quoteFromKit(db, 1, kit, { contact_id: cust, bags: 200, show_as: "bags_total" });
+  const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(q);
+  assert.equal(doc.show_as, "bags_total");
+  const lines = db.prepare("SELECT l.*, i.name AS item_name FROM document_lines l LEFT JOIN items i ON i.id = l.item_id WHERE document_id = ?").all(q);
+  const v = RA.bagView(doc, lines);
+  assert.equal(v.item_rates, false);
+  assert.equal(v.rate_per_bag, 4550);
+  const { documentPdf } = await import("./pdf.js");
+  const pdf = await documentPdf(db, q);
+  assert.ok(pdf.buffer.length > 1000);
+  RA.markBags(db, q, 200, "Standard bag", "nonsense");
+  assert.equal(db.prepare("SELECT show_as FROM documents WHERE id = ?").get(q).show_as, "bags", "unknown modes fall back to bags");
+});

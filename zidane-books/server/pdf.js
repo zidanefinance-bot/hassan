@@ -76,9 +76,10 @@ export function documentPdf(db, docId) {
     const taxes = [...new Set(lines.map((l) => l.tax_rate))];
     row(isDc ? [1, bag.kit_name, `${qty(bag.bags)} bags`] : [1, bag.kit_name, `${qty(bag.bags)} bags`, rs(bag.rate_per_bag), taxes.length === 1 ? `${qty(taxes[0])}%` : "see below", rs(bag.amount)]);
     y += 8;
-    pdf.font("Helvetica-Bold").fontSize(9).fillColor(INK).text(isDc ? "Each bag contains" : "Each bag contains (rate per bag)", L, y);
+    const rates = !isDc && bag.item_rates; // "bags_total": the customer sees what's in a bag, not each item's price
+    pdf.font("Helvetica-Bold").fontSize(9).fillColor(INK).text(rates ? "Each bag contains (rate per bag)" : "Each bag contains", L, y);
     y = pdf.y + 4;
-    const sub = isDc ? [["Item", W - 260, "left"], ["Per bag", 120, "right"], ["Total", 140, "right"]] : [["Item", W - 300, "left"], ["Per bag", 90, "right"], ["Rate", 100, "right"], ["Amount / bag", 110, "right"]];
+    const sub = isDc ? [["Item", W - 260, "left"], ["Per bag", 120, "right"], ["Total", 140, "right"]] : rates ? [["Item", W - 300, "left"], ["Per bag", 90, "right"], ["Rate", 100, "right"], ["Amount / bag", 110, "right"]] : [["Item", W - 140, "left"], ["Per bag", 140, "right"]];
     const subRow = (vals, bold) => {
       let x = L;
       const h = Math.max(...vals.map((v, i) => pdf.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(8.5).heightOfString(String(v), { width: sub[i][1] - 6 })));
@@ -87,8 +88,9 @@ export function documentPdf(db, docId) {
       y += h + 5;
     };
     subRow(sub.map((c) => c[0].toUpperCase()), true);
-    for (const l of bag.contents) subRow(isDc ? [itemName(l), `${qty(l.per_bag)} ${l.unit || ""}`, `${qty(l.qty)} ${l.unit || ""}`] : [itemName(l), `${qty(l.per_bag)} ${l.unit || ""}`, rs(l.rate), rs(l.amount_per_bag)]);
-    if (!isDc) subRow(["One bag", "", "", rs(bag.rate_per_bag)], true);
+    for (const l of bag.contents) subRow(isDc ? [itemName(l), `${qty(l.per_bag)} ${l.unit || ""}`, `${qty(l.qty)} ${l.unit || ""}`] : rates ? [itemName(l), `${qty(l.per_bag)} ${l.unit || ""}`, rs(l.rate), rs(l.amount_per_bag)] : [itemName(l), `${qty(l.per_bag)} ${l.unit || ""}`]);
+    if (rates) subRow(["One bag", "", "", rs(bag.rate_per_bag)], true);
+    else if (!isDc) subRow([`Rate per bag: ${rs(bag.rate_per_bag)}`, ""], true);
     pdf.moveTo(L, y).lineTo(L + W, y).strokeColor(LINE).lineWidth(0.5).stroke();
     y += 4;
   } else {
