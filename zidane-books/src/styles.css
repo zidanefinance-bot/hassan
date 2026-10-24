@@ -272,10 +272,13 @@ select.inline { padding: 4px 6px; width: auto; font-size: 13px; text-transform: 
   .search { min-width: 0; width: 100%; }
 }
 
+/* no page margin → the browser has no room for its own header and footer (the date, title and page URL);
+   our own margin is padding instead, repeated on every printed page */
+@page { size: A4; margin: 0; }
 @media print {
-  .sidebar, .topbar, .page-head, .no-print, .tabs, .links, .toasts { display: none !important; }
+  .sidebar, .topbar, .page-head, .no-print, .tabs, .links, .toasts, .ai-fab, .notice-pop { display: none !important; }
   .shell { display: block; }
-  .content { padding: 0; max-width: none; }
+  .content { padding: 12mm 12mm 14mm; max-width: none; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .paper { border: none; padding: 0; }
   body, :root { background: #fff; }
 }
