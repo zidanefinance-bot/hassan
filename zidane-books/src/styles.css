@@ -102,6 +102,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(194,42,47,0.
 .table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--line); background: #fafbfc; white-space: nowrap; }
 .table td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .table th.r, .table td.r { text-align: right; }
+.table th.sortable { cursor: pointer; user-select: none; }
+.table th.sortable:hover { color: var(--ink, #1f2937); }
+.table th.sort-asc::after, .table th.sort-desc::after { content: " ▲"; font-size: 10px; color: var(--brand, #c62828); }
+.table th.sort-desc::after { content: " ▼"; }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tfoot td { font-weight: 700; background: #fafbfc; border-top: 1px solid var(--line); }
 .table tr.click { cursor: pointer; }

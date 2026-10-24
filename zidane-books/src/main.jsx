@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-dom";
 import "./styles.css";
+import { startTableSorting } from "./sortTables.js";
 import { AuthProvider, ToastProvider, useAuth } from "./lib.jsx";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -130,6 +131,7 @@ function Shell() {
 const pathOf = (k) => ({ quote: "quotes", dc: "delivery-challans", invoice: "invoices", credit_note: "credit-notes", po: "purchase-orders", bill: "bills", vendor_credit: "vendor-credits" })[k];
 
 registerServiceWorker();
+startTableSorting();
 createRoot(document.getElementById("root")).render(
   <BrowserRouter><ToastProvider><AuthProvider><Shell /></AuthProvider></ToastProvider></BrowserRouter>,
 );
