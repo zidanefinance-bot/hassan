@@ -55,6 +55,12 @@ export default function RationPanel({ job, onChange }) {
           <table className="table compact">
             <tbody>{r.contents.map((c) => <tr key={c.id}><td>{c.name}</td><td className="r">{num(c.per_bag)} {c.unit || ""}</td>{c.sale_rate !== undefined && <td className="r muted">{money(c.sale_rate)}</td>}</tr>)}</tbody>
           </table>
+          {r.materials?.length > 0 && (can("buy") || can("ops.read")) && <>
+            <h4 style={{ marginTop: 12 }}>Packing materials needed <span className="muted small">(for {num(r.bags)} bags · internal, not on the customer's paperwork)</span></h4>
+            <table className="table compact">
+              <tbody>{r.materials.map((m, i) => <tr key={i}><td>{m.name}</td><td className="r">{num(m.qty)} {m.unit || ""}</td></tr>)}</tbody>
+            </table>
+          </>}
         </div>
         <div>
           <h4>Packing</h4>

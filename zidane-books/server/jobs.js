@@ -37,8 +37,8 @@ export function createJob(db, userId, input) {
       db.prepare("INSERT INTO job_items (job_id, item_id, description, qty, sale_rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)").run(id, i.item_id || null, i.description || null, Number(i.qty) || 0, Number(i.sale_rate ?? i.rate) || 0, Number(i.tax_rate) || 0);
     }
     if (input.quote_id) db.prepare("UPDATE documents SET status = 'converted', job_id = ? WHERE id = ? AND kind = 'quote'").run(id, input.quote_id);
-    // a ration order: N bags, each holding the lines divided by N
-    if (Number(input.bags) > 0) db.prepare("UPDATE jobs SET bags = ?, kit_name = ? WHERE id = ?").run(round2(Number(input.bags)), input.kit_name || null, id);
+    // a ration order: N bags, each holding the lines divided by N; kit_id lets Purchasing pull the kit's packing materials for this many bags
+    if (Number(input.bags) > 0) db.prepare("UPDATE jobs SET bags = ?, kit_name = ?, kit_id = ? WHERE id = ?").run(round2(Number(input.bags)), input.kit_name || null, input.kit_id || null, id);
     log(db, userId, "created job", "job", id, `${number}${Number(input.bags) > 0 ? ` · ${input.bags} bags` : ""}`);
     return id;
   });
@@ -50,7 +50,7 @@ export function jobFromQuote(db, userId, quoteId, extra = {}) {
   if (q.status === "converted") throw httpError(400, "A Job already exists for this quote");
   const lines = db.prepare("SELECT item_id, description, qty, rate AS sale_rate, tax_rate, discount_pct FROM document_lines WHERE document_id = ?").all(q.id)
     .map((l) => ({ ...l, sale_rate: round2(l.sale_rate * (1 - l.discount_pct / 100)) }));
-  return createJob(db, userId, { customer_id: q.contact_id, quote_id: q.id, items: lines, instructions: q.notes, bags: q.bags, kit_name: q.kit_name, ...extra });
+  return createJob(db, userId, { customer_id: q.contact_id, quote_id: q.id, items: lines, instructions: q.notes, bags: q.bags, kit_name: q.kit_name, kit_id: q.kit_id, ...extra });
 }
 
 const step = (s) => OPS_STATUSES.indexOf(s);

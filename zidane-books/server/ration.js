@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS kits (
 );
 CREATE TABLE IF NOT EXISTS kit_items (
   id INTEGER PRIMARY KEY, kit_id INTEGER NOT NULL REFERENCES kits(id) ON DELETE CASCADE, item_id INTEGER REFERENCES items(id),
-  description TEXT, qty REAL NOT NULL, rate REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0
+  description TEXT, qty REAL NOT NULL, rate REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0,
+  internal INTEGER NOT NULL DEFAULT 0 -- packing material etc: goes on the Job for Purchasing to see, never on the customer's quote/DC/invoice
 );
 -- one order, several places to deliver (each its own DC with its own address)
 CREATE TABLE IF NOT EXISTS job_delivery_points (
@@ -31,6 +32,9 @@ export function setupRation(db) {
   if (!has("jobs", "bags")) db.exec("ALTER TABLE jobs ADD COLUMN bags REAL; ALTER TABLE jobs ADD COLUMN kit_name TEXT;");
   if (!has("documents", "bags")) db.exec("ALTER TABLE documents ADD COLUMN bags REAL; ALTER TABLE documents ADD COLUMN kit_name TEXT; ALTER TABLE documents ADD COLUMN show_as TEXT;");
   if (!has("documents", "deliver_to")) db.exec("ALTER TABLE documents ADD COLUMN deliver_to TEXT; ALTER TABLE documents ADD COLUMN delivery_point_id INTEGER REFERENCES job_delivery_points(id);");
+  if (!has("kit_items", "internal")) db.exec("ALTER TABLE kit_items ADD COLUMN internal INTEGER NOT NULL DEFAULT 0;");
+  if (!has("jobs", "kit_id")) db.exec("ALTER TABLE jobs ADD COLUMN kit_id INTEGER REFERENCES kits(id);");
+  if (!has("documents", "kit_id")) db.exec("ALTER TABLE documents ADD COLUMN kit_id INTEGER REFERENCES kits(id);");
   // the costs that vary per ration order, as Job cost types (added once; a director can rename or remove them)
   const row = db.prepare("SELECT value FROM settings WHERE key = 'jobExpenseCategories'").get();
   const flag = db.prepare("SELECT 1 FROM settings WHERE key = 'rationCostTypesAdded'").get();
@@ -46,10 +50,12 @@ export function setupRation(db) {
 export function kitDetail(db, id) {
   const k = db.prepare("SELECT * FROM kits WHERE id = ?").get(id);
   if (!k) throw httpError(404, "Kit not found");
-  const lines = db.prepare(`SELECT ki.*, i.name AS item_name, i.unit, i.purchase_rate, i.stock_qty FROM kit_items ki LEFT JOIN items i ON i.id = ki.item_id WHERE ki.kit_id = ? ORDER BY ki.id`).all(id);
+  const all = db.prepare(`SELECT ki.*, i.name AS item_name, i.unit, i.purchase_rate, i.stock_qty FROM kit_items ki LEFT JOIN items i ON i.id = ki.item_id WHERE ki.kit_id = ? ORDER BY ki.id`).all(id);
+  const lines = all.filter((l) => !l.internal); // what the customer's quote/DC/invoice shows
+  const materials = all.filter((l) => l.internal); // packing material etc: Purchasing only, never quoted or billed
   const price = round2(lines.reduce((s, l) => s + l.qty * l.rate, 0));
   const cost = round2(lines.reduce((s, l) => s + l.qty * (l.purchase_rate || 0), 0));
-  return { ...k, lines, price_per_bag: price, cost_per_bag: cost, margin_per_bag: round2(price - cost), margin_pct: price ? round2(((price - cost) / price) * 100) : 0 };
+  return { ...k, lines, materials, price_per_bag: price, cost_per_bag: cost, margin_per_bag: round2(price - cost), margin_pct: price ? round2(((price - cost) / price) * 100) : 0 };
 }
 export const kitList = (db) => db.prepare("SELECT id FROM kits ORDER BY active DESC, name").all().map((k) => kitDetail(db, k.id));
 
@@ -69,8 +75,8 @@ export function saveKit(db, input, id = null) {
       throw e;
     }
     db.prepare("DELETE FROM kit_items WHERE kit_id = ?").run(id);
-    const ins = db.prepare("INSERT INTO kit_items (kit_id, item_id, description, qty, rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)");
-    for (const l of lines) ins.run(id, Number(l.item_id) || null, l.description || null, Number(l.qty), round2(Number(l.rate) || 0), Number(l.tax_rate) || 0);
+    const ins = db.prepare("INSERT INTO kit_items (kit_id, item_id, description, qty, rate, tax_rate, internal) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    for (const l of lines) ins.run(id, Number(l.item_id) || null, l.description || null, Number(l.qty), round2(Number(l.rate) || 0), Number(l.tax_rate) || 0, l.internal ? 1 : 0);
     return id;
   });
 }
@@ -80,8 +86,9 @@ export function saveKit(db, input, id = null) {
 //   bags_total  N bags × rate, then one bag's contents (items and quantities only, no item rates)
 //   items       item by item, like any document
 export const SHOW_AS = ["bags", "bags_total", "items"];
-export function markBags(db, docId, bags, kitName, showAs = "bags") {
-  db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ? WHERE id = ?").run(bags ? round2(bags) : null, kitName || null, SHOW_AS.includes(showAs) ? showAs : "bags", docId);
+export function markBags(db, docId, bags, kitName, showAs = "bags", kitId = undefined) {
+  if (kitId === undefined) db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ? WHERE id = ?").run(bags ? round2(bags) : null, kitName || null, SHOW_AS.includes(showAs) ? showAs : "bags", docId);
+  else db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ?, kit_id = ? WHERE id = ?").run(bags ? round2(bags) : null, kitName || null, SHOW_AS.includes(showAs) ? showAs : "bags", kitId || null, docId);
 }
 
 // a quotation for N bags from a kit: the lines hold the full quantities, the PDF shows one bag and × N
@@ -92,7 +99,7 @@ export function quoteFromKit(db, userId, kitId, { contact_id, bags, date, notes,
   if (!(n > 0)) throw httpError(400, "How many bags?");
   const lines = k.lines.map((l) => ({ item_id: l.item_id, description: l.item_id ? null : l.description, qty: round2(l.qty * n), rate: l.rate, tax_rate: l.tax_rate }));
   const id = saveDocument(db, userId, { kind: "quote", contact_id, status: "draft", date: date || today(), notes: notes ?? k.notes, terms, reference, lines });
-  markBags(db, id, n, k.name, show_as);
+  markBags(db, id, n, k.name, show_as, kitId);
   return id;
 }
 
@@ -104,16 +111,26 @@ export function perBag(db, job) {
 }
 const docBags = (db, jobId, kind, statuses) => round2(db.prepare(`SELECT COALESCE(SUM(bags), 0) AS b FROM documents WHERE job_id = ? AND kind = ? AND status IN (${statuses.map(() => "?").join(",")})`).get(jobId, kind, ...statuses).b);
 
+// packing material etc from the kit this Job was made from (poly bags, sacks…): Purchasing's own list, scaled to
+// this order's bags. Pulled live from the kit, not copied into job_items, so it never reaches a DC/invoice/quote.
+export function materialsNeeded(db, job) {
+  if (!job.kit_id) return [];
+  return db.prepare(`SELECT ki.item_id, ki.description, ki.qty AS per_bag, i.name AS item_name, i.unit FROM kit_items ki
+    LEFT JOIN items i ON i.id = ki.item_id WHERE ki.kit_id = ? AND ki.internal = 1 ORDER BY ki.id`).all(job.kit_id)
+    .map((m) => ({ ...m, name: m.item_name || m.description, qty: round2(m.per_bag * job.bags) }));
+}
+
 export function rationStatus(db, job) {
   if (!isRation(job)) return null;
   const packed = round2(db.prepare("SELECT COALESCE(SUM(bags), 0) AS b FROM job_packing WHERE job_id = ?").get(job.id).b);
   const delivered = docBags(db, job.id, "dc", ["issued", "signed"]);
   const invoiced = docBags(db, job.id, "invoice", ["open", "draft"]);
   const contents = perBag(db, job);
+  const materials = materialsNeeded(db, job);
   const pricePerBag = round2(contents.reduce((s, l) => s + l.per_bag * l.sale_rate, 0));
   const packing = db.prepare("SELECT p.*, u.name AS by_name FROM job_packing p LEFT JOIN users u ON u.id = p.created_by WHERE job_id = ? ORDER BY date, id").all(job.id);
   const inDraft = docBags(db, job.id, "dc", ["draft"]);
-  return { bags: job.bags, kit_name: job.kit_name, packed, delivered, invoiced, in_draft_dc: inDraft, to_pack: round2(job.bags - packed), ready_to_send: round2(packed - delivered - inDraft), price_per_bag: pricePerBag, contents, packing, points: deliveryPoints(db, job.id) };
+  return { bags: job.bags, kit_name: job.kit_name, packed, delivered, invoiced, in_draft_dc: inDraft, to_pack: round2(job.bags - packed), ready_to_send: round2(packed - delivered - inDraft), price_per_bag: pricePerBag, contents, materials, packing, points: deliveryPoints(db, job.id) };
 }
 
 export function addPacking(db, userId, jobId, { bags, date, notes }) {
