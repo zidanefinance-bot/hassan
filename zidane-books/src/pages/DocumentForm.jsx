@@ -82,7 +82,7 @@ export default function DocumentForm({ kind }) {
       contact_id: x.party_match_id ? String(x.party_match_id) : d.contact_id,
       date: x.date || d.date,
       due_date: kind === "bill" && x.required_date ? x.required_date : termsDue || d.due_date,
-      reference: x.reference || d.reference,
+      reference: x.reference || (x.their_refs?.length ? `Your PR ${x.their_refs.join(", ")}` : d.reference),
       terms: x.payment_terms ? `Payment terms: ${x.payment_terms}` : d.terms,
       notes: [d.notes, !x.party_match_id && x.party_name ? `${isSale ? "Customer" : "Supplier"} on paper: ${x.party_name}` : null, kind !== "bill" && x.required_date ? `Needed by ${x.required_date}` : null, x.buyer_name ? `${isSale ? "Buyer" : "Contact"}: ${[x.buyer_name, x.contact_phone].filter(Boolean).join(", ")}` : null, x.delivery_location ? `Deliver to: ${x.delivery_location}` : null, x.notes].filter(Boolean).join("\n"),
       lines: x.lines.length ? x.lines.map((l) => {

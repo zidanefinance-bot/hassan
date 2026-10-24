@@ -82,7 +82,7 @@ function Detail({ id, onChanged }) {
 
       {x && (
         <div className="ai-result">
-          <div className="row-between"><b>{x.reader === "pdf-text" ? "📄" : "✨"} {x.summary}</b>{x.doc_type && <span className={`badge ${TYPE[x.doc_type][1]}`}>{TYPE[x.doc_type][0]}</span>}</div>
+          <div className="row-between"><b>{x.reader === "pdf-text" ? "📄" : x.reader === "email-text" ? "✉" : "✨"} {x.summary}</b>{x.request === "rfq" ? <span className="badge amber">RFQ · to quote</span> : x.doc_type && <span className={`badge ${TYPE[x.doc_type][1]}`}>{TYPE[x.doc_type][0]}</span>}</div>
           <dl className="kv small">
             <dt>{bill ? "Supplier" : "Customer"}</dt><dd>{x.party_name || "—"} {x.party_match_id ? <span className="badge green sm">= {x.party_match_name}</span> : x.party_name ? <span className="badge amber sm">new / not matched</span> : null}</dd>
             {x.reference && <><dt>{bill ? "Bill #" : "PO #"}</dt><dd>{x.reference}</dd></>}
@@ -100,7 +100,7 @@ function Detail({ id, onChanged }) {
               <thead><tr><th>On the paper</th><th>Our item</th><th className="r">Qty</th><th className="r">Rate</th></tr></thead>
               <tbody>{x.lines.map((l, i) => (
                 <tr key={i} className={l.match_confidence !== "high" ? "ai-check" : ""}>
-                  <td>{l.description}</td>
+                  <td>{l.description}{(l.requisition || l.their_code) && <div className="muted small">{[l.requisition && `PR ${l.requisition}`, l.their_code].filter(Boolean).join(" · ")}</div>}</td>
                   <td>{l.item_match_id ? <>{l.match_confidence === "high" ? "✓ " : "? "}{l.item_name}</> : <span className="ai-flag">not in items</span>}</td>
                   <td className="r">{num(l.qty)} {l.unit ? unitOf(l.unit) : ""}</td><td className="r">{l.rate != null ? money(l.rate) : "—"}</td>
                 </tr>
@@ -109,6 +109,7 @@ function Detail({ id, onChanged }) {
             </table>
           )}
           {x.notes && <p className="small"><b>Notes:</b> {x.notes}</p>}
+          {x.check && <p className="small form-error">⚠ {x.check}</p>}
         </div>
       )}
 
@@ -116,8 +117,13 @@ function Detail({ id, onChanged }) {
 
       <div className="actions wrap">
         {order && m.status !== "done" && can("sales.write") && <>
-          <button className="btn primary" onClick={() => nav(`/jobs/new?inbox=${m.id}`)}>Confirmed order → Create Job</button>
-          <button className="btn" onClick={() => nav(`/quotes/new?inbox=${m.id}`)}>Make a quote</button>
+          {x.request === "rfq" ? <>
+            <button className="btn primary" onClick={() => nav(`/quotes/new?inbox=${m.id}`)}>Make a quote</button>
+            <button className="btn" onClick={() => nav(`/jobs/new?inbox=${m.id}`)}>Already confirmed → Create Job</button>
+          </> : <>
+            <button className="btn primary" onClick={() => nav(`/jobs/new?inbox=${m.id}`)}>Confirmed order → Create Job</button>
+            <button className="btn" onClick={() => nav(`/quotes/new?inbox=${m.id}`)}>Make a quote</button>
+          </>}
         </>}
         {bill && m.status !== "done" && can("buy") && <button className="btn primary" onClick={() => nav(`/bills/new?inbox=${m.id}`)}>Create supplier bill</button>}
         {["ready", "error", "ignored"].includes(m.status) && <button className="btn ghost" onClick={() => act(() => api(`/inbox/${m.id}/read`, { method: "POST" }), "Reading again…")}>Read again</button>}

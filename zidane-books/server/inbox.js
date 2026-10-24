@@ -8,6 +8,7 @@ import { httpError } from "./books.js";
 import { aiReady, readPaperwork } from "./ai.js";
 import { parseOrderPdf } from "./poparse.js";
 import { completeDraft, rememberLines } from "./matching.js";
+import { isReminder, parseQueryEmail, plainSubject, senderDomain } from "./queryparse.js";
 import { notify, usersWith } from "./collab.js";
 import { createJob } from "./jobs.js";
 import { getSetting } from "./books.js";
@@ -36,10 +37,10 @@ const allowed = (user, row) => {
   return t.includes(row.doc_type);
 };
 
-export function addMessage(db, uploadDir, { source, message_id = null, from_addr = null, subject = null, body_text = "", received_at = null, files = [], created_by = null }) {
+export function addMessage(db, uploadDir, { source, message_id = null, from_addr = null, subject = null, body_text = "", body_html = null, received_at = null, files = [], created_by = null }) {
   if (message_id && db.prepare("SELECT 1 FROM inbox_messages WHERE message_id = ?").get(message_id)) return null;
-  const id = Number(db.prepare("INSERT INTO inbox_messages (source, message_id, from_addr, subject, body_text, received_at, created_by) VALUES (?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?)")
-    .run(source, message_id, from_addr, subject, body_text || "", received_at, created_by).lastInsertRowid);
+  const id = Number(db.prepare("INSERT INTO inbox_messages (source, message_id, from_addr, subject, body_text, body_html, received_at, created_by) VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?)")
+    .run(source, message_id, from_addr, subject, body_text || "", body_html ? String(body_html).slice(0, 500000) : null, received_at, created_by).lastInsertRowid);
   const dir = join(uploadDir, "inbox");
   mkdirSync(dir, { recursive: true });
   for (const f of files) {
@@ -74,6 +75,26 @@ export async function processMessage(db, uploadDir, id) {
       db.prepare("UPDATE inbox_files SET inbox_id = ? WHERE id = ?").run(nid, f.id);
       await processMessage(db, uploadDir, nid);
     }
+    // "RE: RFQ … REMINDER": the buyer chasing a query we already have. Not a new query; Sales hears they're waiting
+    if (!draft && m.source === "email" && isReminder(m.subject, m.body_text)) {
+      const domain = senderDomain(m.from_addr);
+      const first = db.prepare("SELECT id, status, subject, from_addr FROM inbox_messages WHERE id < ? AND received_at >= datetime(?, '-45 days') ORDER BY id DESC").all(id, m.received_at)
+        .find((o) => plainSubject(o.subject) === plainSubject(m.subject) && (!domain || senderDomain(o.from_addr) === domain));
+      if (first) {
+        db.prepare("UPDATE inbox_messages SET status = 'ignored', doc_type = 'customer_order', error = ? WHERE id = ?").run(`Reminder for an earlier query (#${first.id})`, id);
+        if (first.status !== "done") notify(db, [...usersWith(db, "sales.write"), ...usersWith(db, "admin")], { kind: "inbox", title: `Reminder: ${m.from_addr || "buyer"} is waiting for our quote`, body: m.subject || "", link: `/inbox?open=${first.id}` });
+        return;
+      }
+    }
+    // an RFQ typed into the email (their ERP's item table pasted in): read it without AI
+    if (!draft && ["email", "paste", "telegram"].includes(m.source)) {
+      const q = parseQueryEmail({ subject: m.subject, text: m.body_text, html: m.body_html, from: m.from_addr });
+      if (q) {
+        const domain = q.sender_domain;
+        const known = domain && db.prepare("SELECT id, name FROM contacts WHERE type = 'customer' AND active = 1 AND LOWER(email) LIKE ?").get(`%@${domain}`);
+        draft = known ? { ...q, party_match_id: known.id, party_name: known.name } : q;
+      }
+    }
     // emails that aren't orders (newsletters, ledgers, "inbox zero"…) are set aside quietly; a customer's query
     // without a readable PO goes to Sales to handle by hand while AI reading is off
     if (!draft && m.source === "email" && !reader.ready()) {
@@ -107,7 +128,7 @@ export async function processMessage(db, uploadDir, id) {
     if (status === "ready") {
       const who = x.doc_type === "customer_order" ? usersWith(db, "sales.write") : usersWith(db, "buy");
       // whoever sent it from Telegram hears back too; someone who pasted it in the app is already looking at it
-      notify(db, [...who, ...usersWith(db, "admin"), m.source === "telegram" ? m.created_by : null], { kind: "inbox", title: `${x.doc_type === "customer_order" ? "New order" : "Supplier bill"}${x.reader === "ai" ? " read by AI" : ""}: ${x.party_name || m.from_addr || "unknown sender"}`, body: x.summary, link: `/inbox?open=${id}`, actor: m.source === "telegram" ? null : m.created_by });
+      notify(db, [...who, ...usersWith(db, "admin"), m.source === "telegram" ? m.created_by : null], { kind: "inbox", title: `${x.request === "rfq" ? "New RFQ to quote" : x.doc_type === "customer_order" ? "New order" : "Supplier bill"}${x.reader === "ai" ? " read by AI" : ""}: ${x.party_name || m.from_addr || "unknown sender"}`, body: x.summary, link: `/inbox?open=${id}`, actor: m.source === "telegram" ? null : m.created_by });
     }
   } catch (e) {
     db.prepare("UPDATE inbox_messages SET status = 'error', error = ? WHERE id = ?").run(String(e.message || e).slice(0, 500), id);
@@ -248,7 +269,7 @@ export async function fetchMail(db, uploadDir) {
       if (fromAddr && process.env.IMAP_USER && fromAddr.toLowerCase() === process.env.IMAP_USER.toLowerCase()) continue; // our own sent mail
       const id = addMessage(db, uploadDir, {
         source: "email", message_id: messageId, from_addr: mail.from?.text || fromAddr, subject: mail.subject || "",
-        body_text: (mail.text || "").slice(0, 100000), received_at: (mail.date || new Date()).toISOString().replace("T", " ").slice(0, 19),
+        body_text: (mail.text || "").slice(0, 100000), body_html: typeof mail.html === "string" ? mail.html : null, received_at: (mail.date || new Date()).toISOString().replace("T", " ").slice(0, 19),
         files: (mail.attachments || []).map((a) => ({ filename: a.filename || "attachment", mime: a.contentType, buffer: a.content })),
       });
       if (id) { added++; enqueue(db, uploadDir, id); }
