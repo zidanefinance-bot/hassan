@@ -37,6 +37,15 @@ test("RFQ tables typed into an email are read line by line", () => {
   const h = parseQueryEmail({ subject: "RFQ", text: "Please quote", html: "<table><tr><td>Item Description</td><td>UOM</td><td>Qty</td></tr><tr><td><b>HOLE SAW &amp; BITS</b></td><td>Pieces</td><td>3</td></tr></table>", from: FROM });
   assert.deepEqual(h.lines.map((l) => [l.description, l.qty]), [["HOLE SAW & BITS", 3]]);
 
+  // pictures of the items above the table ([cid:…]) don't end the email; their date / requester cells are skipped
+  const pics = "Need best and least rate\nPls find the attached Picture\n\nHEADSET WITH MIC\n\n[cid:image001.png@01]\n\nINTERNAL SPEAKERS\n[cid:image006.png@01][cid:image007.png@01]\n\n243\n510-00053409-00000-01-000-000\nAMPLIFIER 2500 WATTS\nPieces\n1\n27-Oct-2026\nRequester Name\n243\n410-00013394-00000-01-000-000\nSPEAKER WIRE 2.5 mm 2 core\nMeter\n2000\n27-Oct-2026\nRequester Name\n\nDisclaimer: confidential";
+  assert.deepEqual(parseQueryEmail({ subject: "FW: 243 RFQ against Picture", text: pics, from: FROM }).lines.map((l) => [l.description, l.unit, l.qty, l.requisition]), [["AMPLIFIER 2500 WATTS", "Pieces", 1, "243"], ["SPEAKER WIRE 2.5 mm 2 core", "Meter", 2000, "243"]]);
+  // a forward: the table is under "From: … Sent: …"
+  assert.equal(parseQueryEmail({ subject: "FW: RFQ", text: `Please see below\n\nFrom: Buyer One\nSent: Monday\nSubject: RFQ\n\n${WITH_HEADER}`, from: FROM }).lines.length, 2);
+  // a row's cells on one line, split by tabs; a table with no unit column
+  assert.deepEqual(parseQueryEmail({ subject: "RFQ", text: "Please quote\nRequisition\tItem Description\tUOM\tQuantity\n77\tA4 PAPER 80GSM\tReam\t50", from: FROM }).lines.map((l) => [l.description, l.qty]), [["A4 PAPER 80GSM", 50]]);
+  assert.deepEqual(parseQueryEmail({ subject: "RFQ", text: "Please quote\nS.No\nDescription\nQty\n1\nTISSUE BOX\n100\n2\nHAND WASH 500ML\n40\nRegards", from: FROM }).lines.map((l) => [l.description, l.qty]), [["TISSUE BOX", 100], ["HAND WASH 500ML", 40]]);
+
   // a PO typed into the email keeps its PO number; ordinary emails are not orders
   assert.equal(parseQueryEmail({ subject: "Delivery required PO# 24099", text: WITH_HEADER.replace("Please quote your best rates.", "Please deliver."), from: FROM }).reference, "24099");
   assert.equal(parseQueryEmail({ subject: "Meeting", text: "Can we meet on Monday at 3?\nThanks", from: FROM }), null);

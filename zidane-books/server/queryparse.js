@@ -3,7 +3,7 @@
 // the requisition is sometimes only on the first row). In the email's text every cell is its own line, and in all
 // of them the item's name comes right before its unit, which comes right before the quantity. That is what we read.
 
-const UNIT = /^(pcs?|pieces?|piece|nos?|numbers?|set|sets|packets?|pkts?|packs?|box(es)?|kgs?|kilograms?|grams?|gms?|ltrs?|litres?|liters?|ml|bottles?|dozens?|doz|pairs?|rolls?|meters?|metres?|mtrs?|ft|feet|each|ea|cartons?|ctns?|bags?|cans?|reams?|gallons?|tins?|sheets?|units?|lots?|bundles?|coils?|tubes?|jars?|sacks?|bunch|cylinders?|drums?|pouch(es)?|strips?|vials?|tablets?)$/i;
+const UNIT = /^(pcs?|pieces?|piece|nos?|numbers?|no|set|sets|packets?|pkts?|pk|packs?|box(es)?|kgs?|kilograms?|grams?|gms?|gm|ltrs?|litres?|liters?|ml|bottles?|dozens?|doz|dzn|pairs?|prs?|rolls?|meters?|metres?|mtrs?|mtr|m|ft|feet|sq\.? ?ft|sqft|rft|r\.ft|yards?|yds?|lbs?|pounds?|each|ea|cartons?|ctns?|bags?|cans?|reams?|gallons?|gals?|tins?|sheets?|units?|lots?|bundles?|bdls?|coils?|tubes?|jars?|sacks?|bunch|cylinders?|drums?|pouch(es)?|strips?|vials?|tablets?|jobs?|lengths?|blocks?|cases?|trays?)\.?$/i;
 const NUMBER = /^\d{1,3}(,\d{3})*(\.\d+)?$|^\d+(\.\d+)?$/;
 const CODE = /^\d{2,4}(-\d{2,}){2,}$/; // 510-00001878-00000-01-000-000
 const HEADER = /^(s\.?\s?no\.?|sr\.?\s?#?|#|item|items|item code|code|requisition|req(uisition)?\.?\s?#?|pr\s?#?|item description|description|particulars|product|material|uom|unit|units|qty|quantity|qty\.|rate|price|amount|remarks?|operating unit|brand|specs?|specification)$/i;
@@ -22,17 +22,32 @@ export function htmlLines(html) {
     .split("\n");
 }
 
-// a reply's quoted earlier email starts here; only the newest part is read
+// a reply's / forward's earlier email starts here
 const QUOTED = /^(from:\s|-----original message|on .{6,80} wrote:$|_{8,})/i;
 
-export function readQueryLines(rawLines) {
-  const lines = [];
+// the email's lines: pictures ([cid:…]) dropped, cells that arrive on one line split by tabs, the footer cut off
+function cleanLines(rawLines) {
+  const out = [];
   for (const raw of rawLines) {
-    const t = raw.replace(/\s+/g, " ").trim();
-    if (!t) continue;
-    if (lines.length && (QUOTED.test(t) || /^\[cid:|^disclaimer/i.test(t))) break;
-    lines.push(t);
+    for (const cell of String(raw).replace(/\[cid:[^\]]*\]/gi, " ").split(/\t+/)) {
+      const t = cell.replace(/\s+/g, " ").trim();
+      if (!t) continue;
+      if (/^disclaimer\b/i.test(t)) return out;
+      out.push(t);
+    }
   }
+  return out;
+}
+
+export function readQueryLines(rawLines) {
+  const all = cleanLines(rawLines);
+  // the newest part first (a reply above a quoted email); if it has no items (a forward, "please see below"), all of it
+  const cut = all.findIndex((t, i) => i > 0 && QUOTED.test(t));
+  const first = cut > 0 ? readItems(all.slice(0, cut)) : null;
+  return first && first.items.length ? first : readItems(all);
+}
+
+function readItems(lines) {
   const items = [];
   const notes = [];
   const refs = new Set();
@@ -41,7 +56,7 @@ export function readQueryLines(rawLines) {
     if (NOTE.test(lines[i]) && lines[i].length < 300) notes.push(lines[i].replace(/[\s.]+$/, ""));
     if (!UNIT.test(lines[i]) || !NUMBER.test(lines[i + 1])) continue;
     const desc = lines[i - 1];
-    if (!/[a-z]/i.test(desc) || HEADER.test(desc) || UNIT.test(desc) || desc.length > 250) continue;
+    if (!/[a-z]/i.test(desc) || HEADER.test(desc) || UNIT.test(desc) || desc.length > 400) continue;
     const qty = num(lines[i + 1]);
     if (!(qty > 0)) continue;
     // cells before the name on this row: their requisition number and item code
@@ -54,7 +69,27 @@ export function readQueryLines(rawLines) {
     from = i + 2;
     i += 1;
   }
+  if (!items.length) return { ...byHeader(lines), notes, refs: [...refs] };
   return { items, notes, refs: [...refs] };
+}
+
+// a table without a unit column (Description | Qty, S.No | Item | Qty …): read it row by row under its header
+function byHeader(lines) {
+  const start = lines.findIndex((t, i) => HEADER.test(t) && HEADER.test(lines[i + 1] || ""));
+  if (start < 0) return { items: [] };
+  let n = 0;
+  while (HEADER.test(lines[start + n] || "")) n++;
+  const head = lines.slice(start, start + n).map((h) => h.toLowerCase());
+  const col = (re) => head.findIndex((h) => re.test(h));
+  const q = col(/^(qty|quantity|qty\.)$/), d = col(/descr|particular|product|material|^items?$/), u = col(/^(uom|units?)$/);
+  if (q < 0 || d < 0) return { items: [] };
+  const items = [];
+  for (let i = start + n; i + n <= lines.length; i += n) {
+    const row = lines.slice(i, i + n);
+    if (!NUMBER.test(row[q]) || !/[a-z]/i.test(row[d])) break;
+    items.push({ description: row[d], qty: num(row[q]), unit: u >= 0 ? row[u] : null, code: null, requisition: null });
+  }
+  return { items };
 }
 
 const FREE_MAIL = /@(gmail|yahoo|hotmail|outlook|live|icloud|aol|proton(mail)?|ymail)\./i;
