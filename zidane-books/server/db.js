@@ -1,5 +1,6 @@
 // SQLite storage (Node's built-in node:sqlite, no native deps). One file: data/zidane-books.db
 import { DatabaseSync } from "node:sqlite";
+import { setupGuard } from "./guard.js";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { setupAccounts } from "./ledger.js";
@@ -29,6 +30,7 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   }
   if (!hadCategories) tidyItems(db);
   setupRation(db); // ration kits, bags on Jobs and documents, packing progress
+  setupGuard(db); // delete requests waiting for a director
   setupAccounts(db); // Chart of Accounts, and "paid through" on money records made before it
   // "delivered" only comes from a signed DC: a Job whose signed DC was removed earlier steps back
   db.prepare(`UPDATE jobs SET ops_status = CASE WHEN EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'issued') THEN 'dispatched' ELSE 'material_ready' END

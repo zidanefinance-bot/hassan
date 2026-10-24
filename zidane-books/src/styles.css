@@ -527,3 +527,12 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .points { margin: 10px 0 4px; }
 .points-head { display: flex; justify-content: space-between; align-items: center; }
 .points input { width: 100%; }
+
+/* activity & approvals */
+.activity { list-style: none; margin: 0 0 8px; padding: 0; }
+.activity li { padding: 8px 0 8px 12px; border-left: 2px solid var(--line); margin-left: 4px; }
+.activity li.reason { border-left-color: #e8891c; }
+.activity .why, td.why { color: #8a4b00; background: #fff6e8; border-radius: 6px; padding: 2px 8px; display: inline-block; margin: 2px 0; }
+.notice-pop { position: fixed; z-index: 3000; left: 50%; top: 18px; transform: translateX(-50%); background: #1d2433; color: #fff; padding: 12px 20px; border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.25); font-weight: 600; max-width: calc(100vw - 32px); }
+.inline-form { display: inline-flex; gap: 6px; align-items: center; }
+.inline-form input { width: 180px; }

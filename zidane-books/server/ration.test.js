@@ -87,7 +87,7 @@ test("ration API: Operations packs and sees no selling rates; Sales makes the qu
   const login = async (email, password = "demo1234") => {
     const r = await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
     const cookie = r.headers.get("set-cookie").split(";")[0];
-    return (path, opts = {}) => fetch(`${base}${path}`, { ...opts, headers: { "content-type": "application/json", cookie } });
+    return (path, opts = {}) => fetch(`${base}${path}`, { ...opts, headers: { "content-type": "application/json", "x-reason": "test", cookie } });
   };
   try {
     const [sales, ops] = [await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk")];

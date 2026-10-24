@@ -24,6 +24,7 @@ import { documentPdf } from "./pdf.js";
 import * as AS from "./assistant.js";
 import * as L from "./ledger.js";
 import * as RA from "./ration.js";
+import * as GD from "./guard.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -96,6 +97,28 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (/^PUT/.test(route) && !["draft", "enquiry"].includes(db.prepare("SELECT status FROM documents WHERE id = ?").get(Number(req.path.split("/")[2]))?.status)) return next(httpError(403, "API keys can only change drafts"));
     B.log(db, req.user.id, "API", req.viaApi === "assistant" ? "assistant" : "api", req.viaApi === "assistant" ? null : req.viaApi, route);
     next();
+  });
+  // before a delete request is sent for approval: would the delete be allowed at all? (who may touch it, hard rules)
+  const DELETE_PERMS = { payment: ["money"], refund: ["money"], allocation: ["money"], journal: ["money"], item: ["items.write"], packing: ["ops.write"], expense: ["expenses", "ops.write", "money"], account: ["money"] };
+  const deletePrecheck = (req, kind, rid) => {
+    if (DELETE_PERMS[kind]) need(req.user, DELETE_PERMS[kind]);
+    if (kind !== "document") return;
+    const d = db.prepare("SELECT * FROM documents WHERE id = ?").get(rid);
+    need(req.user, DOC_WRITE[d.kind] || ["admin"]);
+    if (d.kind === "quote" && d.status === "converted") throw httpError(400, "This quote is already a Job");
+    if (B.paidAmount(db, d.id) > 0) throw httpError(400, "This document has payments applied. Unapply them first.");
+    if (B.creditUsed(db, d.id) > 0) throw httpError(400, "This credit has been applied or refunded. Undo that first.");
+    if (d.kind === "dc") J.checkDcRemoval(db, d);
+  };
+  api.use(GD.guardMiddleware(db, deletePrecheck)); // a reason for edits and deletes; non-directors' deletes wait for approval
+  api.get("/activity", (req, res) => {
+    if (req.query.entity) return res.json(GD.recordActivity(db, req.user, String(req.query.entity), Number(req.query.id)));
+    need(req.user, "admin"); res.json(GD.allActivity(db, req.query));
+  });
+  api.get("/delete-requests", (req, res) => res.json(GD.deleteRequests(db, req.user)));
+  api.post("/delete-requests/:id/reject", requirePerm("admin"), (req, res) => {
+    if (!GD.rejectRequest(db, req.user, id(req), req.body?.note)) throw httpError(409, "This request was already handled");
+    res.json({ ok: true });
   });
   api.get("/auth/me", (req, res) => res.json({ ...req.user, role_label: ROLE_LABELS[req.user.role], perms: ROLES[req.user.role] }));
   api.post("/auth/password", (req, res) => {

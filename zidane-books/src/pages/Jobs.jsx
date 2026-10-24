@@ -8,6 +8,7 @@ import { ContactForm } from "./Contacts.jsx";
 import { ItemForm } from "./Items.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
+import Activity from "../components/Activity.jsx";
 import Picker from "../components/Picker.jsx";
 import { contactOptions, itemOptions } from "./DocumentForm.jsx";
 import { cleanLine, guessCategory, learnedLines, missingLines, partyPreset, unitOf } from "../components/draftLines.js";
@@ -267,7 +268,7 @@ export function JobView() {
             {can("ops.write") && j.ops_status === "dispatched" && !j.documents.some((d) => d.kind === "dc" && ["issued", "signed"].includes(d.status)) && <button className="btn ghost" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: "material_ready" } }), "Moved back to material ready")}>Not dispatched yet</button>}
             {can("ops.write") && nextOps && step >= 4 && nextOps !== "delivered" && <button className="btn" onClick={() => act(() => api(`/jobs/${id}/ops-status`, { method: "POST", body: { status: nextOps } }), `Marked ${label(nextOps)}`)}>Mark {label(nextOps)}</button>}
             {can("sales.write") && !j.closed && <Link className="btn ghost" to={`/jobs/${id}/edit`}>Edit Job</Link>}
-            {can("admin") && !j.documents.length && !j.expenses?.length && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${j.number}? Use this for a Job made twice by mistake.`) && await act(() => api(`/jobs/${id}`, { method: "DELETE" }), "Job deleted")) nav("/jobs"); }}>Delete Job</button>}
+            {(can("admin") || can("sales.write")) && !j.documents.length && !j.expenses?.length && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${j.number}? Use this for a Job made twice by mistake.`) && await act(() => api(`/jobs/${id}`, { method: "DELETE" }), "Job deleted")) nav("/jobs"); }}>Delete Job</button>}
             {can("buy") && <Link className="btn" to={`/bills/new?job=${id}`}>+ Supplier bill</Link>}
             {can("buy") && <button className="btn" onClick={() => setCost(true)}>+ Freight / direct cost</button>}
             {can("sales.write") && !j.closed && canDeliver && <button className="btn primary" onClick={() => setDeliver(true)}>{step >= 4 ? "Material arrived" : "Send what's in hand"} → DC + invoice</button>}
@@ -344,6 +345,7 @@ export function JobView() {
           )}
           <Attachments entity="job" id={j.id} labels={["Customer PO", "Delivery photo", "Supplier quotation", "Other evidence"]} />
           <Comments entity="job" id={j.id} />
+          <Activity entity="job" id={j.id} />
           {deliver && <DeliverModal job={j} onClose={() => setDeliver(false)} onDone={() => { setDeliver(false); state.reload(); }} />}
           {cost && <JobCost job={j} settings={settings.data} onClose={() => setCost(false)} onSaved={() => { setCost(false); toast("Cost added to Job"); state.reload(); }} />}
         </>

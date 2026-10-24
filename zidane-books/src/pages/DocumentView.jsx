@@ -5,6 +5,7 @@ import AccountSelect from "../components/AccountSelect.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
+import Activity from "../components/Activity.jsx";
 
 const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.write"], credit_note: ["sales.write"], po: ["ops.write", "buy"], bill: ["ops.write", "buy"], vendor_credit: ["ops.write"] };
 const ATTACH_LABELS = { quote: ["Customer enquiry", "Customer PO"], invoice: ["Customer PO", "Submission receipt"], dc: ["Signed DC", "Gate pass"], credit_note: ["Return note"], po: ["Supplier quotation"], bill: ["Supplier bill photo", "Delivery note"], vendor_credit: ["Return note"] };
@@ -200,7 +201,7 @@ export default function DocumentView({ kind }) {
             {writer && !["draft", "void", "enquiry"].includes(d.status) && <button className="btn" onClick={() => setModal("email")}>Email</button>}
             {phone && <a className="btn wa-btn" href={`https://wa.me/${phone}?text=${encodeURIComponent(waText(d, company))}`} target="_blank" rel="noreferrer">WhatsApp</a>}
             {writer && ["open", "issued"].includes(d.status) && !(d.paid > 0) && (!d.verified_at || can("admin")) && ["invoice", "bill", "dc", "credit_note", "vendor_credit"].includes(kind) && (!isCredit || d.balance === undefined || d.balance === d.total) && <button className="btn ghost danger" onClick={() => confirm(`Void ${d.number}?${isDc || kind === "bill" ? " Stock will be reversed." : ""}`) && post("/status", { status: "void" }, "Voided")}>Void</button>}
-            {writer && !(d.paid > 0) && d.status !== "converted" && d.status !== "billed" && ((!d.verified_at && d.status !== "signed") || can("admin")) && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${d.number}?`)) { await act(() => api(`/documents/${id}`, { method: "DELETE" }), "Deleted"); nav(`/${K.path}`); } }}>Delete</button>}
+            {writer && !(d.paid > 0) && d.status !== "converted" && d.status !== "billed" && ((!d.verified_at && d.status !== "signed") || can("admin")) && <button className="btn ghost danger" onClick={async () => { if (confirm(`Delete ${d.number}?`)) { if (await act(() => api(`/documents/${id}`, { method: "DELETE" }), "Deleted")) nav(`/${K.path}`); } }}>Delete</button>}
           </PageHead>
           {d.credit_status?.over && <div className="form-error no-print">Over credit limit: customer owes {money(d.credit_status.owed)}, limit {money(d.credit_status.limit)}. Only a director can issue this invoice.</div>}
           <p className="muted links">
@@ -300,6 +301,7 @@ export default function DocumentView({ kind }) {
           )}
           <Attachments entity="document" id={d.id} labels={ATTACH_LABELS[kind] || []} />
           <Comments entity="document" id={d.id} />
+          <Activity entity="document" id={d.id} />
           {modal === "refund" && <RefundModal source={{ credit_id: d.id }} number={d.number} unused={d.balance} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Refund recorded"); state.reload(); }} />}
           {modal === "credits" && <ApplyCreditsModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
           {modal === "email" && <EmailModal doc={d} onClose={() => setModal(null)} onSent={(r) => { setModal(null); toast(`Emailed to ${r.to}`); state.reload(); }} />}

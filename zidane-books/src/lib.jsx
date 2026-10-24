@@ -1,15 +1,61 @@
 // Shared helpers: API client, formatting, auth context and small UI pieces.
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-export async function api(path, { method = "GET", body } = {}) {
-  const res = await fetch(`/api${path}`, { method, headers: body ? { "content-type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin" });
-  const data = await res.json().catch(() => ({}));
+export async function api(path, { method = "GET", body, headers = {} } = {}) {
+  const send = (extra = {}) => fetch(`/api${path}`, { method, headers: { ...(body ? { "content-type": "application/json" } : {}), ...headers, ...extra }, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin" });
+  let res = await send();
+  let data = await res.json().catch(() => ({}));
+  // editing or deleting a record asks why; the answer goes with the request and into the record's activity
+  if (res.status === 428 && data.code === "reason_required") {
+    const reason = await askReason(data);
+    if (!reason) { const err = new Error("Not done: a reason is needed"); err.cancelled = true; quiet.add(err.message); throw err; }
+    res = await send({ "x-reason": encodeURIComponent(reason) });
+    data = await res.json().catch(() => ({}));
+  }
+  if (res.status === 202 && data.pending) {
+    notice(data.message || "Sent to the Director for approval.");
+    const err = new Error(data.message || "Sent to the Director for approval"); err.pending = true; quiet.add(err.message); throw err;
+  }
   if (!res.ok) {
     const err = new Error(data.error || `Request failed (${res.status})`);
     err.status = res.status;
     throw err;
   }
+  if (method !== "GET") window.dispatchEvent(new Event("zb:changed"));
   return data;
+}
+
+// messages api() already showed (or that need no toast): a page's error toast skips them
+const quiet = new Set();
+
+// A small "why?" box, drawn outside React so any api() call can ask it
+function askReason({ action, what }) {
+  return new Promise((resolve) => {
+    const bg = document.createElement("div");
+    bg.className = "modal-bg";
+    bg.innerHTML = `<div class="modal" role="dialog"><div class="modal-head"><h2></h2><button class="icon-btn" aria-label="Close">×</button></div>
+      <form class="form"><p class="muted"></p><label class="field"><span>Reason *</span><textarea rows="3" required placeholder="e.g. customer changed the quantity / entered twice by mistake"></textarea></label>
+      <div class="form-actions"><button type="button" class="btn ghost">Cancel</button><button class="btn primary"></button></div></form></div>`;
+    bg.querySelector("h2").textContent = action === "delete" ? "Why delete this?" : "Why the change?";
+    bg.querySelector("p").textContent = `${what}${action === "delete" ? " · the Director can see the reason" : " · saved in its activity"}`;
+    bg.querySelector(".btn.primary").textContent = action === "delete" ? "Delete" : "Save";
+    const ta = bg.querySelector("textarea");
+    const done = (v) => { bg.remove(); document.removeEventListener("keydown", esc); resolve(v); };
+    const esc = (e) => e.key === "Escape" && done(null);
+    document.addEventListener("keydown", esc);
+    bg.querySelector(".icon-btn").onclick = bg.querySelector(".btn.ghost").onclick = () => done(null);
+    bg.querySelector("form").onsubmit = (e) => { e.preventDefault(); const v = ta.value.trim(); if (v) done(v); };
+    document.body.appendChild(bg);
+    ta.focus();
+  });
+}
+
+function notice(text) {
+  const n = document.createElement("div");
+  n.className = "notice-pop";
+  n.textContent = "⏳ " + text;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 6000);
 }
 
 const pkr = new Intl.NumberFormat("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -60,6 +106,7 @@ const ToastCtx = createContext(() => {});
 export function ToastProvider({ children }) {
   const [items, setItems] = useState([]);
   const push = useCallback((msg, kind = "ok") => {
+    if (kind !== "ok" && quiet.delete(msg)) return;
     const id = Math.random();
     setItems((t) => [...t, { id, msg, kind }]);
     setTimeout(() => setItems((t) => t.filter((x) => x.id !== id)), 3500);

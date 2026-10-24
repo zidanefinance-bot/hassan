@@ -128,7 +128,7 @@ test("API: role boundaries are enforced on the server", async () => {
     const r = await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
     assert.equal(r.status, 200, email);
     const cookie = r.headers.get("set-cookie").split(";")[0];
-    return (path, opts = {}) => fetch(`${base}${path}`, { ...opts, headers: { "content-type": "application/json", cookie } });
+    return (path, opts = {}) => fetch(`${base}${path}`, { ...opts, headers: { "content-type": "application/json", "x-reason": "test", cookie } });
   };
   try {
     assert.equal((await fetch(`${base}/items`)).status, 401);
@@ -284,7 +284,7 @@ test("API: attachments, credit-limit approval, backup and health", async () => {
   const login = async (email, password) => {
     const r = await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
     const cookie = r.headers.get("set-cookie").split(";")[0];
-    return (path, opts = {}) => fetch(`${base}${path}`, { ...opts, headers: { "content-type": "application/json", cookie } });
+    return (path, opts = {}) => fetch(`${base}${path}`, { ...opts, headers: { "content-type": "application/json", "x-reason": "test", cookie } });
   };
   try {
     assert.equal((await fetch(`${base}/health`)).status, 200, "health needs no login");
@@ -342,7 +342,7 @@ test("API: comments, @mentions and notifications respect who can see a record", 
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
   const call = async (ck, path, body) => {
-    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json", "x-reason": "test" }, body: body ? JSON.stringify(body) : undefined });
     return { status: r.status, body: await r.json() };
   };
   try {
@@ -438,7 +438,7 @@ test("API: orders inbox → AI draft → Job; material arrived → DC + invoice 
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
   const call = async (ck, path, body) => {
-    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json", "x-reason": "test" }, body: body ? JSON.stringify(body) : undefined });
     const t = await r.text();
     return { status: r.status, body: t.startsWith("{") || t.startsWith("[") ? JSON.parse(t) : t, type: r.headers.get("content-type") };
   };
@@ -575,7 +575,7 @@ test("push alerts: devices subscribe, notifications are pushed, dead subscriptio
   const server = createApp(db).listen(0);
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const ck = (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "sales@zidane.com.pk", password: "demo1234" }) })).headers.get("set-cookie").split(";")[0];
-  const call = async (path, body) => { const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json() }; };
+  const call = async (path, body) => { const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json", "x-reason": "test" }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json() }; };
   try {
     const key = (await call("/push/key")).body.key;
     assert.ok(key.length > 60, "public VAPID key is served");
@@ -649,7 +649,7 @@ test("audit fixes: role leaks and workflow holes stay closed", async () => {
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
   const call = async (ck, method, path, body) => {
-    const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json", "x-reason": "test" }, body: body ? JSON.stringify(body) : undefined });
     return { status: r.status, body: await r.json() };
   };
   const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -807,7 +807,7 @@ test("customer ERP PDFs are read without AI, and line matches are learned per cu
   const server = createApp(db, { uploadDir: mkdtempSync(join(tmpdir(), "zb-po-")) }).listen(0);
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const ck = (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "sales@zidane.com.pk", password: "demo1234" }) })).headers.get("set-cookie").split(";")[0];
-  const call = async (method, path, body) => (await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined })).json();
+  const call = async (method, path, body) => (await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json", "x-reason": "test" }, body: body ? JSON.stringify(body) : undefined })).json();
   try {
     // first PO: new customer, new items; the person adds them and creates the Job
     const tex = (await call("POST", "/contacts", { type: "customer", name: "Texmark (Pvt) Ltd" })).id;
@@ -939,7 +939,7 @@ test("QA round: buying, delivering and invoicing follow the real paperwork", asy
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
   const call = async (ck, method, path, body) => {
-    const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json", "x-reason": "test" }, body: body ? JSON.stringify(body) : undefined });
     return { status: r.status, body: await r.json() };
   };
   const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -992,7 +992,8 @@ test("QA round: buying, delivering and invoicing follow the real paperwork", asy
     assert.ok(invView.related.some((r) => r.id === dc && r.kind === "dc"));
     assert.ok(!invView.related.some((r) => r.kind === "bill"), "Sales doesn't see the supplier bills of the Job");
     // an issued invoice is voided, not deleted (unless a director does it)
-    assert.equal((await call(sales, "DELETE", `/documents/${inv}`)).status, 400);
+    assert.equal((await call(sales, "DELETE", `/documents/${inv}`)).status, 202, "Sales can only ask a director to delete it");
+    assert.ok(db.prepare("SELECT 1 FROM documents WHERE id = ?").get(inv), "still there until a director approves");
     // correcting the Job: what's billed / delivered / invoiced holds; other lines can change or go
     const items = db.prepare("SELECT * FROM job_items WHERE job_id = ? ORDER BY id").all(job);
     const put = (lines) => call(sales, "PUT", `/jobs/${job}`, { items: lines });
@@ -1175,7 +1176,7 @@ test("one supplier bill for two Jobs, and one cost shared by two Jobs: each Job 
   const server = createApp(db).listen(0);
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
-  const call = async (ck, method, path, body) => { const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json() }; };
+  const call = async (ck, method, path, body) => { const r = await fetch(base + path, { method, headers: { cookie: ck, "content-type": "application/json", "x-reason": "test" }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json() }; };
   try {
     const [sales, pur] = [await login("sales@zidane.com.pk"), await login("purchaser@zidane.com.pk")];
     void director;

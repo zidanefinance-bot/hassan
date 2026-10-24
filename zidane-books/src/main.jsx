@@ -11,6 +11,7 @@ import Procurement from "./pages/Procurement.jsx";
 import Contacts, { ContactView } from "./pages/Contacts.jsx";
 import Items, { ItemView } from "./pages/Items.jsx";
 import Documents from "./pages/Documents.jsx";
+import ActivityLog from "./pages/ActivityLog.jsx";
 import DocumentForm from "./pages/DocumentForm.jsx";
 import DocumentView from "./pages/DocumentView.jsx";
 import Payments, { PaymentView, RecordPayment } from "./pages/Payments.jsx";
@@ -52,9 +53,11 @@ const NAV = [
   { to: "/journals", label: "Journal & Transfers", icon: "⇄", any: ["reports.finance"] },
   { group: "Business", any: ["reports.finance", "sales.read", "admin"] },
   { to: "/reports", label: "Reports", icon: "▲", any: ["reports.finance", "sales.read"] },
+  { to: "/activity", label: "Approvals & activity", icon: "✔", any: ["admin"] },
   { to: "/settings", label: "Settings", icon: "⚙", any: ["admin"] },
   { group: "You" },
   { to: "/account", label: "My account & app", icon: "☻" },
+  { to: "/activity", label: "My delete requests", icon: "✔", none: ["admin"] },
 ];
 
 function Shell() {
@@ -73,7 +76,7 @@ function Shell() {
       <aside className="sidebar" onClick={() => setOpen(false)}>
         <div className="brand"><img src="/logo-white.svg" alt="Zidane" /><span>Books</span></div>
         <nav>
-          {NAV.filter((n) => !n.any || n.any.some(can)).map((n, i) =>
+          {NAV.filter((n) => (!n.any || n.any.some(can)) && !(n.none || []).some(can)).map((n, i) =>
             n.group ? <div key={i} className="nav-group">{n.group}</div>
               : <NavLink key={n.to} to={n.to} end={n.end}><span className="nav-icon">{n.icon}</span>{n.label}</NavLink>)}
         </nav>
@@ -117,6 +120,7 @@ function Shell() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/ration-kits" element={<Kits />} />
+            <Route path="/activity" element={<ActivityLog />} />
             <Route path="/accounts/:id" element={<AccountLedger />} />
             <Route path="/journals" element={<Journals />} />
             <Route path="/settings" element={<Settings />} />
