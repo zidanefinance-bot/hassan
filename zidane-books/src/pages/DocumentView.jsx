@@ -98,7 +98,7 @@ function waText(d, company) {
   const lines = bag
     ? `${bag.kit_name}: ${num(bag.bags)} bags${isDc ? "" : ` × ${money(bag.rate_per_bag)} = ${money(bag.amount)}`}\nEach bag contains:\n${bag.contents.map((l) => `• ${l.item_name || l.description} × ${num(l.per_bag)}${isDc || !bag.item_rates ? ` ${l.unit || ""}` : ` @ ${money(l.rate)}`}`).join("\n")}`
     : d.lines.map((l) => `• ${l.item_name || l.description} × ${num(l.qty)}${isDc ? ` ${l.unit || ""}` : ` = ${money(l.amount)}`}`).join("\n");
-  const head = `Assalam o Alaikum ${d.contact.name},\n\n${KIND[d.kind].label} ${d.number} from ${company.name}\nDate: ${fmtDate(d.date)}${d.due_date ? `\nDue: ${fmtDate(d.due_date)}` : ""}${d.job?.customer_po_number ? `\nYour PO: ${d.job.customer_po_number}` : ""}`;
+  const head = `Assalam o Alaikum ${d.contact.name},\n\n${KIND[d.kind].label} ${d.number} from ${company.name}\nDate: ${fmtDate(d.date)}${d.due_date ? `\nDue: ${fmtDate(d.due_date)}` : ""}${d.job?.customer_po_number ? `\nYour PO: ${d.job.customer_po_number}` : ""}${d.linked_numbers?.length ? `\n${d.kind === "dc" ? "Invoice" : "DC"}: ${d.linked_numbers.join(", ")}` : ""}`;
   const tail = isDc ? "" : `\n\nTotal: ${money(d.total)}${d.paid ? `\nPaid: ${money(d.paid)}\nBalance: ${money(d.balance)}` : ""}`;
   return `${head}\n\n${lines}${tail}\n\n${company.phone} · ${company.website}`;
 }
@@ -218,7 +218,7 @@ export default function DocumentView({ kind }) {
             <header className="paper-head">
               <div><img src="/logo.svg" alt="" className="paper-logo" /><div className="muted small">{company.address}<br />{company.phone} · {company.email}{company.ntn && <><br />NTN {company.ntn}{company.strn && ` · STRN ${company.strn}`}</>}</div></div>
               <div className="r"><h2>{(kind === "quote" && d.status === "enquiry" ? "Enquiry" : K.label).toUpperCase()}</h2><b>{d.number}</b>
-                <div className="muted small">Date: {fmtDate(d.date)}{d.due_date && <><br />Due: {fmtDate(d.due_date)}</>}{d.reference && d.reference !== d.job?.customer_po_number && <><br />Ref: {d.reference}</>}{d.job?.customer_po_number && <><br />Customer PO: {d.job.customer_po_number}</>}</div></div>
+                <div className="muted small">Date: {fmtDate(d.date)}{d.due_date && <><br />Due: {fmtDate(d.due_date)}</>}{d.reference && d.reference !== d.job?.customer_po_number && <><br />Ref: {d.reference}</>}{d.job?.customer_po_number && <><br />Customer PO: {d.job.customer_po_number}</>}{d.linked_numbers?.length > 0 && <><br />{kind === "dc" ? "Invoice" : "DC"}: {d.linked_numbers.join(", ")}</>}</div></div>
             </header>
             <div className="paper-to"><small className="muted">{K.contact === "customer" ? (isDc ? "Deliver to" : "Bill to") : "Supplier"}</small><b>{d.contact.name}</b>
               <div className="muted small">{d.contact.company}{(d.deliver_to || d.job?.delivery_location || d.contact.address) && <><br /><span className="pre">{isDc && (d.deliver_to || d.job?.delivery_location) ? `At: ${d.deliver_to || d.job.delivery_location}` : d.contact.address}</span></>}{d.contact.phone && <><br />{d.contact.phone}</>}{d.contact.ntn && <><br />NTN {d.contact.ntn}</>}</div></div>

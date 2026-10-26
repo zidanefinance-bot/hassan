@@ -170,7 +170,7 @@ export default function DocumentForm({ kind }) {
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
-    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, notes: doc.notes, terms: doc.terms, status, lines,
+    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, ...(kind === "invoice" ? { dc_numbers: doc.dc_numbers || "" } : {}), notes: doc.notes, terms: doc.terms, status, lines,
       doc_discount: doc.doc_discount, charges: doc.charges, charges_label: doc.charges_label, adjustment: doc.adjustment, return_stock: doc.return_stock ? 1 : 0,
       ...(isPurchase ? { job_id: doc.job_id ? Number(doc.job_id) : null } : {}) };
     setBusy(true);
@@ -221,6 +221,7 @@ export default function DocumentForm({ kind }) {
           <Field label="Date"><input type="date" value={doc.date} onChange={(e) => set("date", e.target.value)} /></Field>
           {["invoice", "bill"].includes(kind) && <Field label="Due date"><input type="date" value={doc.due_date || ""} onChange={(e) => set("due_date", e.target.value)} /></Field>}
           <Field label={kind === "bill" ? "Supplier bill #" : kind === "credit_note" ? "Against invoice #" : kind === "vendor_credit" ? "Against bill #" : "Reference"}><input value={doc.reference || ""} onChange={(e) => set("reference", e.target.value)} /></Field>
+          {kind === "invoice" && <Field label="DC numbers" hint="Printed on the invoice. Several are fine, with commas."><input value={doc.dc_numbers || ""} onChange={(e) => set("dc_numbers", e.target.value)} placeholder="DC-00012, DC-00013" /></Field>}
         </div>
         {isCredit && (
           <label className="check"><input type="checkbox" checked={!!doc.return_stock} onChange={(e) => set("return_stock", e.target.checked ? 1 : 0)} />

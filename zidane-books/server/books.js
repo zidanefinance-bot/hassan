@@ -180,6 +180,8 @@ export function saveDocument(db, userId, input, id = null) {
     doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
     applyStock(db, doc, calc.lines);
     log(db, userId, isUpdate ? "updated" : "created", kind, id, `${doc.number} · ${calc.total}`);
+    // the DCs an invoice bills, as typed on the invoice (several are fine: "DC-00012, DC-00013")
+    if (kind === "invoice" && input.dc_numbers !== undefined) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(String(input.dc_numbers || "").split(/[,\n]+/).map((x) => x.trim()).filter(Boolean).join(", ") || null, id);
     return id;
   });
 }

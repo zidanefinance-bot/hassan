@@ -160,4 +160,13 @@ test("one order, three delivery points: each DC for one point, its own address, 
   assert.ok((await documentPdf(db, dcB)).buffer.length > 1000);
   const inv = J.invoiceFromJob(db, 1, jobId);
   assert.equal(db.prepare("SELECT bags FROM documents WHERE id = ?").get(inv).bags, 500, "one invoice for all three deliveries");
+  // the invoice names the three DCs it bills, and each DC names the invoice
+  const num = (id) => db.prepare("SELECT number FROM documents WHERE id = ?").get(id).number;
+  const invDoc = db.prepare("SELECT * FROM documents WHERE id = ?").get(inv);
+  assert.deepEqual(J.linkedNumbers(db, invDoc), [num(dcA), num(dcB), num(dcC)]);
+  B.setStatus(db, 1, inv, "open");
+  assert.deepEqual(J.linkedNumbers(db, db.prepare("SELECT * FROM documents WHERE id = ?").get(dcB)), [num(inv)]);
+  // typed by hand on the invoice: kept as typed
+  B.saveDocument(db, 1, { ...invDoc, dc_numbers: `${num(dcA)},${num(dcB)}`, lines: db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(inv), _admin: true }, inv);
+  assert.equal(db.prepare("SELECT dc_numbers FROM documents WHERE id = ?").get(inv).dc_numbers, `${num(dcA)}, ${num(dcB)}`);
 });

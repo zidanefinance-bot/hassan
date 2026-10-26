@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getSetting } from "./books.js";
 import { bagView } from "./ration.js";
+import { linkedNumbers } from "./jobs.js";
 
 const TITLE = { quote: "QUOTATION", invoice: "INVOICE", dc: "DELIVERY CHALLAN", po: "PURCHASE ORDER", bill: "SUPPLIER BILL", credit_note: "CREDIT NOTE", vendor_credit: "VENDOR CREDIT" };
 const LOGO = join(import.meta.dirname, "logo.png");
@@ -25,7 +26,7 @@ export function documentPdf(db, docId) {
   // the thank-you line is for customers' quotes / invoices / credit notes, not DCs or our supplier paperwork
   const footer = ["quote", "invoice", "credit_note"].includes(d.kind) ? getSetting(db, "invoiceFooter") || "" : "";
   // the customer's DCs and invoices of the same Job are named on each other
-  const linked = d.job_id && (d.kind === "invoice" || isDc) ? db.prepare(`SELECT number FROM documents WHERE job_id = ? AND kind = ? AND status IN (${isDc ? "'open'" : "'issued','signed'"}) ORDER BY id`).all(d.job_id, isDc ? "invoice" : "dc").map((x) => x.number) : [];
+  const linked = linkedNumbers(db, d);
   // a supplier never sees which customer's PO the goods are for
   const ref = supplierSide ? d.reference : job?.customer_po_number || d.reference;
 

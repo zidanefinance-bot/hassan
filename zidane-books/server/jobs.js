@@ -459,6 +459,24 @@ export function dcFromJob(db, userId, jobId, { admin = false, bags, point_id } =
 }
 
 // Sales: draft invoice for delivered-but-not-invoiced quantities (or the whole Job when nothing has a DC yet)
+// the DCs an invoice bills: the Job's sent DCs that no other invoice has billed yet
+const splitNumbers = (s) => String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
+function unbilledDcs(db, jobId) {
+  const billed = new Set(db.prepare("SELECT dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status != 'void' AND dc_numbers IS NOT NULL").all(jobId).flatMap((r) => splitNumbers(r.dc_numbers)));
+  return db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN ('issued','signed') ORDER BY id").all(jobId).map((x) => x.number).filter((n) => !billed.has(n));
+}
+const noteDcs = (db, invoiceId, jobId) => { const dcs = unbilledDcs(db, jobId); if (dcs.length) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(dcs.join(", "), invoiceId); return invoiceId; };
+
+// "DC: …" on an invoice and "Invoice: …" on a DC. Invoices made before this was kept show all the Job's sent DCs.
+export function linkedNumbers(db, d) {
+  if (!d.job_id || !["invoice", "dc"].includes(d.kind)) return [];
+  if (d.kind === "invoice") return d.dc_numbers ? splitNumbers(d.dc_numbers)
+    : db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN ('issued','signed') ORDER BY id").all(d.job_id).map((x) => x.number);
+  const invoices = db.prepare("SELECT number, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'open' ORDER BY id").all(d.job_id);
+  const mine = invoices.filter((i) => splitNumbers(i.dc_numbers).includes(d.number));
+  return (mine.length ? mine : invoices.filter((i) => !i.dc_numbers)).map((i) => i.number);
+}
+
 export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
@@ -473,7 +491,7 @@ export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {
     const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
     const id = saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: new Date(Date.now() + days * 864e5).toISOString().slice(0, 10), reference: job.customer_po_number || job.number, lines: RA.bagLines(db, job, n) });
     RA.markBags(db, id, n, job.kit_name, show_as);
-    return id;
+    return noteDcs(db, id, jobId);
   }
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
@@ -486,7 +504,7 @@ export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {
   if (lines.length === 0) throw httpError(400, anyDc ? "Everything delivered is already invoiced" : "Nothing left to invoice");
   const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
   const due = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
-  return saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: due, reference: job.customer_po_number || job.number, lines });
+  return noteDcs(db, saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: due, reference: job.customer_po_number || job.number, lines }), jobId);
 }
 
 // The Job's delivery status follows its DCs: a signed DC = delivered, an issued one = dispatched.

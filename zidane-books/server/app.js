@@ -422,6 +422,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       children: db.prepare("SELECT id, kind, number FROM documents WHERE source_id = ?").all(d.id),
       job: d.job_id ? db.prepare("SELECT id, number, customer_po_number, delivery_location FROM jobs WHERE id = ?").get(d.job_id) : null,
       // the other paperwork of the same Job that this person may see (DC ↔ invoice ↔ credit note, bill ↔ PO)
+      linked_numbers: J.linkedNumbers(db, d),
       related: d.job_id ? db.prepare("SELECT id, kind, number, status FROM documents WHERE job_id = ? AND id != ? AND status != 'void' ORDER BY id").all(d.job_id, d.id).filter((x) => canAny(req.user, DOC_READ[x.kind])) : [],
       verified_by_name: d.verified_by ? db.prepare("SELECT name FROM users WHERE id = ?").get(d.verified_by)?.name : null,
     });
