@@ -8,9 +8,10 @@ const stamp = (d) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ, day: "nume
 const fileStamp = (d) => new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(d).replace(" ", "-").replace(":", "");
 const day = (s) => (s ? new Date(`${s}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "");
 
-export async function procurementXlsx(db, user, { canCost = false } = {}) {
+// canSale (directors only): each line's selling rate and value, so the buy list shows what it sells for
+export async function procurementXlsx(db, user, { canCost = false, canSale = false } = {}) {
   const now = new Date();
-  const groups = procurementList(db);
+  const groups = procurementList(db, { withSale: canSale });
   const wb = new ExcelJS.Workbook();
   wb.creator = "Zidane Books";
   wb.created = now;
@@ -31,14 +32,15 @@ export async function procurementXlsx(db, user, { canCost = false } = {}) {
 
   // 1. every customer line, grouped by item (the same item sits together, shaded alike)
   const ws = wb.addWorksheet("What to buy");
-  const cols = ["#", "Item", "Category", "Customer", "Job", "To buy", "Unit", "Ordered", "Already bought", "Needed by", "Priority", "Bought now", "Notes"];
+  const cols = ["#", "Item", "Category", "Customer", "Job", "To buy", "Unit", "Ordered", "Already bought", "Needed by", "Priority", ...(canSale ? ["Selling rate (Rs)", "Selling value (Rs)"] : []), ...(canSale && canCost ? ["Last cost (Rs)"] : []), "Bought now", "Notes"];
   head(ws, "What to buy", cols.length);
   header(ws, 4, cols);
-  [5, 42, 16, 30, 13, 9, 8, 9, 14, 14, 10, 12, 28].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  [5, 42, 16, 30, 13, 9, 8, 9, 14, 14, 10, ...(canSale ? [15, 16] : []), ...(canSale && canCost ? [14] : []), 12, 28].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
   let n = 0;
   groups.forEach((g, gi) => {
     for (const j of g.jobs) {
-      const r = ws.addRow([++n, g.name, g.category, j.customer_name, j.job_number, j.qty, g.unit, j.ordered, j.bought || "", day(j.required_date), j.priority || "", null, null]);
+      const sale = canSale ? [j.sale_rate ?? "", j.sale_rate != null ? Math.round(j.qty * j.sale_rate * 100) / 100 : ""] : [];
+      const r = ws.addRow([++n, g.name, g.category, j.customer_name, j.job_number, j.qty, g.unit, j.ordered, j.bought || "", day(j.required_date), j.priority || "", ...sale, ...(canSale && canCost ? [g.purchase_rate || ""] : []), null, null]);
       r.getCell(6).font = { bold: true };
       if (gi % 2) r.eachCell({ includeEmpty: true }, (c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F6F9" } }; });
     }
@@ -47,12 +49,13 @@ export async function procurementXlsx(db, user, { canCost = false } = {}) {
 
   // 2. one line per item: how much in all, what's in stock, the earliest date
   const tot = wb.addWorksheet("Totals by item");
-  const tcols = ["Item", "Category", "Total to buy", "Unit", "In stock", "Earliest needed", "Customers", ...(canCost ? ["Last cost (Rs)"] : [])];
+  const tcols = ["Item", "Category", "Total to buy", "Unit", "In stock", "Earliest needed", "Customers", ...(canCost ? ["Last cost (Rs)"] : []), ...(canSale ? ["Selling value (Rs)"] : [])];
   head(tot, "What to buy: totals by item", tcols.length);
   header(tot, 4, tcols);
-  [42, 16, 11, 8, 10, 16, 50, 14].forEach((w, i) => { tot.getColumn(i + 1).width = w; });
+  [42, 16, 11, 8, 10, 16, 50, 14, 16].forEach((w, i) => { tot.getColumn(i + 1).width = w; });
   for (const g of groups) {
-    tot.addRow([g.name, g.category, g.total_qty, g.unit, g.stock_qty ?? "", day(g.earliest), [...new Set(g.jobs.map((j) => j.customer_name))].join(", "), ...(canCost ? [g.purchase_rate || ""] : [])]);
+    tot.addRow([g.name, g.category, g.total_qty, g.unit, g.stock_qty ?? "", day(g.earliest), [...new Set(g.jobs.map((j) => j.customer_name))].join(", "), ...(canCost ? [g.purchase_rate || ""] : []),
+      ...(canSale ? [Math.round(g.jobs.reduce((t, j) => t + j.qty * (j.sale_rate || 0), 0) * 100) / 100] : [])]);
   }
   return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), filename: `what-to-buy-${fileStamp(now)}.xlsx` };
 }

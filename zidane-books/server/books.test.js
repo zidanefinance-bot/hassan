@@ -911,6 +911,19 @@ test("start fresh removes the records, keeps users and settings, and backs up fi
   assert.ok(lines.length > 0, "the demo has something to buy");
   assert.deepEqual([ws.getCell("B5").value, ws.getCell("D5").value, ws.getCell("F5").value], lines[0]);
   assert.ok(!wb.getWorksheet("Totals by item").getRow(4).values.includes("Last cost (Rs)"), "no costs unless allowed");
+  assert.ok(!ws.getRow(4).values.includes("Selling rate (Rs)"), "Operations' sheet has no selling rates");
+  assert.ok(!J.procurementList(db).some((g) => g.jobs.some((j) => "sale_rate" in j)), "nor does the procurement screen");
+  // a director's sheet: each line's selling rate and value, and the selling value per item
+  const dwb = new ExcelJS.Workbook();
+  await dwb.xlsx.load((await procurementXlsx(db, { name: "Hassan" }, { canCost: true, canSale: true })).buffer);
+  const dws = dwb.getWorksheet("What to buy");
+  const hd = dws.getRow(4).values;
+  const [rc, vc] = [hd.indexOf("Selling rate (Rs)"), hd.indexOf("Selling value (Rs)")];
+  assert.ok(rc > 0 && vc > 0 && hd.includes("Last cost (Rs)"));
+  const first = J.procurementList(db, { withSale: true })[0].jobs[0];
+  assert.equal(dws.getRow(5).getCell(rc).value, first.sale_rate);
+  assert.equal(dws.getRow(5).getCell(vc).value, Math.round(first.qty * first.sale_rate * 100) / 100);
+  assert.ok(dwb.getWorksheet("Totals by item").getRow(4).values.includes("Selling value (Rs)"));
 
   assert.throws(() => startFresh(db, 1, { confirm: "yes" }, file), /Type DELETE/);
   const users = db.prepare("SELECT COUNT(*) n FROM users").get().n;

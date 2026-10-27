@@ -313,9 +313,10 @@ export function jobNeeds(db, excludeDocId = 0) {
     .filter((r) => r.left > 0.001).map((r) => ({ ...r, left: round2(r.left) }));
 }
 
-// What Operations must buy: open lines of active Jobs, grouped by item across Jobs (master procurement list)
-export function procurementList(db) {
-  const rows = db.prepare(`SELECT ji.id, ji.job_id, ji.item_id, ji.description, ji.qty, ji.procurement_status, j.number AS job_number, j.required_date, j.priority, j.fulfilment_type,
+// What Operations must buy: open lines of active Jobs, grouped by item across Jobs (master procurement list).
+// withSale adds each line's selling rate: only for a director's download, never for Operations' screen.
+export function procurementList(db, { withSale = false } = {}) {
+  const rows = db.prepare(`SELECT ji.id, ji.job_id, ji.item_id, ji.description, ji.qty, ji.procurement_status, ji.sale_rate, j.number AS job_number, j.required_date, j.priority, j.fulfilment_type,
       c.name AS customer_name, i.name AS item_name, i.unit, i.category, i.stock_qty, i.purchase_rate
     FROM job_items ji JOIN jobs j ON j.id = ji.job_id JOIN contacts c ON c.id = j.customer_id LEFT JOIN items i ON i.id = ji.item_id
     WHERE ${ACTIVE} AND ji.procurement_status IN ('to_buy','partial') ORDER BY COALESCE(j.required_date, '9999'), j.id`).all();
@@ -333,7 +334,7 @@ export function procurementList(db) {
     g.total_qty = round2(g.total_qty + r.qty);
     if (r.required_date && (!g.earliest || r.required_date < g.earliest)) g.earliest = r.required_date;
     g.urgent ||= r.priority === "urgent" || (r.required_date && r.required_date <= today());
-    g.jobs.push({ job_item_id: r.id, job_id: r.job_id, job_number: r.job_number, customer_name: r.customer_name, qty: r.qty, ordered: r.ordered, bought: r.bought, required_date: r.required_date, priority: r.priority, status: r.procurement_status, fulfilment_type: r.fulfilment_type });
+    g.jobs.push({ job_item_id: r.id, job_id: r.job_id, job_number: r.job_number, customer_name: r.customer_name, qty: r.qty, ordered: r.ordered, bought: r.bought, required_date: r.required_date, priority: r.priority, status: r.procurement_status, fulfilment_type: r.fulfilment_type, ...(withSale ? { sale_rate: r.sale_rate } : {}) });
     groups.set(key, g);
   }
   return [...groups.values()].sort((a, b) => (a.earliest || "9999").localeCompare(b.earliest || "9999"));

@@ -373,7 +373,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.get("/procurement", (req, res) => { need(req.user, ["buy", "ops.read"]); res.json(J.procurementList(db)); });
   api.get("/procurement.xlsx", async (req, res) => {
     need(req.user, ["buy", "ops.read"]);
-    const { buffer, filename } = await procurementXlsx(db, req.user, { canCost: can(req.user, "cost.view") });
+    const { buffer, filename } = await procurementXlsx(db, req.user, { canCost: can(req.user, "cost.view"), canSale: can(req.user, "admin") });
     res.set({ "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="${filename}"`, "Cache-Control": "no-store" }).send(buffer);
   });
 
