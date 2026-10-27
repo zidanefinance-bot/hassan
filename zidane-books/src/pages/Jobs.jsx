@@ -19,36 +19,71 @@ const PRIORITY_TONE = { urgent: "red", high: "amber", normal: "grey", low: "grey
 const PROC = { to_buy: ["To buy", "amber"], partial: ["Partly bought", "amber"], bought: ["Bought", "green"], from_stock: ["From our stock", "green"] };
 const ProcBadge = ({ s }) => <span className={`badge ${PROC[s]?.[1] || "grey"}`}>{PROC[s]?.[0] || label(s)}</span>;
 
+// the filter chips over the Jobs list; "in buying" covers the procurement steps
+const IN_BUYING = ["procurement_started", "partially_purchased", "purchase_complete"];
+const isOverdue = (j) => !j.closed && j.required_date && j.required_date < today() && OPS_STEPS.indexOf(j.ops_status) < 5;
+const FILTERS = [
+  ["active", "Active", (j) => !j.closed],
+  ["new", "New", (j) => !j.closed && j.ops_status === "new"],
+  ["buying", "In buying", (j) => !j.closed && IN_BUYING.includes(j.ops_status)],
+  ["ready", "Material ready", (j) => !j.closed && j.ops_status === "material_ready"],
+  ["dispatched", "Dispatched", (j) => !j.closed && j.ops_status === "dispatched"],
+  ["delivered", "Delivered", (j) => !j.closed && j.ops_status === "delivered"],
+  ["overdue", "Overdue", isOverdue],
+  ["closed", "Closed", (j) => Boolean(j.closed)],
+  ["all", "All", () => true],
+];
+// whole days between two dates (Karachi calendar days); created_at is stored in UTC
+const karachiDay = (utc) => new Date(new Date(utc.replace(" ", "T") + "Z").getTime() + 5 * 3600e3).toISOString().slice(0, 10);
+const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+const dayWord = (n) => (n <= 0 ? "today" : n === 1 ? "1 day" : `${n} days`);
+function age(j) {
+  const made = karachiDay(j.created_at);
+  const done = j.closed ? j.closed_on || j.delivered_on : j.ops_status === "delivered" ? j.delivered_on : null;
+  if (done) { const n = daysBetween(made, done); return { text: n <= 0 ? "done same day" : `done in ${dayWord(n)}`, tone: "muted" }; }
+  const n = daysBetween(made, today());
+  return { text: n <= 0 ? "today" : `${dayWord(n)} old`, tone: n > 14 ? "neg" : n > 7 ? "warn" : "" };
+}
+
 export default function Jobs() {
   const [q, setQ] = useState("");
-  const [scope, setScope] = useState("active");
+  const saved = (() => { try { return localStorage.getItem("jobs:filter"); } catch { return null; } })();
+  const [filter, setFilter] = useState(FILTERS.some((f) => f[0] === saved) ? saved : "active");
+  const pick = (f) => { setFilter(f); try { localStorage.setItem("jobs:filter", f); } catch {} };
   const { can } = useAuth();
-  const state = useLoad(`/jobs?q=${encodeURIComponent(q)}&scope=${scope === "active" ? "active" : ""}`);
+  const state = useLoad(`/jobs?q=${encodeURIComponent(q)}`);
   const nav = useNavigate();
+  const all = state.data || [];
+  const test = FILTERS.find((f) => f[0] === filter)[2];
   return (
     <>
       <PageHead title="Jobs" sub="Every confirmed customer order becomes a Job. Sales creates it, Operations fulfils it.">
         <Search value={q} onChange={setQ} placeholder="Search PO #, job or customer…" />
         {can("sales.write") && <Link className="btn primary" to="/jobs/new">+ New Job</Link>}
       </PageHead>
-      <div className="tabs">{["active", "all"].map((s) => <button key={s} className={scope === s ? "active" : ""} onClick={() => setScope(s)}>{s}</button>)}</div>
-      <Loading state={state}>{(rows) => rows.length === 0 ? <div className="empty">No Jobs yet.</div> : (
+      <div className="chips">{FILTERS.map(([k, name, f]) => {
+        const n = all.filter(f).length;
+        return <button key={k} className={`chip ${filter === k ? "on" : ""} ${k === "overdue" && n ? "alert" : ""}`} onClick={() => pick(k)}>{name} <span className="n">{n}</span></button>;
+      })}</div>
+      <Loading state={state}>{(list) => { const rows = list.filter(test); return rows.length === 0 ? <div className="empty">{list.length ? "No Jobs in this filter." : "No Jobs yet."}</div> : (
         <div className="card flush"><table className="table">
-          <thead><tr><th>Job</th><th>Customer PO</th><th>Customer</th><th>Needed by</th><th>Priority</th><th>Fulfilment</th><th className="r">Items</th>{can("sales.read") && <th>Customer side</th>}</tr></thead>
-          <tbody>{rows.map((j) => (
+          <thead><tr><th>Job</th><th>Created</th><th>Age</th><th>Customer PO</th><th>Customer</th><th>Needed by</th><th>Priority</th><th>Fulfilment</th><th className="r">Items</th>{can("sales.read") && <th>Customer side</th>}</tr></thead>
+          <tbody>{rows.map((j) => { const a = age(j); return (
             <tr key={j.id} className="click" onClick={() => nav(`/jobs/${j.id}`)}>
               <td><b>{j.number}</b>{j.fulfilment_type === "direct" && <span className="badge blue sm">direct</span>}{j.closed ? <span className="badge grey sm">closed</span> : null}</td>
+              <td className="nowrap">{fmtDate(karachiDay(j.created_at))}</td>
+              <td className={`nowrap ${a.tone}`}>{a.text}</td>
               <td>{j.customer_po_number ? <b className="po">{j.customer_po_number}</b> : <span className="muted">—</span>}</td>
               <td>{j.customer_name}</td>
-              <td className={j.required_date && j.required_date < today() && OPS_STEPS.indexOf(j.ops_status) < 4 ? "neg" : ""}>{fmtDate(j.required_date)}</td>
+              <td className={isOverdue(j) ? "neg" : ""}>{fmtDate(j.required_date)}</td>
               <td><span className={`badge ${PRIORITY_TONE[j.priority]}`}>{j.priority}</span></td>
               <td><Badge status={j.ops_status} /></td>
               <td className="r">{j.item_count}{j.to_buy_count > 0 && <span className="muted small"> · {j.to_buy_count} to buy</span>}</td>
               {can("sales.read") && <td className="small">{j.invoice_count ? "Invoiced" : j.signed_dc_count ? "Signed DC" : j.dc_count ? "DC issued" : "—"}</td>}
             </tr>
-          ))}</tbody>
+          ); })}</tbody>
         </table></div>
-      )}</Loading>
+      ); }}</Loading>
     </>
   );
 }

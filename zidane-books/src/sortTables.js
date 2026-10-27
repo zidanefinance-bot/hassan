@@ -17,6 +17,9 @@ function valueOf(td) {
   if (STAGES.includes(key)) return { t: 0, v: STAGES.indexOf(key) };
   if (PRIORITY.includes(key)) return { t: 0, v: PRIORITY.indexOf(key) };
   if (DATE.test(text)) return { t: 1, v: Date.parse(text) };
+  // a Job's age: "today", "5 days old", "done in 6 days"
+  const days = /^(?:done in )?(\d+) days?(?: old)?$|^(today|done same day)$/.exec(text);
+  if (days) return { t: 1, v: days[1] ? Number(days[1]) : 0 };
   if (NUM.test(text)) { const n = Number(text.replace(/[^\d.-]/g, "")) || 0; return { t: 1, v: /^\(|^-|Rs\.?\s*-/.test(text) ? -Math.abs(n) : n }; }
   return { t: 2, v: text.toLowerCase() };
 }

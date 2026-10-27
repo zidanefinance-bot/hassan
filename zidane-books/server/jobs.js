@@ -297,7 +297,9 @@ export function jobList(db, { q = "", status = "", scope = "" } = {}) {
       (SELECT COALESCE(SUM(l.qty), 0) FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = j.id AND d.kind = 'dc' AND d.status IN ('issued','signed')) AS out_qty,
       (SELECT COALESCE(SUM(l.qty), 0) FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = j.id AND d.kind = 'dc' AND d.status = 'signed') AS signed_qty,
       (SELECT COALESCE(SUM(l.qty), 0) FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = j.id AND d.kind = 'invoice' AND d.status IN ('open','draft')) AS invoiced_qty,
-      (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status = 'draft') AS draft_dc_count
+      (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status = 'draft') AS draft_dc_count,
+      (SELECT MAX(date) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status = 'signed') AS delivered_on,
+      (SELECT MAX(date(at)) FROM activity WHERE entity = 'job' AND entity_id = j.id AND action = 'closed job') AS closed_on
     FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE (j.number LIKE ? OR c.name LIKE ? OR IFNULL(j.customer_po_number, '') LIKE ?) ORDER BY j.closed, COALESCE(j.required_date, '9999'), j.id DESC LIMIT 500`).all(like, like, like);
   return rows.filter((j) => (!status || j.ops_status === status) && (scope !== "active" || !j.closed));
 }
