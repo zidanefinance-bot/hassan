@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, num, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 import Comments from "../components/Comments.jsx";
+import { downloadItemsPng } from "../components/itemListPng.js";
 
 // the category list, plus an item's own category if it was later taken off the list
 export const withCurrent = (list = [], current) => (current && !list.includes(current) ? [...list, current] : list);
@@ -103,6 +104,31 @@ function ImportItems({ onClose, onDone }) {
   );
 }
 
+// the list as a PNG (category by category) to send on WhatsApp
+function PngModal({ items, cat, withPrice, onClose }) {
+  const [rates, setRates] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const go = async () => {
+    setBusy(true);
+    try {
+      const n = await downloadItemsPng(items, { withRates: withPrice && rates, title: cat ? cat : rates ? "Price list" : "Item list", file: `zidane-${(cat || (rates ? "price-list" : "items")).toLowerCase().replace(/[^a-z0-9]+/g, "-")}` });
+      toast(n > 1 ? `Downloaded in ${n} parts` : "Downloaded");
+      onClose();
+    } catch (e) { toast(e.message, "err"); setBusy(false); }
+  };
+  const cats = new Set(items.map((i) => i.category || "Other")).size;
+  return (
+    <Modal title="Item list as a picture" onClose={onClose}>
+      <div className="form">
+        <p className="muted">{items.length} items{cat ? ` in ${cat}` : ` in ${cats} categories`}, sorted category by category (A→Z), items A→Z inside each. A long list comes in parts.</p>
+        {withPrice && <label className="check"><input type="checkbox" checked={rates} onChange={(e) => setRates(e.target.checked)} /> Show selling rates</label>}
+        <div className="form-actions"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy || !items.length} onClick={go}>{busy ? "Making…" : "Download PNG"}</button></div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function Items() {
   const [q, setQ] = useState("");
   const [params, setParams] = useSearchParams();
@@ -128,6 +154,7 @@ export default function Items() {
         <label className="check"><input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} /> Low stock only</label>
         {can("items.write") && <button className="btn" onClick={() => setModal("import")}>Import CSV</button>}
         <button className="btn" disabled={!state.data?.length} onClick={exportCsv}>Export CSV</button>
+        <button className="btn" disabled={!state.data?.length} onClick={() => setModal("png")}>List as picture</button>
         {["items.write", "sales.write", "buy"].some(can) && <button className="btn primary" onClick={() => setModal("new")}>+ New Item</button>}
       </PageHead>
       <Loading state={state}>{(all) => {
@@ -164,6 +191,7 @@ export default function Items() {
         </table></div>
       ); }}</Loading>
       {modal === "new" && <ItemForm preset={cat ? { category: cat } : {}} onClose={() => setModal(null)} onSaved={(id) => nav(`/items/${id}`)} />}
+      {modal === "png" && <PngModal items={(state.data || []).filter((i) => i.active !== 0 && (!cat || i.category === cat))} cat={cat} withPrice={can("price.view")} onClose={() => setModal(null)} />}
       {modal === "import" && <ImportItems onClose={() => setModal(null)} onDone={() => { setModal(null); state.reload(); }} />}
     </>
   );
