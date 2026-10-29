@@ -220,6 +220,20 @@ function lineTotals(db, jobId, kind, statuses) {
   return (ji) => rows.find((r) => (ji.item_id ? r.item_id === ji.item_id : r.description === ji.description)) || { qty: 0, amount: 0 };
 }
 
+// lineTotals() pools qty by item across a whole Job, so two job_items of the same item (e.g. a PO that lists
+// "Tap Handle" as two separate lines) both resolve to the same pooled figure. Used directly, that double-counts
+// when generating new lines per job_item. This hands out the pool once each, in job_item order.
+function claimPooled(pooledFn) {
+  const claimed = new Map();
+  return (ji, cap) => {
+    const key = ji.item_id ?? `d:${ji.description}`;
+    const already = claimed.get(key) || 0;
+    const take = Math.min(cap, Math.max(0, round2(pooledFn(ji).qty - already)));
+    claimed.set(key, already + take);
+    return take;
+  };
+}
+
 export function jobEconomics(db, jobId) {
   const items = db.prepare("SELECT ji.*, i.purchase_rate FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
@@ -470,7 +484,11 @@ export function dcFromJob(db, userId, jobId, { admin = false, bags, point_id } =
   if (!items.some((i) => i.qty - delivered(i).qty > 0.001)) throw httpError(400, "Everything on this Job has already been delivered");
   // what's in hand and not yet delivered (a director may draft the whole rest)
   const ready = readyQty(db, jobId);
-  const lines = items.map((i) => ({ item_id: i.item_id, description: i.description, qty: round2((admin ? i.qty : ready(i)) - delivered(i).qty), rate: 0 })).filter((l) => l.qty > 0);
+  const claimDelivered = claimPooled(delivered);
+  const lines = items.map((i) => {
+    const own = admin ? i.qty : ready(i);
+    return { item_id: i.item_id, description: i.description, qty: round2(own - claimDelivered(i, own)), rate: 0 };
+  }).filter((l) => l.qty > 0);
   if (lines.length === 0) throw httpError(400, "Nothing more is bought / in hand yet. Operations marks items bought (or the material ready) first.");
   return saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, lines });
 }
@@ -515,8 +533,11 @@ export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {
   const invoiced = lineTotals(db, jobId, "invoice", ["open", "draft"]);
   const anyDc = items.some((i) => delivered(i).qty > 0);
   if (job.closed) throw httpError(400, "This Job is closed");
+  // the eligible-to-invoice pool per item, less what's already invoiced, split fairly across duplicate job_items
+  const eligible = (ji) => ({ qty: round2((anyDc ? delivered(ji).qty : ji.qty) - invoiced(ji).qty) });
+  const claimEligible = claimPooled(eligible);
   const lines = items
-    .map((i) => ({ item_id: i.item_id, description: i.description, qty: round2((anyDc ? delivered(i).qty : i.qty) - invoiced(i).qty), rate: i.sale_rate, tax_rate: i.tax_rate }))
+    .map((i) => ({ item_id: i.item_id, description: i.description, qty: claimEligible(i, i.qty), rate: i.sale_rate, tax_rate: i.tax_rate }))
     .filter((l) => l.qty > 0);
   if (lines.length === 0) throw httpError(400, anyDc ? "Everything delivered is already invoiced" : "Nothing left to invoice");
   const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
