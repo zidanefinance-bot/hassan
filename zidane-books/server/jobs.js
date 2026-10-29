@@ -324,6 +324,11 @@ export function procurementList(db, { withSale = false } = {}) {
     WHERE ${ACTIVE} AND ji.procurement_status IN ('to_buy','partial') ORDER BY COALESCE(j.required_date, '9999'), j.id`).all();
   const groups = new Map();
   const billedFor = new Map();
+  // purchase orders still open (draft or sent to the supplier, not billed or cancelled), per Job line
+  const openPo = db.prepare(`SELECT ${LINE_JOB} AS job_id, l.item_id, l.description, l.qty, d.id, d.number, d.status, c.name AS supplier
+    FROM document_lines l JOIN documents d ON d.id = l.document_id JOIN contacts c ON c.id = d.contact_id
+    WHERE d.kind = 'po' AND d.status IN ('draft','issued')`).all();
+  const sameItem = (p, r) => (r.item_id ? p.item_id === r.item_id : !p.item_id && (p.description || "").toLowerCase() === (r.description || "").toLowerCase());
   for (const r of rows) {
     // what supplier bills for this Job already cover is bought: only the rest is still to buy
     if (!billedFor.has(r.job_id)) billedFor.set(r.job_id, lineTotals(db, r.job_id, "bill", ["open", "draft"]));
@@ -332,11 +337,20 @@ export function procurementList(db, { withSale = false } = {}) {
     r.qty = round2(r.qty - r.bought);
     if (r.qty <= 0.001) continue;
     const key = r.item_id ? `i${r.item_id}` : `d${(r.description || "").toLowerCase()}`;
-    const g = groups.get(key) || { key, item_id: r.item_id, name: r.item_name || r.description, unit: r.unit || "", category: r.category || "", stock_qty: r.stock_qty, purchase_rate: r.purchase_rate, total_qty: 0, earliest: null, urgent: false, jobs: [] };
+    const g = groups.get(key) || { key, item_id: r.item_id, name: r.item_name || r.description, unit: r.unit || "", category: r.category || "", stock_qty: r.stock_qty, purchase_rate: r.purchase_rate, total_qty: 0, po_qty: 0, not_ordered_qty: 0,
+      // on an open PO for no Job in particular (bought for stock, or not split to Jobs)
+      po_unassigned: round2(openPo.filter((p) => !p.job_id && sameItem(p, r)).reduce((t, p) => t + p.qty, 0)), earliest: null, urgent: false, jobs: [] };
+    const pos = openPo.filter((p) => p.job_id === r.job_id && sameItem(p, r));
+    const poQty = round2(Math.min(r.qty, pos.reduce((t, p) => t + p.qty, 0)));
+    r.pos = pos.map((p) => ({ id: p.id, number: p.number, status: p.status, supplier: p.supplier, qty: p.qty }));
+    r.po_qty = poQty;
+    r.not_ordered = round2(r.qty - poQty);
     g.total_qty = round2(g.total_qty + r.qty);
+    g.po_qty = round2(g.po_qty + poQty);
+    g.not_ordered_qty = round2(g.not_ordered_qty + r.not_ordered);
     if (r.required_date && (!g.earliest || r.required_date < g.earliest)) g.earliest = r.required_date;
     g.urgent ||= r.priority === "urgent" || (r.required_date && r.required_date <= today());
-    g.jobs.push({ job_item_id: r.id, job_id: r.job_id, job_number: r.job_number, customer_name: r.customer_name, qty: r.qty, ordered: r.ordered, bought: r.bought, required_date: r.required_date, priority: r.priority, status: r.procurement_status, fulfilment_type: r.fulfilment_type, ...(withSale ? { sale_rate: r.sale_rate } : {}) });
+    g.jobs.push({ job_item_id: r.id, job_id: r.job_id, job_number: r.job_number, customer_name: r.customer_name, qty: r.qty, ordered: r.ordered, bought: r.bought, required_date: r.required_date, priority: r.priority, status: r.procurement_status, fulfilment_type: r.fulfilment_type, pos: r.pos, po_qty: r.po_qty, not_ordered: r.not_ordered, ...(withSale ? { sale_rate: r.sale_rate } : {}) });
     groups.set(key, g);
   }
   return [...groups.values()].sort((a, b) => (a.earliest || "9999").localeCompare(b.earliest || "9999"));

@@ -188,6 +188,8 @@ export default function DocumentView({ kind }) {
             {can("money") && isMoney && d.status === "open" && d.balance > 0 && <button className="btn primary" onClick={() => setModal("pay")}>{kind === "invoice" ? "Receive payment" : "Pay supplier"}</button>}
             {can("money") && isMoney && d.status === "open" && d.balance > 0 && d.credits.length > 0 && <button className="btn" onClick={() => setModal("credits")}>Apply credits ({money(d.credits.reduce((a, c) => a + c.unused, 0))})</button>}
             {writer && kind === "po" && d.status === "issued" && <button className="btn primary" onClick={async () => { const r = await post("/convert", {}, "Bill created"); if (r) nav(`/bills/${r.id}`); }}>Convert to bill</button>}
+            {writer && kind === "po" && ["draft", "issued"].includes(d.status) && <button className="btn ghost danger" onClick={() => confirm(`Cancel ${d.number}? Its items go back to "not on PO yet" in What to buy. Tell the supplier too.`) && post("/status", { status: "cancelled" }, "PO cancelled")}>Cancel PO</button>}
+            {writer && kind === "po" && d.status === "cancelled" && <button className="btn ghost" onClick={() => post("/status", { status: "draft" }, "Opened again as a draft")}>Open again</button>}
             {editable && <Link className="btn" to={`/${K.path}/${id}/edit`}>Edit</Link>}
             {writer && <button className="btn" onClick={async () => { const r = await post("/clone", {}, "Copied as a new draft"); if (r) nav(`/${K.path}/${r.id}/edit`); }}>Copy</button>}
             {d.bags > 0 && writer && !["po", "bill", "vendor_credit"].includes(kind) && (
