@@ -18,6 +18,7 @@ import { ProfileCompositions } from "./corporate/Profile";
 import { PulsesCompositions } from "./pulses/PulsesReel";
 import { AttaCompositions } from "./atta/AttaRoti";
 import { RealTeamCompositions } from "./real/RealTeam";
+import { InvisibleDepartment, INV_TOTAL, INV_FPS } from "./classy/Invisible";
 import { BannerCompositions } from "./corporate/Banners";
 import { CatalogCompositions } from "./corporate/CatalogPdf";
 import { CorpBrands, BRANDS_TOTAL, CorpBiryani, BIRYANI_TOTAL, CorpChai, CHAI_TOTAL, CorpQuestions, QUESTIONS_TOTAL, CorpListQuote, LISTQUOTE_TOTAL } from "./corporate/ProductReels";
@@ -28,6 +29,8 @@ const size = { fps: FPS, width: 1080, height: 1920 } as const;
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <Composition id="InvisibleDept45" component={InvisibleDepartment} durationInFrames={INV_TOTAL} fps={INV_FPS} width={1080} height={1350} />
+    <Composition id="InvisibleDept916" component={InvisibleDepartment} durationInFrames={INV_TOTAL} fps={INV_FPS} width={1080} height={1920} />
     <RealTeamCompositions />
     <AttaCompositions />
     <PulsesCompositions />

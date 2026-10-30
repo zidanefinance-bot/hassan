@@ -11,6 +11,8 @@ const FACES = [
   { family: "Fraunces", weight: "600", file: "fraunces-latin-600-normal.woff2" },
   { family: "Fraunces", weight: "600", style: "italic", file: "fraunces-latin-600-italic.woff2" },
   { family: "Fraunces", weight: "400", style: "italic", file: "fraunces-latin-400-italic.woff2" },
+  { family: "Fraunces", weight: "300", file: "fraunces-latin-300-normal.woff2" },
+  { family: "Fraunces", weight: "300", style: "italic", file: "fraunces-latin-300-italic.woff2" },
   { family: "Passion One", weight: "900", file: "passion-one-900.ttf" },
 ];
 
