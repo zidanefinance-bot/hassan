@@ -51,9 +51,10 @@ export default function RationPanel({ job, onChange }) {
       </div>
       <div className="grid-2">
         <div>
-          <h4>One bag holds</h4>
+          <h4>What the order holds</h4>
           <table className="table compact">
-            <tbody>{r.contents.map((c) => <tr key={c.id}><td>{c.name}</td><td className="r">{num(c.per_bag)} {c.unit || ""}</td>{c.sale_rate !== undefined && <td className="r muted">{money(c.sale_rate)}</td>}</tr>)}</tbody>
+            <thead><tr><th>Item</th><th className="r">1 bag</th><th className="r">{num(r.bags)} bags</th>{r.contents[0]?.sale_rate !== undefined && <th className="r">Rate</th>}</tr></thead>
+            <tbody>{r.contents.map((c) => <tr key={c.id}><td>{c.name}</td><td className="r">{num(c.per_bag)} {c.unit || ""}</td><td className="r"><b>{num(c.qty)} {c.unit || ""}</b></td>{c.sale_rate !== undefined && <td className="r muted">{money(c.sale_rate)}</td>}</tr>)}</tbody>
           </table>
           {r.materials?.length > 0 && (can("buy") || can("ops.read")) && <>
             <h4 style={{ marginTop: 12 }}>Packing materials needed <span className="muted small">(for {num(r.bags)} bags · internal, not on the customer's paperwork)</span></h4>
