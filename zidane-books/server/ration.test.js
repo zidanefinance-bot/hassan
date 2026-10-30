@@ -170,3 +170,19 @@ test("one order, three delivery points: each DC for one point, its own address, 
   B.saveDocument(db, 1, { ...invDoc, dc_numbers: `${num(dcA)},${num(dcB)}`, lines: db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(inv), _admin: true }, inv);
   assert.equal(db.prepare("SELECT dc_numbers FROM documents WHERE id = ?").get(inv).dc_numbers, `${num(dcA)}, ${num(dcB)}`);
 });
+
+test("a quote priced for 1 bag becomes a Job for the bags confirmed: every line grows with it", () => {
+  const { db, cust, kit } = setup();
+  const q = RA.quoteFromKit(db, 1, kit, { contact_id: cust, bags: 1 });
+  const jobId = J.jobFromQuote(db, 1, q, { bags: 313 });
+  const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
+  assert.equal(job.bags, 313);
+  const per = RA.perBag(db, job);
+  assert.deepEqual(per.map((l) => l.per_bag), [1, 1, 2, 1], "one bag still holds what the quote said");
+  assert.deepEqual(per.map((l) => l.qty), [313, 313, 626, 313], "the Job is the whole order");
+  // a quote already for 100 bags, confirmed for 250
+  const q2 = RA.quoteFromKit(db, 1, kit, { contact_id: cust, bags: 100 });
+  const j2 = db.prepare("SELECT * FROM jobs WHERE id = ?").get(J.jobFromQuote(db, 1, q2, { bags: 250 }));
+  assert.deepEqual(RA.perBag(db, j2).map((l) => l.per_bag), [1, 1, 2, 1]);
+});
+

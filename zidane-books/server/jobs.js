@@ -48,9 +48,13 @@ export function jobFromQuote(db, userId, quoteId, extra = {}) {
   const q = db.prepare("SELECT * FROM documents WHERE id = ? AND kind = 'quote'").get(quoteId);
   if (!q) throw httpError(404, "Quote not found");
   if (q.status === "converted") throw httpError(400, "A Job already exists for this quote");
+  // a ration quote is usually priced for 1 bag; the Job is for the bags the customer confirmed, so every line grows
+  // with it (1 bag of 2 kg daal → 313 bags = 626 kg). The Job's lines are always the whole order.
+  const bags = Number(extra.bags) > 0 ? round2(Number(extra.bags)) : q.bags;
+  const scale = q.bags > 0 && bags > 0 ? bags / q.bags : 1;
   const lines = db.prepare("SELECT item_id, description, qty, rate AS sale_rate, tax_rate, discount_pct FROM document_lines WHERE document_id = ?").all(q.id)
-    .map((l) => ({ ...l, sale_rate: round2(l.sale_rate * (1 - l.discount_pct / 100)) }));
-  return createJob(db, userId, { customer_id: q.contact_id, quote_id: q.id, items: lines, instructions: q.notes, bags: q.bags, kit_name: q.kit_name, kit_id: q.kit_id, ...extra });
+    .map((l) => ({ ...l, qty: Math.round(l.qty * scale * 1000) / 1000, sale_rate: round2(l.sale_rate * (1 - l.discount_pct / 100)) }));
+  return createJob(db, userId, { customer_id: q.contact_id, quote_id: q.id, items: lines, instructions: q.notes, kit_name: q.kit_name, kit_id: q.kit_id, ...extra, bags });
 }
 
 const step = (s) => OPS_STATUSES.indexOf(s);
