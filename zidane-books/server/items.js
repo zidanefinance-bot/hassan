@@ -6,7 +6,7 @@ import { DOC_READ } from "./collab.js";
 
 const SALES_KINDS = ["quote", "dc", "invoice", "credit_note"];
 const BUY_KINDS = ["po", "bill", "vendor_credit"];
-const CHANGE_FIELDS = { name: "name", sku: "SKU", unit: "unit", category: "category", purchase_rate: "purchase rate", sale_rate: "selling rate", tax_rate: "tax %", reorder_level: "reorder level" };
+const CHANGE_FIELDS = { name: "name", sku: "SKU", unit: "unit", category: "category", purchase_rate: "purchase rate", sale_rate: "selling rate", tax_rate: "tax %", reorder_level: "reorder level", notes: "notes" };
 
 // kinds the viewer may see, from their caps
 export const visibleKinds = (can) => [...(can("sales.read") ? SALES_KINDS : []), ...(can("ops.read") ? BUY_KINDS : [])];

@@ -10,7 +10,7 @@ export const withCurrent = (list = [], current) => (current && !list.includes(cu
 export function ItemForm({ initial, onClose, onSaved, presetName = "", preset = {} }) {
   const settings = useLoad("/settings");
   const { can } = useAuth();
-  const [f, bind] = useForm(initial ? { ...initial, track_stock: !!initial.track_stock } : { name: presetName, sku: "", unit: "pcs", category: "", purchase_rate: "", sale_rate: "", tax_rate: 0, reorder_level: "", opening_stock: "", track_stock: true, ...preset });
+  const [f, bind] = useForm(initial ? { ...initial, track_stock: !!initial.track_stock } : { name: presetName, sku: "", unit: "pcs", category: "", purchase_rate: "", sale_rate: "", tax_rate: 0, reorder_level: "", opening_stock: "", track_stock: true, notes: "", ...preset });
   const [err, setErr] = useState("");
   const toast = useToast();
   const margin = Number(f.sale_rate) ? (((f.sale_rate - f.purchase_rate) / f.sale_rate) * 100).toFixed(1) : null;
@@ -41,6 +41,7 @@ export function ItemForm({ initial, onClose, onSaved, presetName = "", preset = 
           <Field label="Reorder level" hint="Warn when stock falls to this"><input type="number" step="0.01" {...bind("reorder_level")} /></Field>
           <label className="check"><input type="checkbox" {...bind("track_stock", "checkbox")} /> Track stock</label>
         </div>
+        <Field label="Notes"><input {...bind("notes")} placeholder="e.g. carton size, brand, where it's used" /></Field>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Save</button></div>
       </form>
@@ -227,6 +228,7 @@ export function ItemView() {
               <button className="btn ghost danger" onClick={async () => { if (confirm("Hide this item from lists? History is kept.")) { await api(`/items/${id}`, { method: "DELETE" }); nav("/items"); } }}>Delete</button>
             </>}
           </PageHead>
+          {i.notes && <p className="muted">{i.notes}</p>}
           <div className="stats">
             <div className="stat"><small>In stock</small><b className={i.track_stock && i.reorder_level > 0 && i.stock_qty <= i.reorder_level ? "neg" : ""}>{num(i.stock_qty)} {i.unit}</b><span className="muted">reorder at {num(i.reorder_level)}</span></div>
             {i.purchase_rate !== undefined && <div className="stat"><small>Purchase rate</small><b>{money(i.purchase_rate)}</b>{r.purchase?.avg_90 && <span className="muted">90-day avg {money(r.purchase.avg_90)}</span>}</div>}

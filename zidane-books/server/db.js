@@ -35,6 +35,7 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   // which DCs an invoice bills (so it prints "DC: DC-00012, DC-00013" and each DC is billed once)
   if (!db.prepare("SELECT 1 FROM pragma_table_info('documents') WHERE name = 'dc_numbers'").get()) db.exec("ALTER TABLE documents ADD COLUMN dc_numbers TEXT");
   if (!db.prepare("SELECT 1 FROM pragma_table_info('inbox_messages') WHERE name = 'body_html'").get()) db.exec("ALTER TABLE inbox_messages ADD COLUMN body_html TEXT");
+  if (!db.prepare("SELECT 1 FROM pragma_table_info('items') WHERE name = 'notes'").get()) db.exec("ALTER TABLE items ADD COLUMN notes TEXT");
   setupAccounts(db); // Chart of Accounts, and "paid through" on money records made before it
   // "delivered" only comes from a signed DC: a Job whose signed DC was removed earlier steps back
   db.prepare(`UPDATE jobs SET ops_status = CASE WHEN EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'issued') THEN 'dispatched' ELSE 'material_ready' END
@@ -131,7 +132,7 @@ CREATE TABLE IF NOT EXISTS items (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, sku TEXT, unit TEXT NOT NULL DEFAULT 'pcs', category TEXT,
   purchase_rate REAL NOT NULL DEFAULT 0, sale_rate REAL NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 0,
   stock_qty REAL NOT NULL DEFAULT 0, reorder_level REAL NOT NULL DEFAULT 0, track_stock INTEGER NOT NULL DEFAULT 1,
-  active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  notes TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS jobs (
   id INTEGER PRIMARY KEY, number TEXT NOT NULL UNIQUE, customer_id INTEGER NOT NULL REFERENCES contacts(id),

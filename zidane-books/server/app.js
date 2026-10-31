@@ -273,7 +273,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       history: I.itemHistory(db, i.id, cans(req)),
     });
   });
-  const itemFields = (b) => [b.name, b.sku || null, b.unit || "pcs", b.category || null, Number(b.purchase_rate) || 0, Number(b.sale_rate) || 0, Number(b.tax_rate) || 0, Number(b.reorder_level) || 0, b.track_stock === false ? 0 : 1];
+  const itemFields = (b) => [b.name, b.sku || null, b.unit || "pcs", b.category || null, Number(b.purchase_rate) || 0, Number(b.sale_rate) || 0, Number(b.tax_rate) || 0, Number(b.reorder_level) || 0, b.track_stock === false ? 0 : 1, b.notes || null];
   // anyone who writes documents can add a new item on the spot (like Zoho); they only set the rate they're allowed to see
   api.post("/items", (req, res) => {
     need(req.user, ["items.write", "sales.write", "buy"]);
@@ -284,7 +284,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const same = db.prepare("SELECT name FROM items WHERE active = 1").all().find((i) => i.name.trim().toLowerCase().replace(/\s+/g, " ") === b.name.trim().toLowerCase().replace(/\s+/g, " "));
     if (same) throw httpError(400, `"${same.name}" is already an item. Pick it from the list instead.`);
     b.category = I.itemCategory(db, b.category);
-    const r = db.prepare("INSERT INTO items (name, sku, unit, category, purchase_rate, sale_rate, tax_rate, reorder_level, track_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...itemFields(b));
+    const r = db.prepare("INSERT INTO items (name, sku, unit, category, purchase_rate, sale_rate, tax_rate, reorder_level, track_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(...itemFields(b));
     const newId = Number(r.lastInsertRowid);
     if (Number(b.opening_stock) && can(req.user, "items.write")) B.adjustStock(db, req.user.id, newId, b.opening_stock, "opening stock");
     B.log(db, req.user.id, "added", "item", newId, b.name);
@@ -299,7 +299,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const next = { ...i, track_stock: !!i.track_stock, ...body };
     // an item keeps a category that was later taken off the list, until someone changes it
     if (next.category !== i.category || !i.category) next.category = I.itemCategory(db, next.category);
-    db.prepare("UPDATE items SET name=?, sku=?, unit=?, category=?, purchase_rate=?, sale_rate=?, tax_rate=?, reorder_level=?, track_stock=? WHERE id=?").run(...itemFields(next), i.id);
+    db.prepare("UPDATE items SET name=?, sku=?, unit=?, category=?, purchase_rate=?, sale_rate=?, tax_rate=?, reorder_level=?, track_stock=?, notes=? WHERE id=?").run(...itemFields(next), i.id);
     I.logItemChanges(db, req.user.id, i, next, cans(req));
     res.json({ ok: true });
   });
