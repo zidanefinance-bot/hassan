@@ -1,6 +1,7 @@
 // SQLite storage (Node's built-in node:sqlite, no native deps). One file: data/zidane-books.db
 import { DatabaseSync } from "node:sqlite";
 import { setupGuard } from "./guard.js";
+import { setupWht } from "./wht.js";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { setupAccounts } from "./ledger.js";
@@ -31,6 +32,7 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   if (!hadCategories) tidyItems(db);
   setupRation(db); // ration kits, bags on Jobs and documents, packing progress
   setupGuard(db); // delete requests waiting for a director
+  setupWht(db); // withholding the customer deducts, per Job line
   // the email's HTML too: an RFQ typed as a table in the email is read from it when the plain text isn't enough
   // which DCs an invoice bills (so it prints "DC: DC-00012, DC-00013" and each DC is billed once)
   if (!db.prepare("SELECT 1 FROM pragma_table_info('documents') WHERE name = 'dc_numbers'").get()) db.exec("ALTER TABLE documents ADD COLUMN dc_numbers TEXT");

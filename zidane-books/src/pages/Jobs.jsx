@@ -136,10 +136,12 @@ export function JobForm() {
     api(`/jobs/${editId}`).then((j) => setF({
       number: j.number, customer_id: String(j.customer_id), order_source: j.order_source, customer_po_number: j.customer_po_number || "", customer_po_date: j.customer_po_date || "",
       required_date: j.required_date || "", delivery_location: j.delivery_location || "", priority: j.priority, fulfilment_type: j.fulfilment_type, instructions: j.instructions || "",
-      items: j.items.map((it) => ({ key: it.id, id: it.id, item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: it.qty, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate ?? 0 })),
+      items: j.items.map((it) => ({ key: it.id, id: it.id, item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: it.qty, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate ?? 0, wht_income_pct: it.wht_income_pct ?? "", wht_sales_pct: it.wht_sales_pct ?? "" })),
     })).catch((x) => setErr(x.message));
   }, [editId]);
   const set = (k) => ({ value: f[k], onChange: (e) => setF({ ...f, [k]: e.target.value }) });
+  // the customer's usual withholding shows in empty WHT boxes (an empty box takes it)
+  const cust = customers.data?.find((c) => String(c.id) === String(f.customer_id));
   const setItem = (i, patch) => setF((s) => ({ ...s, items: s.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) }));
   const [saving, setSaving] = useState(false);
   const save = async () => {
@@ -184,7 +186,7 @@ export function JobForm() {
           <Field label="Delivery location"><input {...set("delivery_location")} /></Field>
         </div>
         <table className="table lines-table">
-          <thead><tr><th style={{ width: "45%" }}>Item</th><th>Qty</th><th>Selling rate (Rs)</th><th>Tax</th><th className="r">Amount</th><th /></tr></thead>
+          <thead><tr><th style={{ width: "40%" }}>Item</th><th>Qty</th><th>Selling rate (Rs)</th><th>Tax</th><th title="Income tax the customer withholds, % of the line before tax">IT WHT %</th><th title="Share of this line's sales tax the customer withholds">ST WHT %</th><th className="r">Amount</th><th /></tr></thead>
           <tbody>{f.items.map((l, i) => (
             <tr key={l.key} className={l.ai && l.ai !== "high" ? "ai-check" : ""}>
               <td>
@@ -198,6 +200,8 @@ export function JobForm() {
               <td><input type="number" step="0.01" value={l.qty} onChange={(e) => setItem(i, { qty: e.target.value })} /></td>
               <td><input type="number" step="0.01" value={l.sale_rate} onChange={(e) => setItem(i, { sale_rate: e.target.value })} placeholder="0 = rate pending" /></td>
               <td><select value={l.tax_rate} onChange={(e) => setItem(i, { tax_rate: e.target.value })}>{(settings.data?.taxes || []).map((t) => <option key={t.name} value={t.rate}>{t.rate}%</option>)}</select></td>
+              <td><input type="number" step="0.01" min="0" max="100" style={{ width: 70 }} value={l.wht_income_pct ?? ""} placeholder={cust?.wht_income_pct != null ? String(cust.wht_income_pct) : "0"} onChange={(e) => setItem(i, { wht_income_pct: e.target.value })} /></td>
+              <td><input type="number" step="0.01" min="0" max="100" style={{ width: 70 }} value={l.wht_sales_pct ?? ""} placeholder={cust?.wht_sales_pct != null ? String(cust.wht_sales_pct) : "0"} onChange={(e) => setItem(i, { wht_sales_pct: e.target.value })} /></td>
               <td className="r">{money((Number(l.qty) || 0) * (Number(l.sale_rate) || 0))}</td>
               <td><button type="button" className="icon-btn" aria-label="Remove" onClick={() => setF((s) => ({ ...s, items: s.items.length > 1 ? s.items.filter((_, j) => j !== i) : [blank()] }))}>×</button></td>
             </tr>
@@ -346,6 +350,24 @@ export function JobView() {
               <section className="card"><h3>Documents</h3>{j.documents.length === 0 ? <p className="muted">None yet.</p> : <DocList docs={j.documents} />}</section>
             )}
           </div>
+
+          {j.wht && <section className="card flush">
+            <h3 className="pad">Withholding the customer deducts <span className="muted small">(set % per item in Edit Job; the customer's usual % fills empty ones)</span></h3>
+            {j.wht.total > 0 ? (
+              <table className="table compact">
+                <thead><tr><th>Item</th><th className="r">Line incl. tax</th><th className="r">Income tax WHT</th><th className="r">Sales tax WHT</th></tr></thead>
+                <tbody>{j.wht.lines.filter((l) => l.wht_income || l.wht_sales).map((l) => (
+                  <tr key={l.id}><td>{l.name}</td><td className="r">{money(l.gross)}</td>
+                    <td className="r">{l.wht_income ? <>{money(l.wht_income)} <span className="muted small">({num(l.wht_income_pct)}%)</span></> : "—"}</td>
+                    <td className="r">{l.wht_sales ? <>{money(l.wht_sales)} <span className="muted small">({num(l.wht_sales_pct)}% of tax)</span></> : "—"}</td></tr>
+                ))}</tbody>
+                <tfoot>
+                  <tr><td><b>Withheld in all</b></td><td className="r">{money(j.wht.gross)}</td><td className="r"><b>{money(j.wht.income)}</b></td><td className="r"><b>{money(j.wht.sales)}</b></td></tr>
+                  <tr><td colSpan={3}><b>Cash expected</b> <span className="muted small">(order value with tax, less withholding; the withheld tax is adjustable against your own tax)</span></td><td className="r"><b className="pos">{money(j.wht.cash)}</b></td></tr>
+                </tfoot>
+              </table>
+            ) : <p className="pad muted small">No withholding set. If this customer deducts tax at source, put their % on the customer (or per item in Edit Job).</p>}
+          </section>}
 
           <section className="card flush">
             <h3 className="pad">Items</h3>

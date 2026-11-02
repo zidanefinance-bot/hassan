@@ -26,6 +26,7 @@ import * as L from "./ledger.js";
 import * as RA from "./ration.js";
 import * as GD from "./guard.js";
 import * as MB from "./digest.js";
+import * as WH from "./wht.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -241,6 +242,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const same = db.prepare("SELECT name FROM contacts WHERE type = ? AND active = 1").all(b.type).find((c) => norm(c.name) === norm(b.name));
     if (same) throw httpError(400, `${same.name} is already in your ${b.type}s. Pick it from the list instead.`);
     const r = db.prepare("INSERT INTO contacts (type, name, company, phone, email, address, ntn, opening_balance, notes, payment_terms_days, credit_limit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(b.type, ...contactFields(b));
+    if (b.type === "customer") db.prepare("UPDATE contacts SET wht_income_pct = ?, wht_sales_pct = ? WHERE id = ?").run(num(b.wht_income_pct), num(b.wht_sales_pct), Number(r.lastInsertRowid));
     B.log(db, req.user.id, "added", b.type, Number(r.lastInsertRowid), b.name);
     res.json({ id: Number(r.lastInsertRowid) });
   });
@@ -249,6 +251,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!c) throw httpError(404, "Not found");
     need(req.user, CONTACT_WRITE[c.type]);
     db.prepare("UPDATE contacts SET name=?, company=?, phone=?, email=?, address=?, ntn=?, opening_balance=?, notes=?, payment_terms_days=?, credit_limit=? WHERE id=?").run(...contactFields({ ...c, ...req.body }), c.id);
+    // the withholding this customer deducts by default (new Job lines take it)
+    if ("wht_income_pct" in (req.body || {}) || "wht_sales_pct" in (req.body || {})) db.prepare("UPDATE contacts SET wht_income_pct = ?, wht_sales_pct = ? WHERE id = ?").run(num(req.body.wht_income_pct ?? c.wht_income_pct), num(req.body.wht_sales_pct ?? c.wht_sales_pct), c.id);
     res.json({ ok: true });
   });
   api.delete("/contacts/:id", (req, res) => {
@@ -429,6 +433,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       job: d.job_id ? db.prepare("SELECT id, number, customer_po_number, delivery_location FROM jobs WHERE id = ?").get(d.job_id) : null,
       // the other paperwork of the same Job that this person may see (DC ↔ invoice ↔ credit note, bill ↔ PO)
       linked_numbers: J.linkedNumbers(db, d),
+      ...(d.kind === "invoice" ? { wht_expected: { income: d.wht_income_exp, sales: d.wht_sales_exp }, wht_outstanding: WH.whtOutstanding(db, d) } : {}),
       related: d.job_id ? db.prepare("SELECT id, kind, number, status FROM documents WHERE job_id = ? AND id != ? AND status != 'void' ORDER BY id").all(d.job_id, d.id).filter((x) => canAny(req.user, DOC_READ[x.kind])) : [],
       verified_by_name: d.verified_by ? db.prepare("SELECT name FROM users WHERE id = ?").get(d.verified_by)?.name : null,
     });
@@ -481,6 +486,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   };
   const afterSave = (req, docId, beforeStatus) => {
     const d = db.prepare("SELECT kind, status, job_id FROM documents WHERE id = ?").get(docId);
+    if (d?.kind === "invoice") WH.syncInvoiceWht(db, docId); // lines or totals may have changed: so does what they'll withhold
     if (d?.status === "open" && beforeStatus !== "open") C.notifyEvent(db, req.user.id, "doc.issued", { docId });
     const out = (s) => ["issued", "signed"].includes(s);
     // a bill buys for every Job its lines are for

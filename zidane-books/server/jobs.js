@@ -5,6 +5,7 @@ import { tx } from "./db.js";
 import { getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
 import { DOC_READ } from "./collab.js";
 import * as RA from "./ration.js";
+import { jobWht, setLineWht, syncInvoiceWht } from "./wht.js";
 
 export const OPS_STATUSES = ["new", "procurement_started", "partially_purchased", "purchase_complete", "material_ready", "dispatched", "delivered"];
 // an ordered item is always supplied: there is no "not available" (the old value is turned back into to_buy at start-up)
@@ -34,7 +35,8 @@ export function createJob(db, userId, input) {
       input.order_source || "call", input.required_date || null, input.delivery_location || null, input.priority || "normal", input.fulfilment_type === "direct" ? "direct" : "stock", input.instructions || null, userId ?? null);
     const id = Number(r.lastInsertRowid);
     for (const i of items) {
-      db.prepare("INSERT INTO job_items (job_id, item_id, description, qty, sale_rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)").run(id, i.item_id || null, i.description || null, Number(i.qty) || 0, Number(i.sale_rate ?? i.rate) || 0, Number(i.tax_rate) || 0);
+      const ji = db.prepare("INSERT INTO job_items (job_id, item_id, description, qty, sale_rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)").run(id, i.item_id || null, i.description || null, Number(i.qty) || 0, Number(i.sale_rate ?? i.rate) || 0, Number(i.tax_rate) || 0);
+      setLineWht(db, Number(ji.lastInsertRowid), i, input.customer_id);
     }
     if (input.quote_id) db.prepare("UPDATE documents SET status = 'converted', job_id = ? WHERE id = ? AND kind = 'quote'").run(id, input.quote_id);
     // a ration order: N bags, each holding the lines divided by N; kit_id lets Purchasing pull the kit's packing materials for this many bags
@@ -233,8 +235,10 @@ function updateJobItems(db, job, input) {
       if (status !== it.procurement_status) addsBuying = true;
       db.prepare("UPDATE job_items SET item_id = ?, description = ?, qty = ?, sale_rate = ?, tax_rate = ?, procurement_status = ? WHERE id = ?")
         .run(Number(l.item_id) || null, Number(l.item_id) ? null : l.description || null, qty, rate, tax, status, it.id);
+      if ("wht_income_pct" in l || "wht_sales_pct" in l) setLineWht(db, it.id, l, job.customer_id);
     } else {
-      db.prepare("INSERT INTO job_items (job_id, item_id, description, qty, sale_rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)").run(job.id, Number(l.item_id) || null, Number(l.item_id) ? null : l.description || null, qty, rate, tax);
+      const ji = db.prepare("INSERT INTO job_items (job_id, item_id, description, qty, sale_rate, tax_rate) VALUES (?, ?, ?, ?, ?, ?)").run(job.id, Number(l.item_id) || null, Number(l.item_id) ? null : l.description || null, qty, rate, tax);
+      setLineWht(db, Number(ji.lastInsertRowid), l, job.customer_id);
       addsBuying = true;
     }
   }
@@ -331,13 +335,14 @@ export function jobDetail(db, id, can) {
       id: i.id, item_id: i.item_id, name: i.item_name || i.description, unit: i.unit || "", qty: i.qty, procurement_status: i.procurement_status, stock_qty: i.stock_qty,
       ...(can("sales.read") ? { delivered_qty: delivered(i).qty, invoiced_qty: invoiced(i).qty, ready_qty: ready(i) } : { delivered_qty: delivered(i).qty }),
       ...(can("ops.read") ? { purchased_qty: bought(i).qty } : {}),
-      ...(can("price.view") ? { sale_rate: i.sale_rate, tax_rate: i.tax_rate } : {}),
+      ...(can("price.view") ? { sale_rate: i.sale_rate, tax_rate: i.tax_rate, wht_income_pct: i.wht_income_pct, wht_sales_pct: i.wht_sales_pct } : {}),
       ...(can("cost.view") ? { purchase_rate: i.purchase_rate } : {}),
     })),
     // each side only sees its own paperwork on the Job (credit notes are Sales', vendor credits Operations')
     documents: docs.filter((d) => DOC_READ[d.kind].some(can)).map((d) => (can("money") ? d : { ...d, paid: undefined })),
     expenses: can("ops.read") ? db.prepare("SELECT e.*, a.name AS account_name FROM expenses e LEFT JOIN accounts a ON a.id = e.account_id WHERE e.job_id = ? ORDER BY e.date").all(id) : [],
     economics: can("profit.view") ? jobEconomics(db, id) : null,
+    wht: can("price.view") ? jobWht(db, id) : null, // what the customer will withhold, per line
     ration: rationFor(db, job, can),
   };
   if (!can("sales.read")) delete out.customer_phone; // operations only needs who and where
@@ -598,6 +603,7 @@ export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {
     const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
     const id = saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: new Date(Date.now() + days * 864e5).toISOString().slice(0, 10), reference: job.customer_po_number || job.number, lines: RA.bagLines(db, job, n) });
     RA.markBags(db, id, n, job.kit_name, show_as);
+    syncInvoiceWht(db, id);
     return noteDcs(db, id, jobId);
   }
   const items = db.prepare("SELECT * FROM job_items WHERE job_id = ?").all(jobId);
@@ -614,7 +620,9 @@ export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {
   if (lines.length === 0) throw httpError(400, anyDc ? "Everything delivered is already invoiced" : "Nothing left to invoice");
   const days = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(job.customer_id)?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
   const due = new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
-  return noteDcs(db, saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: due, reference: job.customer_po_number || job.number, lines }), jobId);
+  const invId = saveDocument(db, userId, { kind: "invoice", contact_id: job.customer_id, job_id: jobId, status: "draft", due_date: due, reference: job.customer_po_number || job.number, lines });
+  syncInvoiceWht(db, invId);
+  return noteDcs(db, invId, jobId);
 }
 
 // The Job's delivery status follows its DCs: a signed DC = delivered, an issued one = dispatched.

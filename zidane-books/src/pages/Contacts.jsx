@@ -5,7 +5,7 @@ import Activity from "../components/Activity.jsx";
 import { api, Badge, Field, fmtDate, KIND, Loading, Modal, money, PageHead, Search, useAuth, useForm, useLoad, useToast } from "../lib.jsx";
 
 export function ContactForm({ type, initial, onClose, onSaved, presetName = "", preset = {} }) {
-  const [f, bind] = useForm(initial ? { ...initial, payment_terms_days: initial.payment_terms_days ?? "", credit_limit: initial.credit_limit ?? "" } : { type, name: presetName, company: "", phone: "", email: "", address: "", ntn: "", notes: "", opening_balance: "", payment_terms_days: "", credit_limit: "", ...preset });
+  const [f, bind] = useForm(initial ? { ...initial, payment_terms_days: initial.payment_terms_days ?? "", credit_limit: initial.credit_limit ?? "", wht_income_pct: initial.wht_income_pct ?? "", wht_sales_pct: initial.wht_sales_pct ?? "" } : { type, name: presetName, company: "", phone: "", email: "", address: "", ntn: "", notes: "", opening_balance: "", payment_terms_days: "", credit_limit: "", ...preset });
   const [err, setErr] = useState("");
   const toast = useToast();
   const save = async (e) => {
@@ -26,6 +26,8 @@ export function ContactForm({ type, initial, onClose, onSaved, presetName = "", 
         <div className="row-3">
           <Field label="Payment terms (days)" hint="Due date on new invoices/bills. Empty = company default"><input type="number" min="0" {...bind("payment_terms_days")} /></Field>
           {type === "customer" && <Field label="Credit limit (Rs)" hint="Above this, only a director can issue invoices"><input type="number" min="0" step="0.01" {...bind("credit_limit")} /></Field>}
+          {type === "customer" && <Field label="Income tax they withhold (%)" hint="e.g. 5.5 on supplies. New Job lines take it; change per line on the Job"><input type="number" min="0" max="100" step="0.01" {...bind("wht_income_pct")} /></Field>}
+          {type === "customer" && <Field label="Sales tax they withhold (% of the tax)" hint="e.g. 20 (one fifth of GST). Empty = none"><input type="number" min="0" max="100" step="0.01" {...bind("wht_sales_pct")} /></Field>}
           <Field label="Opening balance (Rs)" hint={type === "customer" ? "What they owed when you started" : "What you owed when you started"}><input type="number" step="0.01" {...bind("opening_balance")} /></Field>
         </div>
         {err && <div className="form-error">{err}</div>}

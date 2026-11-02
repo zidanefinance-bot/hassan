@@ -11,7 +11,9 @@ const WRITE = { quote: ["sales.write"], invoice: ["sales.write"], dc: ["sales.wr
 const ATTACH_LABELS = { quote: ["Customer enquiry", "Customer PO"], invoice: ["Customer PO", "Submission receipt"], dc: ["Signed DC", "Gate pass"], credit_note: ["Return note"], po: ["Supplier quotation"], bill: ["Supplier bill photo", "Delivery note"], vendor_credit: ["Return note"] };
 
 export function PaymentModal({ doc, onClose, onSaved }) {
-  const [p, setP] = useState({ amount: doc.balance, wht_income: "", wht_sales: "", date: today(), mode: "bank", account_id: "", reference: "", notes: "" });
+  // the withholding this invoice expects fills the two tax boxes, and the cash box is the balance less them
+  const wo = doc.kind === "invoice" && doc.wht_outstanding ? doc.wht_outstanding : { income: 0, sales: 0 };
+  const [p, setP] = useState({ amount: Math.round(Math.max(0, doc.balance - wo.income - wo.sales) * 100) / 100, wht_income: wo.income || "", wht_sales: wo.sales || "", date: today(), mode: "bank", account_id: "", reference: "", notes: "" });
   const withheld = (Number(p.wht_income) || 0) + (Number(p.wht_sales) || 0);
   const settles = Math.round(((Number(p.amount) || 0) + withheld) * 100) / 100;
   // the customer kept some tax: what reaches the bank is the balance less that
@@ -270,6 +272,11 @@ export default function DocumentView({ kind }) {
                     {d.payments.filter((p) => p.source === "credit").map((p) => <React.Fragment key={p.allocation_id}><dt>Less: {kind === "bill" ? "vendor credit" : "credit note"} {p.number}</dt><dd>− {money(p.amount)}</dd></React.Fragment>)}
                     {(() => { const cash = Math.round((d.paid - d.payments.filter((p) => p.source === "credit").reduce((t, p) => t + p.amount, 0)) * 100) / 100; return cash > 0.004 ? <><dt>Paid</dt><dd>− {money(cash)}</dd></> : null; })()}
                     <dt className="grand">Balance due</dt><dd className="grand">{money(d.balance)}</dd></>}
+                  {/* what the customer will keep as tax at source: the cash to expect is less than the balance */}
+                  {kind === "invoice" && d.wht_outstanding && d.balance > 0 && (d.wht_outstanding.income + d.wht_outstanding.sales) > 0 && <>
+                    {d.wht_outstanding.income > 0 && <><dt className="no-print">Less: income tax they'll withhold</dt><dd className="no-print">− {money(d.wht_outstanding.income)}</dd></>}
+                    {d.wht_outstanding.sales > 0 && <><dt className="no-print">Less: sales tax they'll withhold</dt><dd className="no-print">− {money(d.wht_outstanding.sales)}</dd></>}
+                    <dt className="no-print">Cash expected</dt><dd className="no-print"><b>{money(Math.max(0, d.balance - d.wht_outstanding.income - d.wht_outstanding.sales))}</b></dd></>}
                 </dl>
               </div>
             )}
