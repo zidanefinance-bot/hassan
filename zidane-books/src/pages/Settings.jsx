@@ -111,6 +111,35 @@ function BackupStatus() {
   );
 }
 
+// the director's morning email: what is stuck, as plain questions, every day at the time set here
+function MorningBrief({ s, setS }) {
+  const toast = useToast();
+  const mb = { enabled: true, to: "", time: "08:00", ...(s.morningBrief || {}) };
+  const set = (k, v) => setS({ ...s, morningBrief: { ...mb, [k]: v } });
+  const [busy, setBusy] = useState(false);
+  const test = async () => {
+    setBusy(true);
+    try { const r = await api("/morning-brief/send", { method: "POST", body: {} }); toast(`Sent to ${r.to} · ${r.count} items`); } catch (e) { toast(e.message, "err"); }
+    setBusy(false);
+  };
+  return (
+    <section className="card form">
+      <h3>Morning brief (email)</h3>
+      <p className="muted small">Every morning: overdue invoices, DCs with no invoice, unsigned DCs, goods bought but not delivered, "bought" with no supplier bill, late Jobs, what's still to order, supplier payments due, quotes with no reply, approvals and the orders inbox. Each as a question with a link.</p>
+      <label className="check"><input type="checkbox" checked={mb.enabled !== false} onChange={(e) => set("enabled", e.target.checked)} /> Send it every morning</label>
+      <div className="row-2">
+        <Field label="Send to" hint="Your Gmail. Several: separate with commas. Empty = directors' login emails"><input value={mb.to} onChange={(e) => set("to", e.target.value)} placeholder="you@gmail.com" /></Field>
+        <Field label="Time (Karachi)"><input type="time" value={mb.time} onChange={(e) => set("time", e.target.value)} /></Field>
+      </div>
+      <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+        <a className="btn ghost" href="/api/morning-brief/preview" target="_blank" rel="noreferrer">Preview today's</a>
+        <button type="button" className="btn" disabled={busy} onClick={test}>{busy ? "Sending…" : "Send it now"}</button>
+      </div>
+      <p className="muted small">Save settings first if you changed the email. It goes from the company mailbox (the same one that emails invoices).</p>
+    </section>
+  );
+}
+
 export default function Settings() {
   const state = useLoad("/settings");
   const [s, setS] = useState(null);
@@ -183,6 +212,7 @@ export default function Settings() {
               ))}
             </div>
           </section>
+          <MorningBrief s={s} setS={setS} />
           <Users />
           <Password />
           <section className="card">

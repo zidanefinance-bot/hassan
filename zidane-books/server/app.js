@@ -25,6 +25,7 @@ import * as AS from "./assistant.js";
 import * as L from "./ledger.js";
 import * as RA from "./ration.js";
 import * as GD from "./guard.js";
+import * as MB from "./digest.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -115,6 +116,11 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (req.query.entity) return res.json(GD.recordActivity(db, req.user, String(req.query.entity), Number(req.query.id)));
     need(req.user, "admin"); res.json(GD.allActivity(db, req.query));
   });
+  // the morning brief: see it now, or send it now (to yourself, or to the addresses in Settings)
+  api.get("/morning-brief/preview", requirePerm("admin"), (req, res) => { res.type("html").send(MB.briefHtml(MB.buildBrief(db), { company: B.getSetting(db, "company")?.name })); });
+  api.post("/morning-brief/send", requirePerm("admin"), async (req, res) => {
+    try { res.json(await MB.sendBrief(db, { to: req.body?.to || undefined })); } catch (e) { throw httpError(e.status || 502, e.message); }
+  });
   api.get("/delete-requests", (req, res) => res.json(GD.deleteRequests(db, req.user)));
   api.post("/delete-requests/:id/reject", requirePerm("admin"), (req, res) => {
     if (!GD.rejectRequest(db, req.user, id(req), req.body?.note)) throw httpError(409, "This request was already handled");
@@ -170,7 +176,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     res.json(out);
   });
   api.put("/settings", requirePerm("admin"), (req, res) => {
-    const allowed = ["company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "itemCategories", "invoiceFooter", "autoJobFromPo", "financeAssumptions", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
+    const allowed = ["morningBrief", "company", "taxes", "prefixes", "nextNumbers", "paymentTermsDays", "expenseCategories", "jobExpenseCategories", "itemCategories", "invoiceFooter", "autoJobFromPo", "financeAssumptions", "salesTargetMonthly", "expenseBudgets", "lowMarginPct", "dcSignDays"];
     if ("itemCategories" in (req.body || {})) {
       const cats = [...new Set((req.body.itemCategories || []).map((c) => String(c).trim()).filter(Boolean))];
       if (!cats.length) throw httpError(400, "Keep at least one item category");
