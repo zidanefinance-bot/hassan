@@ -202,6 +202,8 @@ export function updateJob(db, userId, id, input) {
         input.delivery_location ?? job.delivery_location, input.priority ?? job.priority, input.instructions ?? job.instructions,
         input.order_source ?? job.order_source, input.fulfilment_type === "direct" ? "direct" : input.fulfilment_type === "stock" ? "stock" : job.fulfilment_type, id);
     if (Array.isArray(input.items)) updateJobItems(db, job, input.items);
+    // withholding % corrected on the lines: the Job's invoices expect the new amounts too
+    for (const { id: inv } of db.prepare("SELECT id FROM documents WHERE job_id = ? AND kind = 'invoice' AND status != 'void'").all(id)) syncInvoiceWht(db, inv);
     log(db, userId, "updated job", "job", id, job.number);
   });
 }

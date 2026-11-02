@@ -306,11 +306,12 @@ function allocate(db, userId, source, documentId, amount, date) {
 // Record a receipt/payment. Allocate it with `allocations` [{document_id, amount}], or `document_id` (applies up to that
 // document's balance). Anything left over stays on the contact as an advance / unused credit.
 export function recordPayment(db, userId, p) {
-  const amount = round2(p.amount);
-  if (!(amount > 0)) throw httpError(400, "Amount must be more than zero");
+  const amount = round2(Number(p.amount) || 0);
   const whtIncome = round2(Number(p.wht_income) || 0), whtSales = round2(Number(p.wht_sales) || 0);
-  if (whtIncome < 0 || whtSales < 0) throw httpError(400, "Tax withheld can't be negative");
+  if (amount < 0 || whtIncome < 0 || whtSales < 0) throw httpError(400, "Amounts can't be negative");
   const settled = round2(amount + whtIncome + whtSales);
+  // tax only (amount 0) is fine: the cash came earlier, the withholding certificate now
+  if (!(settled > 0)) throw httpError(400, "Amount must be more than zero");
   if (!["in", "out"].includes(p.direction)) throw httpError(400, "Direction must be in or out");
   return tx(db, () => {
     let contactId = p.contact_id;

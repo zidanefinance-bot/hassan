@@ -37,3 +37,28 @@ test("withholding per Job line: customer's default, a line's own rate, the invoi
   assert.equal(B.paidAmount(db, inv), d.total);
   assert.deepEqual(whtOutstanding(db, d), { income: 0, sales: 0 });
 });
+
+test("withholding corrected later: the Job's invoice follows; tax that comes in later can be recorded alone", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = Number(db.prepare("INSERT INTO contacts (type, name, wht_income_pct) VALUES ('customer', 'Mills Ltd', 5.5)").run().lastInsertRowid);
+  const jobId = J.createJob(db, 1, { customer_id: cust, items: [{ description: "Gloves", qty: 10, sale_rate: 100 }, { description: "Mop", qty: 10, sale_rate: 100 }] });
+  db.prepare("UPDATE job_items SET procurement_status = 'bought' WHERE job_id = ?").run(jobId);
+  db.prepare("UPDATE jobs SET ops_status = 'material_ready' WHERE id = ?").run(jobId);
+  B.setStatus(db, 1, J.dcFromJob(db, 1, jobId), "issued");
+  const inv = J.invoiceFromJob(db, 1, jobId);
+  B.setStatus(db, 1, inv, "open");
+  const exp = () => db.prepare("SELECT wht_income_exp AS v FROM documents WHERE id = ?").get(inv).v;
+  assert.equal(exp(), 110); // 5.5% of 2,000
+  // oops: they don't withhold on the mop
+  const items = db.prepare("SELECT * FROM job_items WHERE job_id = ? ORDER BY id").all(jobId);
+  J.updateJob(db, 1, jobId, { items: items.map((i) => ({ ...i, wht_income_pct: i.description === "Mop" ? 0 : "" })) });
+  assert.equal(exp(), 55, "the invoice expects the corrected amount");
+  // they paid the cash net; the tax certificate comes later, on its own
+  const total = db.prepare("SELECT total FROM documents WHERE id = ?").get(inv).total;
+  B.recordPayment(db, 1, { direction: "in", contact_id: cust, document_id: inv, amount: total - 55, mode: "bank" });
+  B.recordPayment(db, 1, { direction: "in", contact_id: cust, document_id: inv, amount: 0, wht_income: 55, mode: "bank" });
+  assert.equal(B.paidAmount(db, inv), total);
+  assert.throws(() => B.recordPayment(db, 1, { direction: "in", contact_id: cust, amount: 0, mode: "bank" }), /more than zero/);
+});

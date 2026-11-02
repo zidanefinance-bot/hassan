@@ -3,10 +3,30 @@
 // withheld, so its "cash expected" is right and the payment form fills the two tax boxes by itself.
 import { round2 } from "./books.js";
 
+// a payment can be the withheld tax alone (the cash came earlier, the certificate now): its cash amount may be 0.
+// SQLite can't change a CHECK in place, so the table is rebuilt once, every row and id kept.
+function allowTaxOnlyPayments(db) {
+  const t = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'payments'").get();
+  if (!t || !/amount REAL NOT NULL CHECK \(amount > 0\)/.test(t.sql)) return;
+  const cols = db.prepare("SELECT name FROM pragma_table_info('payments')").all().map((c) => `"${c.name}"`).join(", ");
+  const sql = t.sql.replace(/CREATE TABLE (IF NOT EXISTS )?"?payments"?/, 'CREATE TABLE payments_rebuild').replace("amount REAL NOT NULL CHECK (amount > 0)", "amount REAL NOT NULL CHECK (amount >= 0)");
+  db.exec("PRAGMA foreign_keys = OFF");
+  try {
+    db.exec("BEGIN");
+    db.exec(sql);
+    db.exec(`INSERT INTO payments_rebuild (${cols}) SELECT ${cols} FROM payments`);
+    db.exec("DROP TABLE payments");
+    db.exec("ALTER TABLE payments_rebuild RENAME TO payments");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_pay_contact ON payments(contact_id)");
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; } finally { db.exec("PRAGMA foreign_keys = ON"); }
+}
+
 export function setupWht(db) {
   const cols = (t) => db.prepare(`SELECT name FROM pragma_table_info('${t}')`).all().map((c) => c.name);
   if (!cols("job_items").includes("wht_income_pct")) db.exec("ALTER TABLE job_items ADD COLUMN wht_income_pct REAL; ALTER TABLE job_items ADD COLUMN wht_sales_pct REAL;");
   if (!cols("contacts").includes("wht_income_pct")) db.exec("ALTER TABLE contacts ADD COLUMN wht_income_pct REAL; ALTER TABLE contacts ADD COLUMN wht_sales_pct REAL;");
+  allowTaxOnlyPayments(db);
   if (!cols("documents").includes("wht_income_exp")) db.exec("ALTER TABLE documents ADD COLUMN wht_income_exp REAL NOT NULL DEFAULT 0; ALTER TABLE documents ADD COLUMN wht_sales_exp REAL NOT NULL DEFAULT 0;");
 }
 
