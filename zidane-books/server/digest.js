@@ -2,7 +2,7 @@
 // ("DC went 9 days ago, why no invoice?"), oldest first, with a link to open it. Nothing to say → a short "all clear".
 import nodemailer from "nodemailer";
 import { getSetting, PAID_SQL, round2, setSetting, today } from "./books.js";
-import { jobList, netBought, OPS_STATUSES, procurementList } from "./jobs.js";
+import { jobList, netBought, OPS_STATUSES, procurementList, uninvoicedDcs } from "./jobs.js";
 import { DOC_PATH } from "./collab.js";
 
 const TZ = "Asia/Karachi";
@@ -37,13 +37,11 @@ export function buildBrief(db) {
     overdue.map((d) => ({ text: `${d.number}${po(d)} · ${d.contact_name}`, ask: `${rs(d.balance)} · ${ago(days(d.due_date, t))} se overdue. Payment kab aayegi?`, link: docLink(d), days: days(d.due_date, t) })), "red");
 
   // 2. goods went out on a DC, no invoice for it yet
-  const billedDcs = new Set(db.prepare("SELECT dc_numbers FROM documents WHERE kind = 'invoice' AND status != 'void' AND dc_numbers IS NOT NULL").all().flatMap((r) => r.dc_numbers.split(",").map((x) => x.trim())));
   const notInvoiced = [];
-  for (const j of jobs.filter((x) => x.out_qty > x.invoiced_qty + 0.001)) {
-    const dcs = db.prepare("SELECT id, number, date FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN ('issued','signed') ORDER BY date").all(j.id).filter((d) => !billedDcs.has(d.number));
-    const first = dcs[0] || db.prepare("SELECT id, number, date FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN ('issued','signed') ORDER BY date DESC LIMIT 1").get(j.id);
-    if (!first) continue;
-    notInvoiced.push({ text: jobName(j), ask: `${(dcs.length ? dcs : [first]).map((d) => d.number).join(", ")} ko gaye ${ago(days(first.date, t))} ho gaye. Invoice kyun nahi bani?`, link: `/jobs/${j.id}`, days: days(first.date, t) });
+  for (const j of jobs) {
+    const dcs = uninvoicedDcs(db, j.id);
+    if (!dcs.length) continue;
+    notInvoiced.push({ text: jobName(j), ask: `${dcs.map((d) => d.number).join(", ")} ko gaye ${ago(days(dcs[0].date, t))} ho gaye. Invoice kyun nahi bani?`, link: `/jobs/${j.id}`, days: days(dcs[0].date, t) });
   }
   add("🧾", "Maal chala gaya, invoice nahi bani", "Job kholo → Create invoice.", notInvoiced.sort((a, b) => b.days - a.days), "red");
 

@@ -36,3 +36,23 @@ test("morning brief: what is stuck, as questions, and it goes by email", async (
   assert.match(sent[0].text, /Overdue invoices/);
   useBriefTransport(null);
 });
+
+test("a DC an invoice already covers isn't 'not invoiced', even if the invoice qty was corrected", async () => {
+  const J = await import("./jobs.js");
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const jobId = J.createJob(db, 1, { customer_id: cust, items: [{ description: "Motor winding paper", qty: 3, sale_rate: 6316 }] });
+  db.prepare("UPDATE job_items SET procurement_status = 'bought' WHERE job_id = ?").run(jobId);
+  db.prepare("UPDATE jobs SET ops_status = 'material_ready' WHERE id = ?").run(jobId);
+  const dc = J.dcFromJob(db, 1, jobId);
+  B.setStatus(db, 1, dc, "issued");
+  const stuck = () => buildBrief(db).sections.find((s) => s.title.startsWith("Maal chala gaya"))?.rows.some((r) => r.link === `/jobs/${jobId}`) || false;
+  assert.equal(stuck(), true, "DC out, no invoice");
+  // an invoice made the old way (no DC numbers kept), its qty corrected from 3 to 2.7
+  const inv = B.saveDocument(db, 1, { kind: "invoice", contact_id: cust, job_id: jobId, status: "open", lines: [{ description: "Motor winding paper", qty: 2.7, rate: 6316 }] });
+  assert.equal(db.prepare("SELECT dc_numbers FROM documents WHERE id = ?").get(inv).dc_numbers, null);
+  assert.equal(stuck(), false, "the invoice covers the DC");
+  assert.equal(J.uninvoicedDcs(db, jobId).length, 0);
+});

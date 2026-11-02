@@ -554,6 +554,16 @@ function unbilledDcs(db, jobId) {
 }
 const noteDcs = (db, invoiceId, jobId) => { const dcs = unbilledDcs(db, jobId); if (dcs.length) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(dcs.join(", "), invoiceId); return invoiceId; };
 
+// The Job's sent DCs that no invoice covers yet. A DC is covered once an invoice names it (even if the invoice's qty was
+// corrected a little, e.g. 3 delivered, 2.7 billed); an invoice from before DC numbers were kept covers the DCs made before it.
+export function uninvoicedDcs(db, jobId, statuses = ["issued", "signed"]) {
+  const invoices = db.prepare("SELECT id, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status IN ('open','draft')").all(jobId);
+  const named = new Set(invoices.flatMap((i) => splitNumbers(i.dc_numbers)));
+  const legacy = Math.max(0, ...invoices.filter((i) => !i.dc_numbers).map((i) => i.id));
+  return db.prepare(`SELECT id, number, date, status FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN (${statuses.map(() => "?").join(",")}) ORDER BY date, id`).all(jobId, ...statuses)
+    .filter((d) => !named.has(d.number) && d.id > legacy);
+}
+
 // "DC: …" on an invoice and "Invoice: …" on a DC. Invoices made before this was kept show all the Job's sent DCs.
 export function linkedNumbers(db, d) {
   if (!d.job_id || !["invoice", "dc"].includes(d.kind)) return [];

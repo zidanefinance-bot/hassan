@@ -1,6 +1,6 @@
 // Reports. P&L is document-based: sales (ex-tax) − cost of goods sold (cost captured on each invoice line) − expenses.
 import { round2, today, displayStatus, getSetting, creditStatus, PAID_SQL, UNUSED_SQL, CREDIT_UNUSED_SQL } from "./books.js";
-import { jobEconomics, jobList, OPS_STATUSES, procurementList } from "./jobs.js";
+import { jobEconomics, jobList, OPS_STATUSES, procurementList, uninvoicedDcs } from "./jobs.js";
 
 const ISSUED = "status = 'open'";
 
@@ -158,7 +158,7 @@ export function home(db, user, can, { from, to } = {}) {
       q("Sales", "dc", "Material ready, DC needed", jobs.filter((j) => !j.closed && step(j.ops_status) >= step("material_ready") && j.out_qty < j.ordered_qty - 0.001 && !j.draft_dc_count).map((j) => jobItem(j, j.out_qty > 0 ? `Part delivered (${j.out_qty} of ${j.ordered_qty}). DC for the rest` : "Create the customer DC")), "red"),
       q("Sales", "signed", "Delivered, signed DC missing", docs("d.kind = 'dc' AND d.status = 'issued' AND d.date > ?", soon(-signDays)).map((d) => docItem(d, "Upload / mark signed receiving"))),
       q("Sales", "signedold", `DC unsigned for ${signDays}+ days`, docs("d.kind = 'dc' AND d.status = 'issued' AND d.date <= ?", soon(-signDays)).map((d) => docItem(d, `Issued ${d.date}. Get the signed copy`)), "red"),
-      q("Sales", "inv", "Signed DC, invoice not made", jobs.filter((j) => !j.closed && j.signed_qty > j.invoiced_qty + 0.001).map((j) => jobItem(j, j.invoiced_qty > 0 ? `Invoice the rest (${j.invoiced_qty} of ${j.signed_qty} delivered invoiced)` : "Create the customer invoice")), "red"),
+      q("Sales", "inv", "Signed DC, invoice not made", jobs.filter((j) => !j.closed && uninvoicedDcs(db, j.id, ["signed"]).length).map((j) => jobItem(j, j.invoiced_qty > 0 ? `Invoice the rest (${j.invoiced_qty} of ${j.signed_qty} delivered invoiced)` : "Create the customer invoice")), "red"),
       q("Sales", "draftinv", "Draft invoices", docs("d.kind = 'invoice' AND d.status = 'draft'").map((d) => docItem(d, "Review and issue"))),
       q("Sales", "submit", "Invoices not submitted to customer", docs("d.kind = 'invoice' AND d.status = 'open' AND d.submitted_date IS NULL").map((d) => docItem(d, "Submit and mark the date"))),
       q("Sales", "follow", "Overdue: follow up with customer", docs("d.kind = 'invoice' AND d.status = 'open' AND d.due_date < ?", t).filter((d) => d.balance > 0).map((d) => docItem(d, `Rs ${d.balance.toLocaleString("en-PK")} outstanding`)), "red"),
