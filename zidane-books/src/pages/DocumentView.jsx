@@ -99,7 +99,9 @@ function waText(d, company) {
     ? `${bag.kit_name}: ${num(bag.bags)} bags${isDc ? "" : ` × ${money(bag.rate_per_bag)} = ${money(bag.amount)}`}\nEach bag contains:\n${bag.contents.map((l) => `• ${l.item_name || l.description} × ${num(l.per_bag)}${isDc || !bag.item_rates ? ` ${l.unit || ""}` : ` @ ${money(l.rate)}`}`).join("\n")}`
     : d.lines.map((l) => `• ${l.item_name || l.description} × ${num(l.qty)}${isDc ? ` ${l.unit || ""}` : ` = ${money(l.amount)}`}`).join("\n");
   const head = `Assalam o Alaikum ${d.contact.name},\n\n${KIND[d.kind].label} ${d.number} from ${company.name}\nDate: ${fmtDate(d.date)}${d.due_date ? `\nDue: ${fmtDate(d.due_date)}` : ""}${d.job?.customer_po_number ? `\nYour PO: ${d.job.customer_po_number}` : ""}${d.linked_numbers?.length ? `\n${d.kind === "dc" ? "Invoice" : "DC"}: ${d.linked_numbers.join(", ")}` : ""}`;
-  const tail = isDc ? "" : `\n\nTotal: ${money(d.total)}${d.paid ? `\nPaid: ${money(d.paid)}\nBalance: ${money(d.balance)}` : ""}`;
+  const credited = (d.payments || []).filter((p) => p.source === "credit").reduce((t, p) => t + p.amount, 0);
+  const cashPaid = Math.round(((d.paid || 0) - credited) * 100) / 100;
+  const tail = isDc ? "" : `\n\nTotal: ${money(d.total)}${d.paid ? `${credited ? `\nLess ${d.kind === "bill" ? "vendor credit" : "credit note"}: ${money(credited)}` : ""}${cashPaid > 0.004 ? `\nPaid: ${money(cashPaid)}` : ""}\nBalance: ${money(d.balance)}` : ""}`;
   return `${head}\n\n${lines}${tail}\n\n${company.phone} · ${company.website}`;
 }
 
@@ -263,7 +265,11 @@ export default function DocumentView({ kind }) {
                   {d.adjustment !== 0 && <><dt>Round off</dt><dd>{d.adjustment > 0 ? "" : "− "}{money(Math.abs(d.adjustment))}</dd></>}
                   <dt className="grand">Total</dt><dd className="grand">{money(d.total)}</dd>
                   {isCredit && <><dt>Unused</dt><dd>{money(d.balance)}</dd></>}
-                  {isMoney && d.paid > 0 && <><dt>Paid</dt><dd>− {money(d.paid)}</dd><dt className="grand">Balance due</dt><dd className="grand">{money(d.balance)}</dd></>}
+                  {/* a credit note / vendor credit used here lowers what's owed; it is not money paid, so it gets its own line */}
+                  {isMoney && d.paid > 0 && <>
+                    {d.payments.filter((p) => p.source === "credit").map((p) => <React.Fragment key={p.allocation_id}><dt>Less: {kind === "bill" ? "vendor credit" : "credit note"} {p.number}</dt><dd>− {money(p.amount)}</dd></React.Fragment>)}
+                    {(() => { const cash = Math.round((d.paid - d.payments.filter((p) => p.source === "credit").reduce((t, p) => t + p.amount, 0)) * 100) / 100; return cash > 0.004 ? <><dt>Paid</dt><dd>− {money(cash)}</dd></> : null; })()}
+                    <dt className="grand">Balance due</dt><dd className="grand">{money(d.balance)}</dd></>}
                 </dl>
               </div>
             )}
@@ -273,7 +279,7 @@ export default function DocumentView({ kind }) {
 
           {isMoney && d.payments.length > 0 && (
             <section className="card flush no-print">
-              <h3 className="pad">Payments</h3>
+              <h3 className="pad">Payments &amp; credits</h3>
               <table className="table"><thead><tr><th>Payment</th><th>Paid on</th><th>Mode</th><th>Reference</th><th className="r">Applied here</th><th /></tr></thead>
                 <tbody>{d.payments.map((p) => (
                   <tr key={p.allocation_id}><td>{p.source === "credit" ? <Link to={`/${KIND[p.credit_kind].path}/${p.id}`}>{p.number}</Link> : can("money") ? <Link to={`/payments/${p.id}`}>{p.number}</Link> : p.number}</td><td>{fmtDate(p.date)}</td><td>{p.mode}</td><td>{p.reference}</td><td className="r">{money(p.amount)}</td>
