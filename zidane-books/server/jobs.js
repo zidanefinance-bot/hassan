@@ -184,7 +184,17 @@ export function updateJob(db, userId, id, input) {
   const po = String(input.customer_po_number ?? job.customer_po_number ?? "").trim();
   const twin = po && db.prepare("SELECT number FROM jobs WHERE customer_id = ? AND LOWER(TRIM(customer_po_number)) = LOWER(?) AND id != ?").get(job.customer_id, po, id);
   if (twin) throw httpError(400, `${twin.number} already has PO ${po}`);
+  const newNumber = input.number !== undefined && String(input.number).trim() !== job.number ? String(input.number).trim() : null;
+  if (newNumber !== null) {
+    if (!newNumber || newNumber.length > 40) throw httpError(400, "Give the Job a number");
+    if (db.prepare("SELECT 1 FROM jobs WHERE lower(number) = lower(?) AND id != ?").get(newNumber, id)) throw httpError(400, `${newNumber} is already another Job`);
+  }
   tx(db, () => {
+    if (newNumber) {
+      db.prepare("UPDATE jobs SET number = ? WHERE id = ?").run(newNumber, id);
+      db.prepare("UPDATE documents SET reference = ? WHERE job_id = ? AND reference = ?").run(newNumber, id, job.number);
+      log(db, userId, "changed number", "job", id, `${job.number} → ${newNumber}`);
+    }
     db.prepare("UPDATE jobs SET customer_po_number=?, customer_po_date=?, required_date=?, delivery_location=?, priority=?, instructions=?, order_source=?, fulfilment_type=? WHERE id=?")
       .run(input.customer_po_number ?? job.customer_po_number, input.customer_po_date ?? job.customer_po_date, input.required_date ?? job.required_date,
         input.delivery_location ?? job.delivery_location, input.priority ?? job.priority, input.instructions ?? job.instructions,

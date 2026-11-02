@@ -134,7 +134,7 @@ export function JobForm() {
   useEffect(() => {
     if (!editId) return;
     api(`/jobs/${editId}`).then((j) => setF({
-      customer_id: String(j.customer_id), order_source: j.order_source, customer_po_number: j.customer_po_number || "", customer_po_date: j.customer_po_date || "",
+      number: j.number, customer_id: String(j.customer_id), order_source: j.order_source, customer_po_number: j.customer_po_number || "", customer_po_date: j.customer_po_date || "",
       required_date: j.required_date || "", delivery_location: j.delivery_location || "", priority: j.priority, fulfilment_type: j.fulfilment_type, instructions: j.instructions || "",
       items: j.items.map((it) => ({ key: it.id, id: it.id, item_id: it.item_id || "", description: it.item_id ? "" : it.name, qty: it.qty, sale_rate: it.sale_rate ?? 0, tax_rate: it.tax_rate ?? 0 })),
     })).catch((x) => setErr(x.message));
@@ -171,6 +171,7 @@ export function JobForm() {
         <div className="row-4">
           {editId ? <Field label="Customer"><input value={customers.data?.find((c) => String(c.id) === f.customer_id)?.name || ""} disabled /></Field> : <Field label="Customer *"><div className="with-btn"><Picker options={contactOptions(customers.data)} value={f.customer_id} onChange={(v) => setF((s) => ({ ...s, customer_id: String(v) }))} placeholder="Type customer name…" createLabel="customer" onCreate={(name) => setAdding(name)} /><button type="button" className="btn sm" title="New customer" onClick={() => setAdding("")}>+</button></div></Field>}
           <Field label="Order came by"><select {...set("order_source")}>{["call", "whatsapp", "email", "verbal", "repeat order", "tender", "contract", "formal PO", "walk-in"].map((s) => <option key={s}>{s}</option>)}</select></Field>
+          {editId && <Field label="Job number" hint="Change it if needed (e.g. to match Zoho). Must be unique."><input value={f.number || ""} onChange={(e) => setF({ ...f, number: e.target.value })} /></Field>}
           <Field label="Customer PO # (optional)"><input {...set("customer_po_number")} /></Field>
           <Field label="PO date"><input type="date" {...set("customer_po_date")} /></Field>
         </div>

@@ -173,7 +173,7 @@ export default function DocumentForm({ kind }) {
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
-    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, ...(kind === "invoice" ? { dc_numbers: doc.dc_numbers || "" } : {}), notes: doc.notes, terms: doc.terms, status, lines,
+    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, ...(String(doc.number || "").trim() ? { number: String(doc.number).trim() } : {}), ...(kind === "invoice" ? { dc_numbers: doc.dc_numbers || "" } : {}), notes: doc.notes, terms: doc.terms, status, lines,
       doc_discount: doc.doc_discount, charges: doc.charges, charges_label: doc.charges_label, adjustment: doc.adjustment, return_stock: doc.return_stock ? 1 : 0,
       ...(forJob ? { job_id: doc.job_id ? Number(doc.job_id) : null } : {}) };
     setBusy(true);
@@ -221,6 +221,7 @@ export default function DocumentForm({ kind }) {
               {canAddContact(can, K.contact) && <button type="button" className="btn sm" title={`New ${K.contact}`} onClick={() => setAddingContact("")}>+</button>}
             </div>
           </Field>
+          <Field label={`${K.label} number`} hint={id ? "Change it if needed (e.g. to match Zoho). Must be unique." : "Leave empty for the next number"}><input value={doc.number || ""} onChange={(e) => set("number", e.target.value)} placeholder={id ? "" : "Auto"} /></Field>
           <Field label="Date"><input type="date" value={doc.date} onChange={(e) => set("date", e.target.value)} /></Field>
           {["invoice", "bill"].includes(kind) && <Field label="Due date"><input type="date" value={doc.due_date || ""} onChange={(e) => set("due_date", e.target.value)} /></Field>}
           <Field label={kind === "bill" ? "Supplier bill #" : kind === "credit_note" ? "Against invoice #" : kind === "vendor_credit" ? "Against bill #" : "Reference"}><input value={doc.reference || ""} onChange={(e) => set("reference", e.target.value)} /></Field>

@@ -119,6 +119,27 @@ export function checkTransition(db, doc, status, { admin = false } = {}) {
 }
 
 // create or update a document with its lines (and stock effects) in one transaction
+// a document's number can be set by hand (e.g. to match Zoho / a printed book): unique within its kind, and where other
+// paperwork names it (a credit note's "against invoice #", an invoice's DC list) the new number follows
+export function checkNumber(db, kind, number, id = 0) {
+  const n = String(number || "").trim();
+  if (!n) throw httpError(400, "The number can't be empty");
+  if (n.length > 40) throw httpError(400, "That number is too long");
+  const dup = db.prepare("SELECT 1 FROM documents WHERE kind = ? AND lower(number) = lower(?) AND id != ?").get(kind, n, id);
+  if (dup) throw httpError(400, `${n} is already used by another ${kind.replace(/_/g, " ")}`);
+  return n;
+}
+function renumber(db, userId, doc, number) {
+  const n = checkNumber(db, doc.kind, number, doc.id);
+  db.prepare("UPDATE documents SET number = ? WHERE id = ?").run(n, doc.id);
+  db.prepare("UPDATE documents SET reference = ? WHERE reference = ? AND contact_id = ? AND id != ?").run(n, doc.number, doc.contact_id, doc.id);
+  if (doc.kind === "dc") for (const inv of db.prepare("SELECT id, dc_numbers FROM documents WHERE kind = 'invoice' AND dc_numbers IS NOT NULL").all()) {
+    const list = inv.dc_numbers.split(",").map((x) => x.trim());
+    if (list.includes(doc.number)) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(list.map((x) => (x === doc.number ? n : x)).join(", "), inv.id);
+  }
+  log(db, userId, "changed number", doc.kind, doc.id, `${doc.number} → ${n}`);
+}
+
 export function saveDocument(db, userId, input, id = null) {
   const kind = input.kind;
   if (!KIND_STATUSES[kind]) throw httpError(400, "Unknown document kind");
@@ -159,8 +180,9 @@ export function saveDocument(db, userId, input, id = null) {
           calc.subtotal, calc.discount_total, calc.tax_total, calc.total, input.job_id === undefined ? doc.job_id : input.job_id || null,
           calc.doc_discount, calc.charges, input.charges_label || null, calc.adjustment, returnStock, id);
       db.prepare("DELETE FROM document_lines WHERE document_id = ?").run(id);
+      if (input.number && String(input.number).trim() !== doc.number) renumber(db, userId, doc, input.number);
     } else {
-      const number = input.number?.trim() || nextNumber(db, kind);
+      const number = input.number?.trim() ? checkNumber(db, kind, input.number) : nextNumber(db, kind);
       const r = db.prepare(`INSERT INTO documents (kind, number, contact_id, date, due_date, status, notes, terms, reference, subtotal, discount_total, tax_total, total, source_id, job_id,
         doc_discount, charges, charges_label, adjustment, return_stock, created_by)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
