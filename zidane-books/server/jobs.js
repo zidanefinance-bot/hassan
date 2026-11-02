@@ -116,19 +116,41 @@ function rollupOps(db, jobId) {
   db.prepare("UPDATE jobs SET ops_status = ? WHERE id = ?").run(done ? "purchase_complete" : some ? "partially_purchased" : job.ops_status, jobId);
 }
 
+// what supplier bills bought for a Job line, less what went back to the supplier on a vendor credit
+export function netBought(db, jobId) {
+  const billed = lineTotals(db, jobId, "bill", ["open", "draft"]);
+  // only goods that really went back (a credit for a rate difference alone leaves the goods bought)
+  const rows = db.prepare(`SELECT l.item_id, l.description, SUM(l.qty) AS qty FROM document_lines l JOIN documents d ON d.id = l.document_id
+    WHERE ${LINE_JOB} = ? AND d.kind = 'vendor_credit' AND d.status = 'open' AND d.return_stock = 1 GROUP BY l.item_id, l.description`).all(jobId);
+  const returned = (ji) => rows.find((r) => (ji.item_id ? r.item_id === ji.item_id : r.description === ji.description)) || { qty: 0 };
+  return (ji) => ({ qty: round2(billed(ji).qty - returned(ji).qty), returned: returned(ji).qty });
+}
+
 // A supplier bill for a Job buys its lines: what a bill covers becomes partly bought / bought.
-// It only moves lines forward; Operations can still mark things by hand (cash buys without a bill).
+// Goods sent back on a vendor credit (bad quality, wrong item) are to buy again: the line steps back.
+// Otherwise it only moves lines forward; Operations can still mark things by hand (cash buys without a bill).
 export function syncJobBuying(db, userId, jobId) {
   const job = db.prepare("SELECT number, closed FROM jobs WHERE id = ?").get(jobId);
   if (!job || job.closed) return;
-  const billed = lineTotals(db, jobId, "bill", ["open", "draft"]);
-  let changed = 0;
-  for (const it of db.prepare("SELECT * FROM job_items WHERE job_id = ? AND procurement_status IN ('to_buy','partial')").all(jobId)) {
-    const b = billed(it).qty;
-    const next = b >= it.qty - 0.001 ? "bought" : b > 0 ? "partial" : it.procurement_status;
-    if (next !== it.procurement_status) { db.prepare("UPDATE job_items SET procurement_status = ? WHERE id = ?").run(next, it.id); changed++; }
+  const net = netBought(db, jobId);
+  let changed = 0, back = 0;
+  for (const it of db.prepare("SELECT * FROM job_items WHERE job_id = ? AND procurement_status IN ('to_buy','partial','bought')").all(jobId)) {
+    const { qty: b, returned } = net(it);
+    let next = it.procurement_status;
+    if (it.procurement_status !== "bought" || returned > 0) next = b >= it.qty - 0.001 ? "bought" : b > 0 ? "partial" : returned > 0 ? "to_buy" : it.procurement_status;
+    if (next === it.procurement_status) continue;
+    db.prepare("UPDATE job_items SET procurement_status = ? WHERE id = ?").run(next, it.id);
+    changed++;
+    if (next !== "bought") back++;
   }
-  if (changed) { rollupOps(db, jobId); log(db, userId, `${changed} item(s) bought by supplier bill`, "job", jobId, job.number); }
+  if (!changed) return;
+  rollupOps(db, jobId);
+  if (back) {
+    // something went back to the supplier: rollupOps only moves a Job forward, so step it back from "purchase complete"
+    const j = db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(jobId);
+    if (j.ops_status === "purchase_complete") db.prepare("UPDATE jobs SET ops_status = 'partially_purchased' WHERE id = ?").run(jobId);
+  }
+  log(db, userId, back ? `${back} item(s) to buy again (returned to supplier)` : `${changed} item(s) bought by supplier bill`, "job", jobId, job.number);
 }
 
 // a Job made by mistake (e.g. twice): only while nothing hangs on it yet
@@ -349,8 +371,8 @@ export function procurementList(db, { withSale = false } = {}) {
   const sameItem = (p, r) => (r.item_id ? p.item_id === r.item_id : !p.item_id && (p.description || "").toLowerCase() === (r.description || "").toLowerCase());
   for (const r of rows) {
     // what supplier bills for this Job already cover is bought: only the rest is still to buy
-    if (!billedFor.has(r.job_id)) billedFor.set(r.job_id, lineTotals(db, r.job_id, "bill", ["open", "draft"]));
-    r.bought = round2(Math.min(r.qty, billedFor.get(r.job_id)({ item_id: r.item_id, description: r.description }).qty));
+    if (!billedFor.has(r.job_id)) billedFor.set(r.job_id, netBought(db, r.job_id));
+    r.bought = round2(Math.max(0, Math.min(r.qty, billedFor.get(r.job_id)({ item_id: r.item_id, description: r.description }).qty)));
     r.ordered = r.qty;
     r.qty = round2(r.qty - r.bought);
     if (r.qty <= 0.001) continue;

@@ -478,7 +478,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (d?.status === "open" && beforeStatus !== "open") C.notifyEvent(db, req.user.id, "doc.issued", { docId });
     const out = (s) => ["issued", "signed"].includes(s);
     // a bill buys for every Job its lines are for
-    if (d?.kind === "bill") for (const { j } of db.prepare(`SELECT DISTINCT ${J.LINE_JOB} AS j FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.id = ? AND ${J.LINE_JOB} IS NOT NULL`).all(docId)) J.syncJobBuying(db, req.user.id, j);
+    if (["bill", "vendor_credit"].includes(d?.kind)) for (const { j } of db.prepare(`SELECT DISTINCT ${J.LINE_JOB} AS j FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.id = ? AND ${J.LINE_JOB} IS NOT NULL`).all(docId)) J.syncJobBuying(db, req.user.id, j);
     if (d?.kind === "dc" && d.job_id) J.syncJobDelivery(db, d.job_id, { removed: out(beforeStatus) && !out(d.status) });
   };
   api.post("/documents/:id/status", docAction(DOC_WRITE, (req, d) => {
@@ -530,7 +530,9 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     // issued money paperwork stays on record (void it instead); only a director can remove it
     if (["invoice", "bill", "credit_note", "vendor_credit"].includes(d.kind) && d.status !== "draft" && !can(req.user, "admin")) throw httpError(400, `${d.number} is already issued. Void it instead of deleting (a director can delete it).`);
     if (d.kind === "dc") J.checkDcRemoval(db, d);
+    const jobsOf = ["bill", "vendor_credit"].includes(d.kind) ? db.prepare(`SELECT DISTINCT ${J.LINE_JOB} AS j FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.id = ? AND ${J.LINE_JOB} IS NOT NULL`).all(d.id).map((r) => r.j) : [];
     B.deleteDocument(db, req.user.id, d.id);
+    for (const j of jobsOf) J.syncJobBuying(db, req.user.id, j); // a removed return: the goods count as bought again
     if (d.kind === "dc" && d.job_id) J.syncJobDelivery(db, d.job_id, { removed: ["issued", "signed"].includes(d.status) });
   }));
 

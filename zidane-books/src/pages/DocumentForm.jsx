@@ -26,8 +26,10 @@ export default function DocumentForm({ kind }) {
   const isSale = K.contact === "customer";
   const isDc = kind === "dc";
   const isPurchase = ["po", "bill"].includes(kind);
+  // a vendor credit names the Job too, so goods sent back show up as to buy again on that Job
+  const forJob = isPurchase || kind === "vendor_credit";
   const isCredit = ["credit_note", "vendor_credit"].includes(kind);
-  const jobs = useLoad(isPurchase ? "/jobs?scope=active" : null);
+  const jobs = useLoad(forJob ? "/jobs?scope=active" : null);
   const contacts = useLoad(`/contacts?type=${K.contact}`);
   const items = useLoad("/items");
   const settings = useLoad("/settings");
@@ -55,8 +57,9 @@ export default function DocumentForm({ kind }) {
       // credit note from an invoice / vendor credit from a bill: start from its contact and lines
       const from = params.get("from");
       if (inboxId) api(`/inbox/${inboxId}`).then((m) => m.extraction && setDraft({ ...m.extraction, from: m.from_addr || (m.source === "email" ? "email" : "upload") })).catch(() => {});
-      if (from) api(`/documents/${from}`).then((src) => setDoc((x) => ({ ...x, contact_id: String(src.contact_id), reference: src.number,
-        lines: src.lines.map((l) => ({ ...blankLine(), item_id: l.item_id || "", description: l.item_id ? "" : l.description, qty: l.qty, rate: l.rate, discount_pct: l.discount_pct, tax_rate: l.tax_rate })) }))).catch(() => {});
+      // a vendor credit from a bill keeps the bill's Job (on the document and on each line)
+      if (from) api(`/documents/${from}`).then((src) => setDoc((x) => ({ ...x, contact_id: String(src.contact_id), reference: src.number, ...(kind === "vendor_credit" ? { job_id: src.job_id ? String(src.job_id) : "" } : {}),
+        lines: src.lines.map((l) => ({ ...blankLine(), item_id: l.item_id || "", description: l.item_id ? "" : l.description, qty: l.qty, rate: l.rate, discount_pct: l.discount_pct, tax_rate: l.tax_rate, ...(kind === "vendor_credit" && l.job_id ? { job_id: String(l.job_id) } : {}) })) }))).catch(() => {});
     }
   }, [id, existing.data, settings.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -172,7 +175,7 @@ export default function DocumentForm({ kind }) {
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
     const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, ...(kind === "invoice" ? { dc_numbers: doc.dc_numbers || "" } : {}), notes: doc.notes, terms: doc.terms, status, lines,
       doc_discount: doc.doc_discount, charges: doc.charges, charges_label: doc.charges_label, adjustment: doc.adjustment, return_stock: doc.return_stock ? 1 : 0,
-      ...(isPurchase ? { job_id: doc.job_id ? Number(doc.job_id) : null } : {}) };
+      ...(forJob ? { job_id: doc.job_id ? Number(doc.job_id) : null } : {}) };
     setBusy(true);
     try {
       const r = id ? await api(`/documents/${id}`, { method: "PUT", body }) : await api("/documents", { method: "POST", body });
@@ -228,7 +231,7 @@ export default function DocumentForm({ kind }) {
             {kind === "credit_note" ? "Goods came back. Add them to stock (untick for a discount / rate difference only)" : "Goods sent back to supplier. Take them out of stock"}</label>
         )}
         {overLimit && <div className="form-error">Over credit limit: {contact.name} owes {money(contact.outstanding)} and the limit is {money(contact.credit_limit)}. You can save a draft; a director has to issue it.</div>}
-        {isPurchase && (
+        {forJob && (
           <div className="row-4">
             <Field label="For Job (optional)" hint="Links the cost to the Job. Leave empty for general stock. A line can be for another Job (below).">
               <select value={doc.job_id || ""} onChange={(e) => set("job_id", e.target.value)}>
@@ -252,7 +255,7 @@ export default function DocumentForm({ kind }) {
                     <Picker options={itemOptions(items.data)} value={l.item_id} onChange={(v) => pickItem(i, v)} emptyLabel="— custom line (not an item) —" placeholder="Type item name or SKU…"
                       createLabel="item" onCreate={(name) => setAddingItem({ line: i, name })} />
                     {!l.item_id && <input className="mt" placeholder="Description" value={l.description || ""} onChange={(e) => setLine(i, { description: e.target.value })} />}
-                    {isPurchase && (jobs.data || []).length > 0 && (
+                    {forJob && (jobs.data || []).length > 0 && (
                       <select className="mt line-job" value={l.job_id || ""} onChange={(e) => setLine(i, { job_id: e.target.value })} aria-label="Job for this line">
                         <option value="">{doc.job_id ? `For the bill's Job` : "For stock (no Job)"}</option>
                         {(jobs.data || []).filter((j) => String(j.id) !== String(doc.job_id)).map((j) => <option key={j.id} value={j.id}>For {j.number} · {j.customer_name}{j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""}</option>)}

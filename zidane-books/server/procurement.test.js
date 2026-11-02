@@ -42,3 +42,36 @@ test("what to buy shows which lines are on a PO; a cancelled PO puts them back",
   B.setStatus(db, 1, po, "draft");
   assert.equal(find().po_qty, half, "a draft PO counts as ordered-to-be");
 });
+
+test("goods sent back on a vendor credit are to buy again on the Job; a rate-only credit leaves them bought", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const g = J.procurementList(db).find((x) => x.item_id && x.jobs[0].qty >= 4);
+  const line = g.jobs[0];
+  const supplier = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const status = () => db.prepare("SELECT procurement_status AS s FROM job_items WHERE id = ?").get(line.job_item_id).s;
+  const bill = B.saveDocument(db, 1, { kind: "bill", contact_id: supplier, job_id: line.job_id, status: "open", reference: "T-1", lines: [{ item_id: g.item_id, qty: line.qty, rate: 10 }] });
+  J.syncJobBuying(db, 1, line.job_id);
+  assert.equal(status(), "bought");
+  assert.ok(!J.procurementList(db).flatMap((x) => x.jobs).some((j) => j.job_item_id === line.job_item_id), "nothing left to buy");
+
+  // 2 sent back for bad quality
+  const vc = B.saveDocument(db, 1, { kind: "vendor_credit", contact_id: supplier, job_id: line.job_id, status: "open", return_stock: 1, lines: [{ item_id: g.item_id, qty: 2, rate: 10 }] });
+  J.syncJobBuying(db, 1, line.job_id);
+  assert.equal(status(), "partial");
+  const again = J.procurementList(db).flatMap((x) => x.jobs).find((j) => j.job_item_id === line.job_item_id);
+  assert.equal(again.qty, 2, "the 2 sent back are to buy again");
+  assert.equal(db.prepare("SELECT ops_status FROM jobs WHERE id = ?").get(line.job_id).ops_status === "purchase_complete", false);
+
+  // the return is voided: bought again
+  B.setStatus(db, 1, vc, "void");
+  J.syncJobBuying(db, 1, line.job_id);
+  assert.equal(status(), "bought");
+
+  // a credit for a rate difference only (nothing went back): still bought
+  B.saveDocument(db, 1, { kind: "vendor_credit", contact_id: supplier, job_id: line.job_id, status: "open", return_stock: 0, lines: [{ item_id: g.item_id, qty: line.qty, rate: 1 }] });
+  J.syncJobBuying(db, 1, line.job_id);
+  assert.equal(status(), "bought");
+  assert.ok(bill);
+});
