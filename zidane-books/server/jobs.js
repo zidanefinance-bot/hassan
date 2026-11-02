@@ -260,18 +260,44 @@ function claimPooled(pooledFn) {
   };
 }
 
+function purchaseCost(db, jobId, items) {
+  const key = (x) => (x.item_id ? `i${x.item_id}` : `d${String(x.description || "").toLowerCase()}`);
+  const bills = db.prepare(`SELECT l.item_id, l.description, l.qty, ${LINE_COST} AS cost FROM document_lines l JOIN documents d ON d.id = l.document_id
+    WHERE ${LINE_JOB} = ? AND d.kind = 'bill' AND d.status = 'open'`).all(jobId);
+  const credits = db.prepare(`SELECT l.item_id, l.description, l.qty, ${LINE_COST} AS cost, d.return_stock FROM document_lines l JOIN documents d ON d.id = l.document_id
+    WHERE ${LINE_JOB} = ? AND d.kind = 'vendor_credit' AND d.status = 'open'`).all(jobId);
+  const need = new Map();
+  for (const i of items) need.set(key(i), (need.get(key(i)) || 0) + i.qty);
+  const g = new Map();
+  const at = (k) => g.get(k) || g.set(k, { qty: 0, cost: 0, back: 0, less: 0 }).get(k);
+  for (const l of bills) { const x = at(key(l)); x.qty += l.qty; x.cost += l.cost || 0; }
+  for (const l of credits) { const x = at(key(l)); if (l.return_stock) x.back += l.qty; else x.less += l.cost || 0; }
+  let total = 0, stock = 0;
+  for (const [k, x] of g) {
+    const unit = x.qty > 0 ? x.cost / x.qty : 0;
+    const kept = Math.max(0, x.qty - x.back);
+    // a bill line that is no Job item (transport, a one-off) counts in full
+    const used = need.has(k) ? Math.min(kept, need.get(k)) : kept;
+    total += used * unit - x.less;
+    stock += (kept - used) * unit;
+  }
+  return { purchases: round2(Math.max(0, total)), to_stock: round2(stock) };
+}
+
 export function jobEconomics(db, jobId) {
   const items = db.prepare("SELECT ji.*, i.purchase_rate FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
   const expected = round2(items.reduce((a, i) => a + i.qty * i.sale_rate, 0));
   const invoiced = round2(db.prepare("SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'open'").get(jobId).v);
-  // supplier bills before tax, with their freight / charges and less their discount
-  const purchases = round2(db.prepare(`SELECT COALESCE(SUM(${LINE_COST}), 0) AS v FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE ${LINE_JOB} = ? AND d.kind = 'bill' AND d.status = 'open'`).get(jobId).v);
+  // supplier bills before tax, with their freight / charges and less their discount. Only what the Job needs counts:
+  // bought more than ordered (a whole carton for 150 of 180), the rest went into stock and is costed to the Job that uses it.
+  // Goods sent back on a vendor credit don't count either; a credit for a rate difference lowers the cost.
+  const { purchases, to_stock: toStock } = purchaseCost(db, jobId, items);
   const fromStock = round2(items.filter((i) => i.procurement_status === "from_stock").reduce((a, i) => a + delivered(i).qty * (i.purchase_rate || 0), 0));
   const direct = round2(db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE job_id = ?").get(jobId).v);
   const revenue = invoiced || expected;
   const cost = round2(purchases + fromStock + direct);
-  return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, stock_cost: fromStock, direct_costs: direct, total_cost: cost,
+  return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, bought_for_stock: toStock, stock_cost: fromStock, direct_costs: direct, total_cost: cost,
     gross_profit: round2(revenue - cost), margin_pct: revenue ? round2(((revenue - cost) / revenue) * 100) : 0,
     // profit isn't final while anything is still to buy, or nothing bought has a supplier bill yet
     cost_pending: purchases + fromStock === 0 || items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)),

@@ -334,6 +334,7 @@ export function JobView() {
                 <dl className="statement">
                   <dt>Revenue ({j.economics.revenue_basis})</dt><dd>{money(j.economics.revenue_basis === "invoiced" ? j.economics.invoiced_revenue : j.economics.expected_revenue)}</dd>
                   <dt className="indent">Purchases (supplier bills)</dt><dd className="muted">− {money(j.economics.purchases)}</dd>
+                  {j.economics.bought_for_stock > 0 && <><dt className="indent small muted">Bought extra, now in stock (not counted here)</dt><dd className="muted small">{money(j.economics.bought_for_stock)}</dd></>}
                   {j.economics.stock_cost > 0 && <><dt className="indent">From own stock (at cost)</dt><dd className="muted">− {money(j.economics.stock_cost)}</dd></>}
                   <dt className="indent">Freight & direct costs</dt><dd className="muted">− {money(j.economics.direct_costs)}</dd>
                   <dt className="grand">Gross profit</dt><dd className={`grand ${j.economics.gross_profit < 0 ? "neg" : "pos"}`}>{money(j.economics.gross_profit)} <small className="muted">({j.economics.margin_pct}%)</small></dd>

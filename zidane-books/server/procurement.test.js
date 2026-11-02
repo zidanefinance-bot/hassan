@@ -75,3 +75,24 @@ test("goods sent back on a vendor credit are to buy again on the Job; a rate-onl
   assert.equal(status(), "bought");
   assert.ok(bill);
 });
+
+test("job cost counts only what the Job needs: extra bought goes to stock; goods sent back don't count", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const g = J.procurementList(db).find((x) => x.item_id && x.jobs[0].qty >= 4);
+  const line = g.jobs[0];
+  const need = db.prepare("SELECT qty FROM job_items WHERE id = ?").get(line.job_item_id).qty;
+  const supplier = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const before = J.jobEconomics(db, line.job_id).purchases;
+  // a carton of need + 30 at Rs 10: only `need` is this Job's cost, 30 × 10 went to stock
+  B.saveDocument(db, 1, { kind: "bill", contact_id: supplier, job_id: line.job_id, status: "open", reference: "T-2", lines: [{ item_id: g.item_id, qty: need + 30, rate: 10 }] });
+  let e = J.jobEconomics(db, line.job_id);
+  assert.equal(e.purchases, before + need * 10);
+  assert.equal(e.bought_for_stock, 300);
+  // 31 of them sent back: now less than the Job needs is kept, so it costs need - 1
+  B.saveDocument(db, 1, { kind: "vendor_credit", contact_id: supplier, job_id: line.job_id, status: "open", return_stock: 1, lines: [{ item_id: g.item_id, qty: 31, rate: 10 }] });
+  e = J.jobEconomics(db, line.job_id);
+  assert.equal(e.purchases, before + (need - 1) * 10);
+  assert.equal(e.bought_for_stock, 0);
+});
