@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: wholesale order sheet. Sticky brand + search bar, two aisles (Grocery / Cleaning & Chemicals), category chips, product shelf grid, order list docked right (bottom sheet on phones). */
+/* Layout: wholesale order sheet. Sticky brand + search bar, category chips, product shelf grid, order list docked right (bottom sheet on phones). */
 :root {
   --bg: #F1F3EE;
   --shelf: #FFFFFF;
@@ -133,11 +133,11 @@ button, input, textarea { font: inherit; color: inherit; }
   <div class="top-in">
     <div class="brand">
       <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="var(--green)"/><path d="M11 17.5 20 13l9 4.5v9.5L20 31.5 11 27z" fill="none" stroke="var(--green-ink)" stroke-width="2.2" stroke-linejoin="round"/><path d="M11 17.5 20 22l9-4.5M20 22v9.5" fill="none" stroke="var(--green-ink)" stroke-width="2.2" stroke-linejoin="round"/><circle cx="29.5" cy="11" r="3" fill="var(--gold)"/></svg>
-      <div class="wm"><b>Pak <span>Supplies</span></b><small>Wholesale grocery &amp; cleaning supplies</small></div>
+      <div class="wm"><b>Pak <span>Supplies</span></b><small>Janitorial &amp; cleaning supplies</small></div>
     </div>
     <div class="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-      <input id="q" type="search" placeholder="Search bleach, phenyl, basmati, Shan…" aria-label="Search products">
+      <input id="q" type="search" placeholder="Search bleach, phenyl, mop, jharoo…" aria-label="Search products">
     </div>
     <button class="cartbtn" id="openOrder" type="button">Order list · <span id="cnt2">0</span></button>
   </div>
@@ -146,10 +146,9 @@ button, input, textarea { font: inherit; color: inherit; }
 <main class="wrap">
   <div class="main">
     <section class="intro">
-      <h1>Groceries and cleaning supplies in bulk. <em>Send your list, we'll quote it.</em></h1>
-      <p>Choose the products and pack sizes your business uses, set quantities, then copy the list and send it to us on WhatsApp. We reply with a quote and a delivery date.</p>
+      <h1>Janitorial supplies in bulk. <em>Send your list, we'll quote it.</em></h1>
+      <p>Chemicals, washroom care, mops, tissue, garbage bags and more for offices, factories, schools and hospitals. Choose what you need, set quantities, then copy the list and send it to us on WhatsApp. We reply with a quote and a delivery date.</p>
     </section>
-    <div class="aisles" id="aisles" role="group" aria-label="Aisle"></div>
     <div class="cats" id="cats" role="group" aria-label="Categories"></div>
     <div class="safety" id="safety" hidden>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
@@ -181,12 +180,10 @@ button, input, textarea { font: inherit; color: inherit; }
 <script>
 const CONTACT = "/*CONTACT*/";
 window.PRODUCTS = /*PRODUCTS*/;
-const AISLES = { "Grocery": ["Oil & Ghee", "Rice", "Atta & Flour", "Sugar", "Pulses & Chickpeas", "Masala & Spices", "Tea & Coffee", "Milk & Dairy", "Essentials"],
-                 "Cleaning & Chemicals": ["Cleaning Chemicals", "Hand Wash & Hygiene", "Laundry & Dishwash", "Housekeeping"] };
-const ORDER_ORDER = [...AISLES["Grocery"], ...AISLES["Cleaning & Chemicals"]];
+const ORDER_ORDER = ["Cleaning Chemicals", "Washroom Care", "Hand Wash & Hygiene", "Laundry & Dishwash", "Mops, Brooms & Tools", "Paper & Tissue", "Garbage Bags & Bins", "Dispensers", "Safety & PPE"];
 const P = window.PRODUCTS;
 const byId = Object.fromEntries(P.map((p) => [p.id, p]));
-let aisle = "All", cat = "All", query = "", cart = {};
+let cat = "All", query = "", cart = {};
 try { cart = JSON.parse(localStorage.getItem("paksupplies-order") || "{}") || {}; } catch (e) { cart = {}; }
 Object.keys(cart).forEach((id) => { if (!byId[id]) delete cart[id]; });
 const save = () => { try { localStorage.setItem("paksupplies-order", JSON.stringify(cart)); } catch (e) {} };
@@ -212,23 +209,18 @@ function pack(p) {
     case "sack": g = `<path d="M22 18c8 3 48 3 56 0l4 70c-14 4-50 4-64 0z" fill="${t}" stroke="${edge}"/><path d="M22 18c8-4 48-4 56 0" fill="none" stroke="${edge}" stroke-width="2"/>${label(28, 42, 44, 28, fs(44))}`; break;
     case "roll": g = `<ellipse cx="50" cy="22" rx="28" ry="9" fill="${t}" stroke="${edge}"/><path d="M22 22v58c0 5 12.5 9 28 9s28-4 28-9V22" fill="${t}" stroke="${edge}"/><ellipse cx="50" cy="22" rx="8" ry="3" fill="${edge}"/>${label(28, 44, 44, 26, fs(44))}`; break;
     case "box": g = `<path d="M18 34l12-10h52v54l-12 10H18z" fill="${t}" stroke="${edge}"/><path d="M18 34h52l12-10M70 34v54" fill="none" stroke="${edge}"/>${label(22, 46, 44, 26, fs(44))}`; break;
+    case "bucket": g = `<path d="M30 30c0-14 40-14 40 0" fill="none" stroke="${cap}" stroke-width="2.4"/><path d="M18 34h64l-7 52a5 5 0 0 1-5 4H30a5 5 0 0 1-5-4z" fill="${t}" stroke="${edge}"/><rect x="58" y="22" width="20" height="14" rx="2" fill="${cap}"/>${label(28, 46, 44, 26, fs(44))}`; break;
+    case "bin": g = `<rect x="22" y="16" width="56" height="9" rx="3" fill="${cap}"/><path d="M26 25h48l-5 63a4 4 0 0 1-4 4H35a4 4 0 0 1-4-4z" fill="${t}" stroke="${edge}"/>${label(30, 44, 40, 26, fs(40))}`; break;
+    case "sign": g = `<path d="M50 10 22 90M50 10l28 80" stroke="${cap}" stroke-width="3"/><path d="M50 12 26 82h48z" fill="${t}" stroke="${edge}"/><path d="M50 30v24M50 62v1" stroke="#14211A" stroke-width="5" stroke-linecap="round"/><text x="50" y="77" text-anchor="middle" font-family="Figtree, sans-serif" font-weight="800" font-size="6.4" fill="#14211A">WET FLOOR</text>`; break;
     case "tool": g = `<rect x="47" y="6" width="6" height="58" rx="3" fill="#B98A4E" stroke="${edge}"/><path d="M24 64h52l-4 26H28z" fill="${t}" stroke="${edge}"/>${label(30, 68, 40, 18, Math.min(7, fs(40)))}`; break;
   }
   return `<svg viewBox="0 0 100 100" role="img" aria-label="${esc(p.n)}">${g}</svg>`;
 }
 const pic = (p, lazy) => p.s ? pack(p) : `<img src="img/${p.id}.webp" alt="${esc(p.n)}"${lazy ? ' loading="lazy"' : ""}>`;
-const inAisle = (p) => aisle === "All" || AISLES[aisle].includes(p.c);
-
-function renderAisles() {
-  const n = (a) => P.filter((p) => AISLES[a].includes(p.c)).length;
-  $("aisles").innerHTML = [["All", P.length], ["Grocery", n("Grocery")], ["Cleaning & Chemicals", n("Cleaning & Chemicals")]].map(([a, c]) =>
-    `<button type="button" data-a="${esc(a)}" aria-pressed="${a === aisle}">${a === "All" ? "Everything" : esc(a)}<small>${c}</small>${a === "Cleaning & Chemicals" ? '<span class="new">New</span>' : ""}</button>`).join("");
-}
 function renderCats() {
-  const list = P.filter(inAisle), counts = { All: list.length };
-  list.forEach((p) => (counts[p.c] = (counts[p.c] || 0) + 1));
-  const cs = aisle === "All" ? ORDER_ORDER : AISLES[aisle];
-  $("cats").innerHTML = ["All", ...cs].map((c) =>
+  const counts = { All: P.length };
+  P.forEach((p) => (counts[p.c] = (counts[p.c] || 0) + 1));
+  $("cats").innerHTML = ["All", ...ORDER_ORDER].map((c) =>
     `<button type="button" data-c="${esc(c)}" aria-pressed="${c === cat}">${esc(c)}<small>${counts[c] || 0}</small></button>`).join("");
 }
 function card(p) {
@@ -243,7 +235,7 @@ function card(p) {
 }
 function renderShelf() {
   const qq = query.trim().toLowerCase();
-  const list = P.filter((p) => inAisle(p) && (cat === "All" || p.c === cat) && (!qq || (p.n + " " + p.b + " " + p.c + " " + (p.k || "")).toLowerCase().includes(qq)));
+  const list = P.filter((p) => (cat === "All" || p.c === cat) && (!qq || (p.n + " " + p.b + " " + p.c + " " + (p.k || "")).toLowerCase().includes(qq)));
   $("count").textContent = `${list.length} product${list.length === 1 ? "" : "s"}${qq ? ` matching “${query.trim()}”` : ""}`;
   $("safety").hidden = !list.some((p) => p.c === "Cleaning Chemicals");
   const groups = ORDER_ORDER.map((c) => [c, list.filter((p) => p.c === c)]).filter(([, l]) => l.length);
@@ -279,7 +271,6 @@ function setQty(id, v) {
   if (el) el.outerHTML = card(byId[id]);
   renderOrder();
 }
-$("aisles").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; aisle = b.dataset.a; cat = "All"; renderAisles(); renderCats(); renderShelf(); });
 $("cats").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; cat = b.dataset.c; renderCats(); renderShelf(); });
 $("q").addEventListener("input", (e) => { query = e.target.value; renderShelf(); });
 $("shelf").addEventListener("click", (e) => {
@@ -300,5 +291,5 @@ $("clear").addEventListener("click", () => { cart = {}; save(); renderShelf(); r
 $("closeOrder").addEventListener("click", () => $("order").classList.remove("open"));
 $("openOrder").addEventListener("click", () => $("order").classList.toggle("open"));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("order").classList.remove("open"); });
-renderAisles(); renderCats(); renderShelf(); renderOrder();
+renderCats(); renderShelf(); renderOrder();
 </script>

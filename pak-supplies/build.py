@@ -13,15 +13,12 @@ CONTACT = "03XX-XXXXXXX"
 DATE = "November 2026"
 
 AISLES = {
-    "Grocery": ["Oil & Ghee", "Rice", "Atta & Flour", "Sugar", "Pulses & Chickpeas",
-                "Masala & Spices", "Tea & Coffee", "Milk & Dairy", "Essentials"],
-    "Cleaning & Chemicals": ["Cleaning Chemicals", "Hand Wash & Hygiene",
-                             "Laundry & Dishwash", "Housekeeping"],
+    "Janitorial Supplies": ["Cleaning Chemicals", "Washroom Care", "Hand Wash & Hygiene",
+                            "Laundry & Dishwash", "Mops, Brooms & Tools", "Paper & Tissue",
+                            "Garbage Bags & Bins", "Dispensers", "Safety & PPE"],
 }
 
-grocery = json.loads((ROOT / "data/grocery.json").read_text())
-chemicals = json.loads((ROOT / "data/chemicals.json").read_text())
-products = grocery + chemicals
+products = json.loads((ROOT / "data/janitorial.json").read_text())
 
 # Catalogue page
 tpl = (ROOT / "catalogue/template.html").read_text()
@@ -35,9 +32,9 @@ parts = []
 for i, (aisle, cats) in enumerate(AISLES.items()):
     items = [p for p in products if p["c"] in cats]
     cls = ''
-    new = ' <span class="new">New</span>' if aisle != "Grocery" else ''
+    new = ''
     parts.append(f'<h2 class="aisle{cls}">{e(aisle)}<small>{len(items)} products</small>{new}</h2>')
-    if aisle != "Grocery":
+    if True:
         parts.append('<div class="safety"><b>Safety:</b> acid (tezab) and bleach are delivered in sealed, labelled '
                      'containers. Never mix acid with bleach, because together they release toxic chlorine gas. '
                      'Store chemicals away from food and children.</div>')
@@ -57,4 +54,4 @@ pdf = (ROOT / "pdf/template.html").read_text() \
     .replace("/*DATE*/", DATE) \
     .replace("/*COUNT*/", str(len(products)))
 (ROOT / "pdf/product-list.html").write_text(pdf)
-print(f"{len(grocery)} grocery + {len(chemicals)} cleaning = {len(products)} products")
+print(f"{len(products)} janitorial products")
