@@ -5,104 +5,112 @@
 <title>Pak Supplies Product Catalogue</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
+/* Theme follows paksupplies.com.pk: near-black green hero, brand green buttons, bright green highlight. */
 @page { size: A4; margin: 0; }
-:root { --ink: #14211A; --muted: #5D6A62; --line: #D5DCD1; --green: #0F6B42; --deep: #0A4A2E; --soft: #E7F2EA; --gold: #C98A12; --warn: #FFF4DC; --warn-ink: #6B4A05; }
+:root { --ink: #0F1A14; --muted: #5B6B61; --line: #DCE5DE; --dark: #0E1F16; --dark2: #142A1E; --green: #1B7A3A; --bright: #2EBD4E; --soft: #EAF5EC; --warn: #FFF4DC; --warn-ink: #6B4A05; }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #fff; }
-body { color: var(--ink); font: 10pt/1.4 "Figtree", "Segoe UI", sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-h1, h2, h3, .disp { font-family: "Bricolage Grotesque", "Segoe UI", sans-serif; }
+body { color: var(--ink); font: 10pt/1.4 "Inter", "Segoe UI", sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+h1, h2, h3 { font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif; }
 .page { width: 210mm; height: 297mm; position: relative; overflow: hidden; break-after: page; padding: 16mm 15mm 20mm; }
 .page:last-child { break-after: auto; }
 .foot { position: absolute; left: 15mm; right: 15mm; bottom: 9mm; display: flex; justify-content: space-between; font-size: 7.8pt; color: var(--muted); border-top: 0.6pt solid var(--line); padding-top: 4px; }
 .foot b { color: var(--green); }
 
 /* Logo */
-.logo { display: flex; align-items: center; gap: 12px; }
-.logo b { font: 800 24pt/1 "Bricolage Grotesque", sans-serif; letter-spacing: -0.02em; }
-.logo b span { color: var(--green); }
-.logo small { display: block; font-size: 8.5pt; color: var(--muted); margin-top: 3px; letter-spacing: .06em; text-transform: uppercase; }
+.logo { display: flex; align-items: center; gap: 4mm; }
+.logo .mark { height: 13mm; width: auto; display: block; }
+.logo b { display: block; font: 800 17pt/1 "Plus Jakarta Sans", sans-serif; letter-spacing: -0.01em; color: var(--ink); }
+.logo small { display: block; font-size: 8.4pt; color: var(--green); margin-top: 1.5mm; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+.logo.card { background: #fff; border-radius: 4mm; padding: 4mm 6mm 4mm 4mm; align-self: flex-start; }
+.logo.card .mark { height: 15mm; }
 
 /* Cover */
-.cover { padding: 0; background: var(--deep); color: #fff; }
+.cover { padding: 0; background: var(--dark); color: #fff; }
 .cover .band { position: absolute; inset: 0; background:
-  radial-gradient(circle at 88% 12%, rgba(201,138,18,.35) 0 60mm, transparent 60.5mm),
-  radial-gradient(circle at 100% 100%, rgba(255,255,255,.06) 0 95mm, transparent 95.5mm),
-  linear-gradient(160deg, #0F6B42 0%, #0A4A2E 70%); }
-.cover .in { position: relative; height: 100%; padding: 22mm 20mm; display: flex; flex-direction: column; }
-.cover .logo b { color: #fff; font-size: 30pt; }
-.cover .logo b span { color: #F3C969; }
-.cover .logo small { color: rgba(255,255,255,.75); }
-.cover .kicker { margin-top: auto; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; font-size: 10pt; color: #F3C969; }
-.cover h1 { font-size: 50pt; line-height: .98; margin: 6mm 0 6mm; letter-spacing: -0.03em; font-weight: 800; }
-.cover .lede { font-size: 13pt; max-width: 135mm; color: rgba(255,255,255,.88); margin: 0; }
-.cover .cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 11mm 0 0; padding: 0; list-style: none; max-width: 170mm; }
-.cover .cats li { border: 0.8pt solid rgba(255,255,255,.4); border-radius: 999px; padding: 4px 11px; font-size: 9pt; font-weight: 600; }
-.cover .bottom { margin-top: 14mm; display: flex; justify-content: space-between; align-items: flex-end; border-top: 0.8pt solid rgba(255,255,255,.3); padding-top: 6mm; font-size: 10pt; }
-.cover .bottom strong { display: block; font: 700 15pt "Bricolage Grotesque", sans-serif; color: #fff; }
-.cover .bottom span { color: rgba(255,255,255,.75); }
+  radial-gradient(circle at 92% 8%, rgba(46,189,78,.22) 0, rgba(46,189,78,0) 70mm),
+  radial-gradient(circle at 0% 100%, rgba(27,122,58,.35) 0, rgba(27,122,58,0) 90mm), var(--dark); }
+.cover .in { position: relative; height: 100%; padding: 18mm 18mm 16mm; display: flex; flex-direction: column; }
+.cover .topbar { position: absolute; left: 0; right: 0; top: 0; background: var(--green); padding: 3mm 18mm; font-size: 9pt; color: #fff; }
+.cover .in { padding-top: 24mm; }
+.pill { margin-top: auto; align-self: flex-start; display: flex; align-items: center; gap: 3mm; border: 0.8pt solid rgba(255,255,255,.22); background: rgba(255,255,255,.05); border-radius: 999px; padding: 2.6mm 5mm; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: 8.6pt; }
+.pill i { width: 2.6mm; height: 2.6mm; border-radius: 50%; background: var(--bright); }
+.cover h1 { font-size: 38pt; line-height: 1.04; margin: 7mm 0 6mm; letter-spacing: -0.03em; font-weight: 800; }
+.cover h1 em { display: block; font-style: normal; color: var(--bright); }
+.cover .lede { font-size: 11.5pt; line-height: 1.55; max-width: 160mm; color: rgba(255,255,255,.72); margin: 0; }
+.stats { display: flex; gap: 12mm; margin-top: 9mm; }
+.stats div { font-size: 8.4pt; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.65); }
+.stats b { display: block; font: 800 22pt/1.1 "Plus Jakarta Sans", sans-serif; color: var(--bright); letter-spacing: -0.01em; text-transform: none; }
+.cover .cats { display: flex; flex-wrap: wrap; gap: 5px; margin: 9mm 0 0; padding: 0; list-style: none; }
+.cover .cats li { border: 0.8pt solid rgba(255,255,255,.22); border-radius: 999px; padding: 3.5px 10px; font-size: 8.4pt; font-weight: 600; color: rgba(255,255,255,.88); }
+.cover .bottom { margin-top: 10mm; display: flex; justify-content: space-between; align-items: center; background: var(--green); border-radius: 4mm; padding: 5mm 7mm; font-size: 9.6pt; }
+.cover .bottom strong { display: block; font: 800 17pt "Plus Jakarta Sans", sans-serif; color: #fff; }
+.cover .bottom span { color: rgba(255,255,255,.82); }
 
 /* Contents */
-.head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6mm; border-bottom: 2.2pt solid var(--green); }
+.head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 5mm; border-bottom: 2pt solid var(--green); }
 .head .ed { font-size: 8.5pt; color: var(--muted); text-align: right; }
-h2.title { font-size: 26pt; letter-spacing: -0.02em; margin: 8mm 0 2mm; }
-.sub { color: var(--muted); margin: 0 0 7mm; font-size: 10.5pt; }
+h2.title { font-size: 25pt; letter-spacing: -0.02em; margin: 7mm 0 1.5mm; }
+.sub { color: var(--muted); margin: 0 0 4mm; font-size: 10pt; }
 .toc { list-style: none; margin: 0; padding: 0; }
-.toc li { display: grid; grid-template-columns: 11mm 1fr auto 14mm; gap: 8px; align-items: baseline; padding: 2.6mm 0; border-bottom: 0.6pt solid var(--line); }
-.toc .no { font: 800 13pt "Bricolage Grotesque", sans-serif; color: var(--gold); }
-.toc .nm { font: 700 12pt "Bricolage Grotesque", sans-serif; }
-.toc .nm small { display: block; font: 400 8.6pt "Figtree", sans-serif; color: var(--muted); margin-top: 1px; }
-.toc .ct { font-size: 8.6pt; color: var(--muted); }
+.toc li { display: grid; grid-template-columns: 10mm 1fr auto 10mm; gap: 8px; align-items: baseline; padding: 1.85mm 0; border-bottom: 0.6pt solid var(--line); }
+.toc .no { font: 800 11.5pt "Plus Jakarta Sans", sans-serif; color: var(--bright); }
+.toc .nm { font: 700 11pt "Plus Jakarta Sans", sans-serif; }
+.toc .nm small { display: block; font: 400 8.1pt "Inter", sans-serif; color: var(--muted); margin-top: 0.5mm; }
+.toc .ct { font-size: 8.4pt; color: var(--muted); }
 .toc .pg { text-align: right; font-weight: 700; color: var(--green); }
-.why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin-top: 7mm; }
-.why div { background: var(--soft); border-radius: 3mm; padding: 4.5mm; }
-.why b { display: block; font: 700 11pt "Bricolage Grotesque", sans-serif; color: var(--green); margin-bottom: 1.5mm; }
-.why p { margin: 0; font-size: 8.8pt; color: var(--ink); }
+.why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 5mm; }
+.why div { background: var(--dark); color: #fff; border-radius: 3mm; padding: 4mm; }
+.why b { display: block; font: 700 10.5pt "Plus Jakarta Sans", sans-serif; color: var(--bright); margin-bottom: 1mm; }
+.why p { margin: 0; font-size: 8.4pt; color: rgba(255,255,255,.78); }
 
 /* Category page */
-.sec { display: grid; grid-template-columns: auto 1fr; gap: 6mm; align-items: center; background: var(--green); color: #fff; margin: -16mm -15mm 0; padding: 13mm 15mm 9mm; }
-.sec .big { font: 800 50pt/0.9 "Bricolage Grotesque", sans-serif; color: #F3C969; letter-spacing: -0.04em; }
-.sec .k { font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.75); font-weight: 700; }
-.sec h2 { font-size: 25pt; line-height: 1.02; margin: 1.5mm 0 2mm; letter-spacing: -0.02em; }
-.sec p { margin: 0; font-size: 9.6pt; color: rgba(255,255,255,.9); max-width: 140mm; }
-.sec p i { color: #F3C969; font-style: normal; }
-.meta-row { display: flex; justify-content: space-between; font-size: 8.4pt; color: var(--muted); margin: 6mm 0 2mm; }
+.sec { display: grid; grid-template-columns: auto 1fr; gap: 6mm; align-items: center; background: var(--dark); color: #fff; margin: -16mm -15mm 0; padding: 13mm 15mm 9mm; border-bottom: 2.5mm solid var(--bright); }
+.sec .big { font: 800 48pt/0.9 "Plus Jakarta Sans", sans-serif; color: var(--bright); letter-spacing: -0.04em; }
+.sec .k { font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.6); font-weight: 700; }
+.sec h2 { font-size: 23pt; line-height: 1.05; margin: 1.5mm 0 2mm; letter-spacing: -0.02em; }
+.sec p { margin: 0; font-size: 9.4pt; color: rgba(255,255,255,.78); max-width: 145mm; }
+.sec p i { color: var(--bright); font-style: normal; font-weight: 600; }
+.meta-row { display: flex; justify-content: space-between; font-size: 8.2pt; color: var(--muted); margin: 5mm 0 1.5mm; }
 table { width: 100%; border-collapse: collapse; }
-thead th { text-align: left; font-size: 7.6pt; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 2mm 2mm; border-bottom: 1.2pt solid var(--ink); }
-tbody td { padding: 2.55mm 2mm; border-bottom: 0.6pt solid var(--line); vertical-align: middle; }
-tbody tr:nth-child(even) td { background: #F6F9F5; }
-td.sr { width: 10mm; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 8.6pt; }
-td.code { width: 20mm; font: 600 8.4pt "Figtree", monospace; color: var(--green); letter-spacing: .03em; }
-td.nm { font-weight: 600; font-size: 10pt; }
-td.nm small { display: block; font-weight: 400; color: var(--muted); font-size: 8pt; margin-top: .5mm; }
-td.br { width: 30mm; font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-td.q { width: 22mm; }
+thead th { text-align: left; font-size: 7.4pt; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 1.8mm 2mm; border-bottom: 1.2pt solid var(--ink); }
+tbody td { padding: 2.2mm 2mm; border-bottom: 0.6pt solid var(--line); vertical-align: middle; }
+tbody tr:nth-child(even) td { background: #F5FAF6; }
+td.sr { width: 9mm; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 8.4pt; }
+td.code { width: 19mm; font-weight: 700; font-size: 8.4pt; color: var(--green); letter-spacing: .03em; }
+td.nm { font-weight: 600; font-size: 9.8pt; }
+td.br { width: 28mm; font-size: 7.8pt; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+td.q { width: 20mm; }
 td.q span { display: block; height: 5mm; border: 0.7pt solid var(--line); border-radius: 1mm; background: #fff; }
-.safety { background: var(--warn); color: var(--warn-ink); border-radius: 2mm; padding: 3mm 4mm; font-size: 8.6pt; margin-top: 5mm; }
-.tip { margin-top: 5mm; display: flex; gap: 4mm; align-items: center; border: 0.8pt dashed var(--green); border-radius: 2mm; padding: 3mm 4mm; font-size: 8.8pt; }
+.safety { background: var(--warn); color: var(--warn-ink); border-radius: 2mm; padding: 3mm 4mm; font-size: 8.4pt; margin-top: 4mm; }
+.tip { margin-top: 4mm; display: flex; gap: 4mm; align-items: center; background: var(--soft); border-left: 1.2mm solid var(--bright); border-radius: 1.5mm; padding: 3mm 4mm; font-size: 8.6pt; }
 .tip b { color: var(--green); white-space: nowrap; }
 
 /* Contact page */
-.contact { background: var(--soft); }
-.contact h2.title { margin-top: 12mm; }
-.cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 4mm; }
-.card { background: #fff; border-radius: 3mm; padding: 5.5mm; border: 0.6pt solid var(--line); }
-.card .lab { font-size: 7.6pt; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-.card .val { font: 700 15pt/1.2 "Bricolage Grotesque", sans-serif; margin-top: 1.5mm; word-break: break-word; }
-.card .val.sm { font-size: 11.5pt; }
-.card .note { font-size: 8.6pt; color: var(--muted); margin-top: 1.5mm; }
-.card.hero { grid-column: 1 / -1; background: var(--green); color: #fff; border: 0; display: flex; justify-content: space-between; align-items: center; }
-.card.hero .lab, .card.hero .note { color: rgba(255,255,255,.8); }
-.card.hero .val { font-size: 26pt; color: #fff; }
-.steps { counter-reset: s; list-style: none; padding: 0; margin: 9mm 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; }
-.steps li { counter-increment: s; background: #fff; border-radius: 3mm; padding: 4.5mm; font-size: 8.8pt; border: 0.6pt solid var(--line); }
-.steps li::before { content: counter(s); display: grid; place-items: center; width: 8mm; height: 8mm; border-radius: 50%; background: var(--gold); color: #fff; font: 800 11pt "Bricolage Grotesque", sans-serif; margin-bottom: 2.5mm; }
+.contact h2.title { margin-top: 10mm; }
+.cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4.5mm; margin-top: 4mm; }
+.card { background: #fff; border-radius: 3mm; padding: 5mm; border: 0.6pt solid var(--line); }
+.card .lab { font-size: 7.4pt; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.card .val { font: 800 15pt/1.2 "Plus Jakarta Sans", sans-serif; margin-top: 1.5mm; word-break: break-word; }
+.card .val.sm { font-size: 12pt; }
+.card .note { font-size: 8.4pt; color: var(--muted); margin-top: 1.5mm; }
+.card.hero { grid-column: 1 / -1; background: var(--dark); color: #fff; border: 0; display: flex; justify-content: space-between; align-items: center; padding: 7mm; }
+.card.hero .lab, .card.hero .note { color: rgba(255,255,255,.7); }
+.card.hero .val { font-size: 28pt; color: var(--bright); }
+.card.hero .wa { background: #25D366; color: #06210F; font: 800 12pt "Plus Jakarta Sans", sans-serif; border-radius: 999px; padding: 3.5mm 8mm; }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 7mm 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+.steps li { counter-increment: s; background: var(--soft); border-radius: 3mm; padding: 4.5mm; font-size: 8.6pt; }
+.steps li::before { content: counter(s); display: grid; place-items: center; width: 8mm; height: 8mm; border-radius: 50%; background: var(--green); color: #fff; font: 800 11pt "Plus Jakarta Sans", sans-serif; margin-bottom: 2.5mm; }
 .steps li b { display: block; font-size: 10pt; margin-bottom: 1mm; }
-.terms { margin-top: 8mm; font-size: 8.4pt; color: var(--muted); columns: 2; column-gap: 8mm; }
+.terms { margin-top: 7mm; font-size: 8.2pt; color: var(--muted); columns: 2; column-gap: 8mm; }
 .terms p { margin: 0 0 2mm; break-inside: avoid; }
-.thanks { position: absolute; left: 15mm; right: 15mm; bottom: 20mm; text-align: center; font: 700 14pt "Bricolage Grotesque", sans-serif; color: var(--green); }
-.thanks small { display: block; font: 400 9pt "Figtree", sans-serif; color: var(--muted); margin-top: 1mm; }
+.thanks { position: absolute; left: 0; right: 0; bottom: 0; height: 40mm; background: var(--dark); color: #fff; text-align: center; padding-top: 9mm; font: 800 15pt "Plus Jakarta Sans", sans-serif; }
+.thanks em { font-style: normal; color: var(--bright); }
+.thanks small { display: block; font: 400 9pt "Inter", sans-serif; color: rgba(255,255,255,.7); margin-top: 1.5mm; }
+.contact .foot { color: rgba(255,255,255,.6); border-color: rgba(255,255,255,.15); z-index: 1; }
+.contact .foot b { color: var(--bright); }
 </style>
 </head>
 <body>

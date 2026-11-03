@@ -9,26 +9,33 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-CONTACT = "03XX-XXXXXXX"
+CONTACT = "0339-2639315"
 DATE = "November 2026"
 
 # Contact details shown on the cover, every footer and the contact page.
-# Replace the placeholders with the details from paksupplies.com.pk.
 DETAILS = {
     "whatsapp": CONTACT,
-    "phone": "021-XXXXXXX",
-    "email": "info@paksupplies.com.pk",
+    "phone": "+92 339 2639315",
+    "email": "sales@paksupplies.com.pk",
     "website": "paksupplies.com.pk",
-    "address": "Office address, City, Pakistan",
-    "hours": "Mon to Sat, 9:00 am to 7:00 pm",
+    "address": "Karachi, Pakistan",
+    "delivery": "Same-day delivery in Karachi, nationwide shipping",
 }
 
 # Category order, with a short customer-facing intro (English + Roman Urdu line).
 CATEGORIES = [
     ("Cleaning Chemicals", "Bleach, acid, phenyl, floor and glass cleaners in 1L, 5L and 20L packs.",
      "Har surface ke liye cleaning chemicals, bulk packing mein."),
-    ("Brooms (Hard & Soft)", "Soft phool jharoo for indoor floors, hard tili and coconut brooms for outdoor and rough areas.",
+    ("Brooms (Hard & Soft)", "Soft phool jharoo for indoor floors, hard tili, coconut and push brooms for outdoor and rough areas.",
      "Andar ke liye soft, bahar ke liye hard jharoo."),
+    ("Mops & Cleaning Tools", "Mops, buckets, wipers, squeegees, cloths, scrubbers and spray bottles.",
+     "Pocha, wiper aur safai ke auzaar."),
+    ("Mop Refills", "Wet cotton refills by weight (250g to 600g), colour-coded wet refills, acrylic dry mop refills and microfiber pads.",
+     "Wet aur dry mop refills, har size aur colour mein."),
+    ("Dustbins", "Plastic dustbins from 10L to 80L, pedal and swing-lid bins, wheeled bins up to 360L, steel and hospital bins.",
+     "Plastic aur steel dustbins, har size mein."),
+    ("Garbage Bags", "Garbage bags in every size, heavy-duty bags by the kg, hospital and colour-coded bags.",
+     "Kachra bags, chhote se jumbo tak."),
     ("Toiletries", "Soap, shampoo, dental and guest amenity kits for offices, hotels, hostels and hospitals.",
      "Hotels, offices aur hostels ke liye toiletries."),
     ("Washroom Care", "Toilet wash, urinal cubes, naphthalene and washroom tools.",
@@ -37,20 +44,18 @@ CATEGORIES = [
      "Haath dhone aur hygiene ka saman."),
     ("Laundry & Dishwash", "Detergent powder and liquid, dishwash liquid and bars.",
      "Kapre aur bartan dhone ka saman."),
-    ("Mops & Cleaning Tools", "Mops, buckets, wipers, squeegees, cloths, scrubbers and spray bottles.",
-     "Pocha, wiper aur safai ke auzaar."),
     ("Paper & Tissue", "Toilet rolls, jumbo rolls, kitchen towels, N-fold towels and tissue boxes.",
      "Tissue aur paper products."),
-    ("Garbage Bags & Bins", "Garbage bags in every size, pedal bins, office bins and wheeled bins.",
-     "Kachra bags aur dustbins."),
     ("Dispensers", "Wall-mounted soap, tissue, towel and air freshener dispensers.",
      "Washroom dispensers, installation ke saath."),
+    ("Cleaning Machines & Trolleys", "Wet & dry vacuums, floor scrubbers, polishers, pressure washers and janitor trolleys.",
+     "Industrial cleaning machines aur trolleys."),
     ("Safety & PPE", "Gloves, face masks and wet-floor caution signs for your cleaning staff.",
      "Staff ki hifazat ke liye safety saman."),
 ]
 CAT_NAMES = [c[0] for c in CATEGORIES]
 # Short order codes per category, e.g. CC-01 = first Cleaning Chemicals product.
-CODES = dict(zip(CAT_NAMES, ["CC", "BR", "TL", "WC", "HW", "LD", "MT", "PT", "GB", "DS", "SF"]))
+CODES = dict(zip(CAT_NAMES, ["CC", "BR", "MT", "MR", "DB", "GB", "TL", "WC", "HW", "LD", "PT", "DS", "CM", "SF"]))
 AISLES = {"Janitorial Supplies": CAT_NAMES}
 
 products = json.loads((ROOT / "data/janitorial.json").read_text())
@@ -97,14 +102,11 @@ def foot(n):
     return (f'<div class="foot"><span><b>Pak Supplies</b> · Product Catalogue · {DATE}</span>'
             f'<span>WhatsApp {e(DETAILS["whatsapp"])} · Page {n}</span></div>')
 
-LOGO = ('<svg width="{s}" height="{s}" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="{bg}"/>'
-        '<path d="M11 17.5 20 13l9 4.5v9.5L20 31.5 11 27z" fill="none" stroke="{fg}" stroke-width="2.2" stroke-linejoin="round"/>'
-        '<path d="M11 17.5 20 22l9-4.5M20 22v9.5" fill="none" stroke="{fg}" stroke-width="2.2" stroke-linejoin="round"/>'
-        '<circle cx="29.5" cy="11" r="3" fill="#C98A12"/></svg>')
+LOGO = '<img class="mark" src="../assets/logo.png" alt="Pak Supplies">'
 
-def logo(size=46, bg="#0F6B42", fg="#fff", tag="Janitorial &amp; cleaning supplies"):
-    return (f'<div class="logo">{LOGO.format(s=size, bg=bg, fg=fg)}'
-            f'<div><b>Pak <span>Supplies</span></b><small>{tag}</small></div></div>')
+def logo(card=False):
+    return (f'<div class="logo{" card" if card else ""}">{LOGO}'
+            f'<div><b>PAK SUPPLIES</b><small>Cleaning Solutions</small></div></div>')
 
 cats = [(n, en, ur, [p for p in products if p["c"] == n]) for n, en, ur in CATEGORIES]
 cats = [c for c in cats if c[3]]
@@ -112,14 +114,15 @@ pages = []
 
 # 1. Cover
 chips = "".join(f"<li>{e(n)}</li>" for n, *_ in cats)
-pages.append(f'''<section class="page cover"><div class="band"></div><div class="in">
-{logo(58, "#fff", "#0F6B42")}
-<div class="kicker">Product Catalogue · {DATE}</div>
-<h1>Everything your<br>building needs<br>to stay clean.</h1>
-<p class="lede">{len(products)} janitorial products across {len(cats)} categories, supplied in bulk to offices, hotels,
-schools, hospitals and factories. Ek order, poora saman.</p>
+pages.append(f'''<section class="page cover"><div class="band"></div><div class="topbar">&#9742;&nbsp; {e(DETAILS["phone"])} &nbsp;·&nbsp; {e(DETAILS["email"])}</div><div class="in">
+{logo(True)}
+<div class="pill"><i></i>Pakistan's trusted B2B supplier</div>
+<h1>Cleaning Supplies, Mops &amp; Janitorial Equipment <em>Delivered Across Pakistan</em></h1>
+<p class="lede">Product Catalogue · {DATE}. {len(products)} products across {len(cats)} categories for hotels, hospitals,
+offices and facilities nationwide, with same-day delivery in Karachi.</p>
+<div class="stats"><div><b>1,200+</b>Products</div><div><b>8+</b>Years experience</div><div><b>Same day</b>Delivery in Karachi</div></div>
 <ul class="cats">{chips}</ul>
-<div class="bottom"><div><span>Order on WhatsApp</span><strong>{e(DETAILS["whatsapp"])}</strong></div>
+<div class="bottom"><div><span>WhatsApp / Call</span><strong>{e(DETAILS["whatsapp"])}</strong></div>
 <div style="text-align:right"><span>{e(DETAILS["email"])}</span><br><span>{e(DETAILS["website"])}</span></div></div>
 </div></section>''')
 
@@ -135,7 +138,7 @@ pages.append(f'''<section class="page">
 <ol class="toc">{toc}</ol>
 <div class="why">
 <div><b>Bulk supply</b><p>Pack sizes from 1L bottles to 20L cans and 25kg bags, for monthly office and site needs.</p></div>
-<div><b>Delivery to your door</b><p>We deliver to your office, site or warehouse. Delivery date is confirmed with your quote.</p></div>
+<div><b>Same-day in Karachi</b><p>Same-day delivery in Karachi and delivery across Pakistan to your office, site or warehouse.</p></div>
 <div><b>Quote in hours</b><p>Send your list on WhatsApp and get a price quote the same day. Rates depend on volume.</p></div>
 </div>
 {foot(2)}</section>''')
@@ -180,11 +183,11 @@ pages.append(f'''<section class="page contact">
 <p class="sub">Rabta karein, hum aapka order jaldi se jaldi deliver karenge.</p>
 <div class="cgrid">
 <div class="card hero"><div><div class="lab">WhatsApp orders &amp; quotes</div><div class="val">{d["whatsapp"]}</div>
-<div class="note">Fastest way to order. Send your list or a photo of this catalogue.</div></div>{LOGO.format(s=72, bg="#fff", fg="#0F6B42")}</div>
-<div class="card"><div class="lab">Phone</div><div class="val">{d["phone"]}</div><div class="note">{d["hours"]}</div></div>
+<div class="note">Fastest way to order. Send your list or a photo of this catalogue.</div></div><div class="wa">WhatsApp</div></div>
+<div class="card"><div class="lab">Phone</div><div class="val">{d["phone"]}</div><div class="note">Call for orders and bulk quotes</div></div>
 <div class="card"><div class="lab">Email</div><div class="val sm">{d["email"]}</div><div class="note">For POs, invoices and tenders</div></div>
-<div class="card"><div class="lab">Website</div><div class="val sm">{d["website"]}</div><div class="note">Latest products and updates</div></div>
-<div class="card"><div class="lab">Office / Warehouse</div><div class="val sm">{d["address"]}</div><div class="note">Visits by appointment</div></div>
+<div class="card"><div class="lab">Website</div><div class="val sm">{d["website"]}</div><div class="note">Browse 1,200+ products online</div></div>
+<div class="card"><div class="lab">Based in</div><div class="val sm">{d["address"]}</div><div class="note">{d["delivery"]}</div></div>
 </div>
 <ol class="steps">
 <li><b>Choose</b>Pick products and write the quantity next to each code.</li>
@@ -198,7 +201,7 @@ pages.append(f'''<section class="page contact">
 <p>Monthly supply contracts are available for offices, hotels, schools, hospitals and factories.</p>
 <p>Chemicals are delivered in sealed, labelled containers. Please check goods on delivery.</p>
 </div>
-<div class="thanks">Thank you for choosing Pak Supplies<small>Shukriya! Aapki khidmat hamara farz hai.</small></div>
+<div class="thanks">Thank you for choosing <em>Pak Supplies</em><small>Shukriya! Aapki khidmat hamara farz hai.</small></div>
 {foot(last)}</section>''')
 
 cat_html = (ROOT / "pdf/catalogue-template.html").read_text().replace("/*PAGES*/", "\n".join(pages))
