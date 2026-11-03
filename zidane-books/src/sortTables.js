@@ -81,12 +81,18 @@ function setup(table) {
         // First click: statuses, amounts and dates go high → low (e.g. delivered first), text A → Z
         const first = valueOf(table.tBodies[0].rows[0]?.cells[i]).t === 2 ? "asc" : "desc";
         const next = { col: i, dir: cur && cur.col === i ? (cur.dir === "asc" ? "desc" : "asc") : first };
-        store.set(k, next); mark(table, next); apply(table, next);
+        store.set(k, next); mark(table, next); apply(table, next); table._sortSig = null;
       });
     });
   }
   const state = store.get(tableKey(table));
-  if (state && state.col < head.cells.length) { mark(table, state); apply(table, state); }
+  if (!state || state.col >= head.cells.length) return;
+  // only when the rows or the sort changed: anything else on the page (typing, a toast) leaves the table alone
+  const body = table.tBodies[0];
+  const sig = `${state.col}${state.dir}|${body.rows.length}|${body.textContent.length}`;
+  if (table._sortSig === sig) return;
+  mark(table, state); apply(table, state);
+  table._sortSig = sig;
 }
 
 export function startTableSorting() {

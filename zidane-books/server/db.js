@@ -269,4 +269,8 @@ CREATE INDEX IF NOT EXISTS idx_attach ON attachments(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_pay_contact ON payments(contact_id);
 CREATE INDEX IF NOT EXISTS idx_docs_job ON documents(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_items ON job_items(job_id);
+-- a record's own activity (Jobs list: when it closed; Recent activity on every page). Without it each Job read the whole log
+CREATE INDEX IF NOT EXISTS idx_activity_entity ON activity(entity, entity_id);
+-- lines a bill / PO / credit assigns to a Job other than its own
+CREATE INDEX IF NOT EXISTS idx_lines_job ON document_lines(job_id);
 `;
