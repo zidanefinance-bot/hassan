@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pak Supplies Product List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+@page { size: A4; margin: 14mm 13mm 16mm; }
+:root { --ink: #14211A; --muted: #5D6A62; --line: #D5DCD1; --green: #0F6B42; --soft: #E7F2EA; --gold: #C98A12; --warn: #FFF4DC; --warn-ink: #6B4A05; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); font: 9.6pt/1.35 "Figtree", "Segoe UI", sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; }
+.mast { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding-bottom: 10px; border-bottom: 2.5pt solid var(--green); }
+.brand { display: flex; gap: 10px; align-items: center; }
+.brand b { font: 800 22pt/1 "Bricolage Grotesque", sans-serif; letter-spacing: -0.02em; }
+.brand b span { color: var(--green); }
+.brand small { display: block; font-size: 9pt; color: var(--muted); margin-top: 3px; }
+.meta { text-align: right; font-size: 9pt; color: var(--muted); }
+.meta strong { display: block; font: 700 15pt/1.1 "Bricolage Grotesque", sans-serif; color: var(--ink); }
+.how { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; background: var(--soft); border-radius: 8px; padding: 9px 12px; margin: 11px 0 4px; }
+.how p { margin: 0; }
+.how .wa { font-weight: 700; white-space: nowrap; }
+.how .wa span { font-size: 11pt; color: var(--green); }
+.cust { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 14px; margin: 10px 0 2px; font-size: 8.6pt; color: var(--muted); }
+.cust div { border-bottom: 0.8pt solid var(--line); padding-bottom: 12px; }
+.aisle { font: 800 15pt/1 "Bricolage Grotesque", sans-serif; letter-spacing: -0.01em; margin: 16px 0 2px; display: flex; align-items: baseline; gap: 8px; }
+.aisle small { font: 600 8.6pt "Figtree", sans-serif; color: var(--muted); }
+.aisle .new { font: 800 7pt "Figtree", sans-serif; letter-spacing: .1em; background: var(--gold); color: #fff; padding: 2px 5px; border-radius: 3px; }
+.page-break { break-before: page; }
+.safety { background: var(--warn); color: var(--warn-ink); border-radius: 6px; padding: 6px 10px; font-size: 8.4pt; margin: 6px 0 0; }
+.cat { margin-top: 10px; break-inside: avoid-page; }
+.cat h3 { font: 700 10.5pt "Bricolage Grotesque", sans-serif; color: var(--green); margin: 0 0 3px; padding-bottom: 3px; border-bottom: 0.8pt solid var(--green); display: flex; justify-content: space-between; }
+.cat h3 span { font: 600 8pt "Figtree", sans-serif; color: var(--muted); }
+.rows { columns: 2; column-gap: 18px; }
+.row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 34px; gap: 6px; align-items: center; padding: 3.2px 0; border-bottom: 0.5pt solid var(--line); break-inside: avoid; }
+.row i { width: 9px; height: 9px; border: 0.9pt solid var(--muted); border-radius: 2px; }
+.row .n { font-weight: 600; }
+.row .b { font-size: 7.6pt; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.row .q { height: 13px; border-bottom: 0.8pt solid var(--ink); }
+.qh { display: flex; justify-content: flex-end; font-size: 7.4pt; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+.note { margin-top: 16px; font-size: 8.4pt; color: var(--muted); border-top: 0.8pt solid var(--line); padding-top: 8px; }
+.other { margin-top: 12px; break-inside: avoid; }
+.other h3 { font: 700 10.5pt "Bricolage Grotesque", sans-serif; color: var(--green); margin: 0 0 4px; }
+.other div { border-bottom: 0.6pt solid var(--line); height: 20px; }
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="brand">
+    <svg width="44" height="44" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#0F6B42"/><path d="M11 17.5 20 13l9 4.5v9.5L20 31.5 11 27z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/><path d="M11 17.5 20 22l9-4.5M20 22v9.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/><circle cx="29.5" cy="11" r="3" fill="#C98A12"/></svg>
+    <div><b>Pak <span>Supplies</span></b><small>Wholesale grocery &amp; cleaning supplies</small></div>
+  </div>
+  <div class="meta"><strong>Product List</strong>/*DATE*/ · /*COUNT*/ products</div>
+</header>
+<div class="how">
+  <p>Tick the products you need and write the quantity. Send a photo of this list on WhatsApp and we'll reply with a quote and a delivery date. Prices depend on volume, so they are not printed here.</p>
+  <div class="wa">WhatsApp<br><span>/*CONTACT*/</span></div>
+</div>
+<div class="cust"><div>Company / organization</div><div>Contact person &amp; phone</div><div>Delivery area &amp; date</div></div>
+/*BODY*/
+<div class="other"><h3>Anything else? Write it here and we'll source it</h3><div></div><div></div><div></div></div>
+<p class="note">Brands, pack sizes and availability are confirmed in your quote. Product list valid for /*DATE*/.</p>
+</body>
+</html>

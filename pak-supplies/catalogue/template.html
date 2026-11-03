@@ -1,0 +1,304 @@
+<title>Pak Supplies Catalogue</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: wholesale order sheet. Sticky brand + search bar, two aisles (Grocery / Cleaning & Chemicals), category chips, product shelf grid, order list docked right (bottom sheet on phones). */
+:root {
+  --bg: #F1F3EE;
+  --shelf: #FFFFFF;
+  --tile: #F5F7F2;
+  --ink: #14211A;
+  --muted: #5D6A62;
+  --line: #DCE2D8;
+  --green: #0F6B42;
+  --green-ink: #FFFFFF;
+  --green-soft: #E2F0E6;
+  --gold: #C98A12;
+  --warn-bg: #FFF4DC;
+  --warn-ink: #6B4A05;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1412; --shelf: #171E1A; --tile: #1F2823; --ink: #ECF1ED; --muted: #9DAAA2; --line: #2A3530;
+    --green: #3FB57A; --green-ink: #06140C; --green-soft: #173325; --gold: #E5AC3A; --warn-bg: #2E2410; --warn-ink: #F3D9A0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1412; --shelf: #171E1A; --tile: #1F2823; --ink: #ECF1ED; --muted: #9DAAA2; --line: #2A3530;
+  --green: #3FB57A; --green-ink: #06140C; --green-soft: #173325; --gold: #E5AC3A; --warn-bg: #2E2410; --warn-ink: #F3D9A0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 25; background: var(--shelf); }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--shelf); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px; display: flex; gap: 14px 18px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 11px; margin-right: auto; }
+.brand svg { flex: none; }
+.brand .wm { display: grid; line-height: 1; }
+.brand b { font: 800 21px/1 var(--display); letter-spacing: -0.02em; }
+.brand b span { color: var(--green); }
+.brand small { font-size: 12px; color: var(--muted); margin-top: 4px; letter-spacing: .02em; }
+.search { flex: 1 1 260px; max-width: 440px; position: relative; }
+.search input { width: 100%; padding: 10px 14px 10px 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.cartbtn { display: none; border: 0; background: var(--green); color: var(--green-ink); padding: 10px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 26px 80px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
+.main { min-width: 0; }
+.intro h1 { font: 800 clamp(28px, 4.2vw, 46px)/1.04 var(--display); letter-spacing: -0.03em; margin: 0; text-wrap: balance; max-width: 22ch; }
+.intro h1 em { font-style: normal; color: var(--green); }
+.intro p { color: var(--muted); max-width: 62ch; margin: 12px 0 0; }
+
+.aisles { display: flex; gap: 8px; margin: 24px 0 0; flex-wrap: wrap; }
+.aisles button { border: 1px solid var(--line); background: var(--shelf); padding: 10px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.aisles button small { font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.aisles button[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: var(--green-ink); }
+.aisles button[aria-pressed="true"] small { color: inherit; opacity: .75; }
+.aisles .new { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: var(--gold); color: #fff; padding: 2px 6px; border-radius: 5px; }
+
+.cats { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 4px; }
+.cats button { border: 1px solid var(--line); background: var(--shelf); padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.cats button small { color: var(--muted); font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.cats button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.cats button[aria-pressed="true"] small { color: inherit; opacity: .7; }
+.count { font-size: 13px; color: var(--muted); margin: 10px 0 6px; }
+
+.safety { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-bg); color: var(--warn-ink); border-radius: 12px; padding: 11px 14px; font-size: 13.5px; margin: 14px 0 0; }
+.safety svg { flex: none; margin-top: 2px; }
+
+.section-h { display: flex; align-items: baseline; gap: 10px; margin: 28px 0 12px; }
+.section-h h2 { font: 700 21px var(--display); letter-spacing: -0.02em; margin: 0; }
+.section-h span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.card { background: var(--shelf); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 12px; display: flex; flex-direction: column; min-width: 0; }
+.card.in { border-color: var(--green); box-shadow: 0 0 0 1px var(--green) inset; }
+.ph { background: var(--tile); border-radius: 10px; aspect-ratio: 1 / 1; max-width: 100%; display: grid; place-items: center; padding: 12px; }
+.ph img, .ph svg { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0,0,0,.12)); }
+.bn { margin-top: 10px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--green); }
+.nm { font-size: 14px; font-weight: 600; line-height: 1.3; margin-top: 2px; flex: 1; }
+.qty { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+.qty button { width: 34px; height: 34px; flex: none; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); font-weight: 700; font-size: 18px; line-height: 1; cursor: pointer; }
+.qty input { width: 100%; min-width: 0; text-align: center; padding: 6px 4px; border-radius: 9px; border: 1px solid var(--line); background: var(--shelf); font-weight: 700; font-variant-numeric: tabular-nums; }
+.add { margin-top: 10px; border: 1px solid var(--ink); background: transparent; border-radius: 9px; padding: 7px; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.add:hover { background: var(--ink); color: var(--bg); }
+
+.order { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); background: var(--shelf); border: 1px solid var(--line); border-radius: 16px; padding: 18px; max-height: calc(100vh - 110px); display: flex; flex-direction: column; }
+.order-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.order h2 { font: 700 19px var(--display); margin: 0; }
+.order-h small { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }
+.closeSheet { display: none; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.lines { overflow: auto; margin: 12px -4px 0; padding: 0 4px; flex: 1; min-height: 60px; }
+.line { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.line .th { width: 40px; height: 40px; display: grid; place-items: center; }
+.line .th img, .line .th svg { width: 40px; height: 40px; object-fit: contain; }
+.line .t { font-size: 13px; font-weight: 600; line-height: 1.25; }
+.line .q { font: 700 14px var(--body); font-variant-numeric: tabular-nums; }
+.line button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0; }
+.empty { color: var(--muted); font-size: 14px; padding: 16px 4px; }
+.empty b { color: var(--ink); }
+.fields { display: grid; gap: 8px; margin-top: 12px; }
+.fields label { font-size: 12px; font-weight: 600; color: var(--muted); display: grid; gap: 4px; }
+.fields input, .fields textarea { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
+.fields textarea { resize: vertical; min-height: 56px; }
+.send { margin-top: 14px; display: grid; gap: 8px; }
+.primary { border: 0; background: var(--green); color: var(--green-ink); padding: 12px; border-radius: 11px; font-weight: 700; cursor: pointer; }
+.primary:disabled { opacity: .45; cursor: default; }
+.mail { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; background: var(--green-soft); border-radius: 10px; padding: 9px 12px; }
+.mail code { font: 700 14px var(--body); user-select: all; font-variant-numeric: tabular-nums; }
+.mail button { border: 1px solid var(--line); background: var(--shelf); border-radius: 8px; padding: 4px 9px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.status { font-size: 12.5px; color: var(--muted); min-height: 18px; }
+.clear { border: 0; background: none; color: var(--muted); font-size: 12.5px; cursor: pointer; text-decoration: underline; justify-self: start; padding: 0; }
+.foot { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 40px; font-size: 12.5px; color: var(--muted); }
+#fallback { width: 100%; min-height: 120px; font: 12.5px/1.4 ui-monospace, Menlo, monospace; }
+
+@media (max-width: 920px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  .cartbtn { display: inline-block; }
+  .closeSheet { display: inline-block; }
+  .order { position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 82vh; border-radius: 18px 18px 0 0; z-index: 30; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateY(105%); transition: transform .25s; box-shadow: 0 -10px 40px rgba(0,0,0,.2); }
+  .order.open { transform: none; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .order { transition: none; } }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="var(--green)"/><path d="M11 17.5 20 13l9 4.5v9.5L20 31.5 11 27z" fill="none" stroke="var(--green-ink)" stroke-width="2.2" stroke-linejoin="round"/><path d="M11 17.5 20 22l9-4.5M20 22v9.5" fill="none" stroke="var(--green-ink)" stroke-width="2.2" stroke-linejoin="round"/><circle cx="29.5" cy="11" r="3" fill="var(--gold)"/></svg>
+      <div class="wm"><b>Pak <span>Supplies</span></b><small>Wholesale grocery &amp; cleaning supplies</small></div>
+    </div>
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input id="q" type="search" placeholder="Search bleach, phenyl, basmati, Shan…" aria-label="Search products">
+    </div>
+    <button class="cartbtn" id="openOrder" type="button">Order list · <span id="cnt2">0</span></button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="main">
+    <section class="intro">
+      <h1>Groceries and cleaning supplies in bulk. <em>Send your list, we'll quote it.</em></h1>
+      <p>Choose the products and pack sizes your business uses, set quantities, then copy the list and send it to us on WhatsApp. We reply with a quote and a delivery date.</p>
+    </section>
+    <div class="aisles" id="aisles" role="group" aria-label="Aisle"></div>
+    <div class="cats" id="cats" role="group" aria-label="Categories"></div>
+    <div class="safety" id="safety" hidden>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
+      <span><b>Safety:</b> acid (tezab) and bleach are delivered in sealed, labelled containers. Never mix acid with bleach, because together they release toxic chlorine gas. Store chemicals away from food and children.</span>
+    </div>
+    <div class="count" id="count"></div>
+    <div id="shelf"></div>
+  </div>
+
+  <aside class="order" id="order" aria-label="Your order list">
+    <div class="order-h"><h2>Your order list</h2><small id="cnt">0 items</small><button class="closeSheet" id="closeOrder" type="button">Close</button></div>
+    <div class="lines" id="lines"></div>
+    <div class="fields">
+      <label for="co">Company / organization<input id="co" autocomplete="organization" placeholder="e.g. ABC Textiles"></label>
+      <label for="cp">Contact person &amp; phone<input id="cp" autocomplete="name" placeholder="Name, 03xx xxxxxxx"></label>
+      <label for="nt">Delivery area, dates, notes<textarea id="nt" placeholder="e.g. Korangi, monthly, first week"></textarea></label>
+    </div>
+    <div class="send">
+      <button class="primary" id="copy" type="button" disabled>Copy order list</button>
+      <div class="mail"><span>WhatsApp it to <code id="addr"></code></span><button id="copyAddr" type="button">Copy</button></div>
+      <div class="status" id="status" role="status"></div>
+      <textarea id="fallback" hidden aria-label="Order text to copy"></textarea>
+      <button class="clear" id="clear" type="button">Clear list</button>
+    </div>
+  </aside>
+</main>
+<p class="foot">Product images and pack drawings are for reference. Brands, pack sizes and availability are confirmed in your quote. Prices are not shown because they depend on volume and delivery schedule.</p>
+
+<script>
+const CONTACT = "/*CONTACT*/";
+window.PRODUCTS = /*PRODUCTS*/;
+const AISLES = { "Grocery": ["Oil & Ghee", "Rice", "Atta & Flour", "Sugar", "Pulses & Chickpeas", "Masala & Spices", "Tea & Coffee", "Milk & Dairy", "Essentials"],
+                 "Cleaning & Chemicals": ["Cleaning Chemicals", "Hand Wash & Hygiene", "Laundry & Dishwash", "Housekeeping"] };
+const ORDER_ORDER = [...AISLES["Grocery"], ...AISLES["Cleaning & Chemicals"]];
+const P = window.PRODUCTS;
+const byId = Object.fromEntries(P.map((p) => [p.id, p]));
+let aisle = "All", cat = "All", query = "", cart = {};
+try { cart = JSON.parse(localStorage.getItem("paksupplies-order") || "{}") || {}; } catch (e) { cart = {}; }
+Object.keys(cart).forEach((id) => { if (!byId[id]) delete cart[id]; });
+const save = () => { try { localStorage.setItem("paksupplies-order", JSON.stringify(cart)); } catch (e) {} };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const $ = (id) => document.getElementById(id);
+$("addr").textContent = CONTACT;
+
+/* Pack drawings for products without a photo (chemicals, housekeeping). */
+function lum(hex) { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; }
+function pack(p) {
+  const t = p.t, dark = lum(t) < 0.45, edge = "rgba(0,0,0,.22)", cap = "#2B3A33";
+  const label = (x, y, w, h, fs) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#fff" stroke="${edge}" stroke-width=".6"/><text x="${x + w / 2}" y="${y + h / 2 + fs * 0.36}" text-anchor="middle" font-family="Figtree, sans-serif" font-weight="800" font-size="${fs}" fill="#14211A" letter-spacing=".4">${esc(p.l)}</text><text x="${x + w / 2}" y="${y + h - 2.2}" text-anchor="middle" font-family="Figtree, sans-serif" font-weight="700" font-size="3.4" fill="#0F6B42" letter-spacing=".5">PAK SUPPLIES</text>`;
+  const fs = (w) => Math.min(9, (w - 4) / (p.l.length * 0.62));
+  let g = "";
+  switch (p.s) {
+    case "bottle": g = `<rect x="43" y="10" width="14" height="8" rx="2" fill="${cap}"/><path d="M41 18h18v8c6 3 9 7 9 13v46a5 5 0 0 1-5 5H37a5 5 0 0 1-5-5V39c0-6 3-10 9-13z" fill="${t}" stroke="${edge}"/>${label(34, 46, 32, 26, fs(32))}`; break;
+    case "gallon": g = `<path d="M60 14h12v8H60z" fill="${cap}"/><path d="M22 30c0-5 4-9 9-9h12l4-6h12v9h5c5 0 9 4 9 9v51a5 5 0 0 1-5 5H27a5 5 0 0 1-5-5z" fill="${t}" stroke="${edge}"/><path d="M28 21h14v6H28z" fill="none" stroke="${edge}" stroke-width="2.4"/>${label(28, 44, 44, 28, fs(44))}`; break;
+    case "drum": g = `<rect x="60" y="8" width="12" height="7" rx="1.5" fill="${cap}"/><rect x="16" y="15" width="68" height="76" rx="7" fill="${t}" stroke="${edge}"/><path d="M28 15v-4h16v4" fill="none" stroke="${edge}" stroke-width="2.4"/><path d="M16 30h68M16 80h68" stroke="${edge}"/>${label(24, 42, 52, 28, fs(52))}`; break;
+    case "spray": g = `<path d="M38 8h20l10 6v6H52v6h-12z" fill="${cap}"/><path d="M48 24v6" stroke="${cap}" stroke-width="3"/><path d="M36 30h24c4 0 7 3 7 7v48a5 5 0 0 1-5 5H34a5 5 0 0 1-5-5V37c0-4 3-7 7-7z" fill="${t}" stroke="${edge}"/>${label(32, 46, 32, 26, fs(32))}`; break;
+    case "pump": g = `<path d="M44 8h22v5H50v8h-6z" fill="${cap}"/><rect x="42" y="21" width="16" height="8" rx="2" fill="${cap}"/><rect x="30" y="29" width="40" height="61" rx="9" fill="${t}" stroke="${edge}"/>${label(33, 46, 34, 26, fs(34))}`; break;
+    case "bar": g = `<g transform="rotate(-8 50 55)"><rect x="14" y="34" width="72" height="40" rx="12" fill="${t}" stroke="${edge}"/>${label(26, 42, 48, 24, fs(48))}</g>`; break;
+    case "pack": g = `<path d="M24 22l8-8h44v70H24z" fill="${t}" stroke="${edge}"/><path d="M32 14v8H24M32 22h44" fill="none" stroke="${edge}"/>${label(28, 40, 44, 28, fs(44))}`; break;
+    case "sack": g = `<path d="M22 18c8 3 48 3 56 0l4 70c-14 4-50 4-64 0z" fill="${t}" stroke="${edge}"/><path d="M22 18c8-4 48-4 56 0" fill="none" stroke="${edge}" stroke-width="2"/>${label(28, 42, 44, 28, fs(44))}`; break;
+    case "roll": g = `<ellipse cx="50" cy="22" rx="28" ry="9" fill="${t}" stroke="${edge}"/><path d="M22 22v58c0 5 12.5 9 28 9s28-4 28-9V22" fill="${t}" stroke="${edge}"/><ellipse cx="50" cy="22" rx="8" ry="3" fill="${edge}"/>${label(28, 44, 44, 26, fs(44))}`; break;
+    case "box": g = `<path d="M18 34l12-10h52v54l-12 10H18z" fill="${t}" stroke="${edge}"/><path d="M18 34h52l12-10M70 34v54" fill="none" stroke="${edge}"/>${label(22, 46, 44, 26, fs(44))}`; break;
+    case "tool": g = `<rect x="47" y="6" width="6" height="58" rx="3" fill="#B98A4E" stroke="${edge}"/><path d="M24 64h52l-4 26H28z" fill="${t}" stroke="${edge}"/>${label(30, 68, 40, 18, Math.min(7, fs(40)))}`; break;
+  }
+  return `<svg viewBox="0 0 100 100" role="img" aria-label="${esc(p.n)}">${g}</svg>`;
+}
+const pic = (p, lazy) => p.s ? pack(p) : `<img src="img/${p.id}.webp" alt="${esc(p.n)}"${lazy ? ' loading="lazy"' : ""}>`;
+const inAisle = (p) => aisle === "All" || AISLES[aisle].includes(p.c);
+
+function renderAisles() {
+  const n = (a) => P.filter((p) => AISLES[a].includes(p.c)).length;
+  $("aisles").innerHTML = [["All", P.length], ["Grocery", n("Grocery")], ["Cleaning & Chemicals", n("Cleaning & Chemicals")]].map(([a, c]) =>
+    `<button type="button" data-a="${esc(a)}" aria-pressed="${a === aisle}">${a === "All" ? "Everything" : esc(a)}<small>${c}</small>${a === "Cleaning & Chemicals" ? '<span class="new">New</span>' : ""}</button>`).join("");
+}
+function renderCats() {
+  const list = P.filter(inAisle), counts = { All: list.length };
+  list.forEach((p) => (counts[p.c] = (counts[p.c] || 0) + 1));
+  const cs = aisle === "All" ? ORDER_ORDER : AISLES[aisle];
+  $("cats").innerHTML = ["All", ...cs].map((c) =>
+    `<button type="button" data-c="${esc(c)}" aria-pressed="${c === cat}">${esc(c)}<small>${counts[c] || 0}</small></button>`).join("");
+}
+function card(p) {
+  const q = cart[p.id] || 0;
+  return `<article class="card${q ? " in" : ""}" data-id="${p.id}">
+    <div class="ph">${pic(p, true)}</div>
+    <div class="bn">${esc(p.b)}</div>
+    <div class="nm">${esc(p.n)}</div>
+    ${q ? `<div class="qty"><button type="button" data-act="dec" aria-label="Less ${esc(p.n)}">−</button><input type="number" min="0" inputmode="numeric" id="q-${p.id}" value="${q}" aria-label="Quantity of ${esc(p.n)}"><button type="button" data-act="inc" aria-label="More ${esc(p.n)}">+</button></div>`
+        : `<button class="add" type="button" data-act="inc">Add to list</button>`}
+  </article>`;
+}
+function renderShelf() {
+  const qq = query.trim().toLowerCase();
+  const list = P.filter((p) => inAisle(p) && (cat === "All" || p.c === cat) && (!qq || (p.n + " " + p.b + " " + p.c + " " + (p.k || "")).toLowerCase().includes(qq)));
+  $("count").textContent = `${list.length} product${list.length === 1 ? "" : "s"}${qq ? ` matching “${query.trim()}”` : ""}`;
+  $("safety").hidden = !list.some((p) => p.c === "Cleaning Chemicals");
+  const groups = ORDER_ORDER.map((c) => [c, list.filter((p) => p.c === c)]).filter(([, l]) => l.length);
+  $("shelf").innerHTML = groups.length ? groups.map(([c, l]) =>
+    `<div class="section-h"><h2>${esc(c)}</h2><span>${l.length}</span></div><div class="grid">${l.map(card).join("")}</div>`).join("")
+    : `<p class="empty">Nothing matches that search. Try <b>phenyl</b>, <b>tezab</b> or a brand like <b>Shan</b>. If it isn't listed, add it in the notes and we'll source it.</p>`;
+}
+function orderText() {
+  const ids = Object.keys(cart).filter((id) => cart[id] > 0);
+  const byCat = ORDER_ORDER.map((c) => [c, ids.filter((id) => byId[id].c === c)]).filter(([, l]) => l.length);
+  let t = "Quote request — Pak Supplies\n";
+  if ($("co").value.trim()) t += `Company: ${$("co").value.trim()}\n`;
+  if ($("cp").value.trim()) t += `Contact: ${$("cp").value.trim()}\n`;
+  t += "\n";
+  byCat.forEach(([c, l]) => { t += `${c}\n`; l.forEach((id) => (t += `  • ${byId[id].n} — qty ${cart[id]}\n`)); t += "\n"; });
+  if ($("nt").value.trim()) t += `Notes: ${$("nt").value.trim()}\n`;
+  t += `\nTotal lines: ${ids.length}`;
+  return t;
+}
+function renderOrder() {
+  const ids = Object.keys(cart).filter((id) => cart[id] > 0);
+  $("cnt").textContent = `${ids.length} item${ids.length === 1 ? "" : "s"}`;
+  $("cnt2").textContent = ids.length;
+  $("copy").disabled = !ids.length;
+  $("lines").innerHTML = ids.length ? ids.map((id) => `<div class="line"><div class="th">${pic(byId[id])}</div><div><div class="t">${esc(byId[id].n)}</div><button type="button" data-rm="${id}">Remove</button></div><div class="q">× ${cart[id]}</div></div>`).join("")
+    : `<p class="empty"><b>Your list is empty.</b> Tap “Add to list” on any product, set the quantity, then copy the list and send it to us on WhatsApp.</p>`;
+}
+function setQty(id, v) {
+  v = Math.max(0, Math.min(99999, Math.round(Number(v) || 0)));
+  if (v) cart[id] = v; else delete cart[id];
+  save();
+  const el = document.querySelector(`.card[data-id="${id}"]`);
+  if (el) el.outerHTML = card(byId[id]);
+  renderOrder();
+}
+$("aisles").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; aisle = b.dataset.a; cat = "All"; renderAisles(); renderCats(); renderShelf(); });
+$("cats").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; cat = b.dataset.c; renderCats(); renderShelf(); });
+$("q").addEventListener("input", (e) => { query = e.target.value; renderShelf(); });
+$("shelf").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const id = b.closest(".card").dataset.id;
+  setQty(id, (cart[id] || 0) + (b.dataset.act === "inc" ? 1 : -1));
+  if (b.dataset.act === "inc" && cart[id] === 1) { const inp = document.getElementById("q-" + id); if (inp) { inp.focus(); inp.select(); } }
+});
+$("shelf").addEventListener("change", (e) => { if (e.target.matches(".qty input")) setQty(e.target.closest(".card").dataset.id, e.target.value); });
+$("lines").addEventListener("click", (e) => { const b = e.target.closest("button[data-rm]"); if (b) setQty(b.dataset.rm, 0); });
+function copyText(text, okMsg) {
+  const fb = () => { const f = $("fallback"); f.hidden = false; f.value = text; f.focus(); f.select(); $("status").textContent = "Copy didn't work here. The text is selected below: press Ctrl+C or long-press to copy."; };
+  try { navigator.clipboard.writeText(text).then(() => { $("fallback").hidden = true; $("status").textContent = okMsg; }, fb); } catch (e) { fb(); }
+}
+$("copy").addEventListener("click", () => copyText(orderText(), `Order list copied. Paste it into WhatsApp and send it to ${CONTACT}.`));
+$("copyAddr").addEventListener("click", () => copyText(CONTACT, "Number copied."));
+$("clear").addEventListener("click", () => { cart = {}; save(); renderShelf(); renderOrder(); $("status").textContent = "List cleared."; });
+$("closeOrder").addEventListener("click", () => $("order").classList.remove("open"));
+$("openOrder").addEventListener("click", () => $("order").classList.toggle("open"));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("order").classList.remove("open"); });
+renderAisles(); renderCats(); renderShelf(); renderOrder();
+</script>
