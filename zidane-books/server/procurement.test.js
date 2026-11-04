@@ -96,3 +96,18 @@ test("job cost counts only what the Job needs: extra bought goes to stock; goods
   assert.equal(e.purchases, before + (need - 1) * 10);
   assert.equal(e.bought_for_stock, 0);
 });
+
+test("packing material bought on credit (a bill line that is no Job item) counts in the ration cost per bag", async () => {
+  const RA = await import("./ration.js");
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const sup = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const jobId = J.createJob(db, 1, { customer_id: cust, bags: 100, items: [{ description: "Daal", qty: 100, sale_rate: 300 }] });
+  B.saveDocument(db, 1, { kind: "bill", contact_id: sup, job_id: jobId, status: "open", reference: "SACK-1", lines: [{ description: "Sack bag", qty: 100, rate: 25 }] });
+  const d = J.jobDetail(db, jobId, () => true);
+  assert.equal(d.economics.purchases, 2500);
+  assert.equal(d.ration.other_cost_per_bag, 25);
+  assert.ok(RA);
+});

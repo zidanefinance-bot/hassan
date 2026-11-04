@@ -288,16 +288,17 @@ function purchaseCost(db, jobId, items) {
   const at = (k) => g.get(k) || g.set(k, { qty: 0, cost: 0, back: 0, less: 0 }).get(k);
   for (const l of bills) { const x = at(key(l)); x.qty += l.qty; x.cost += l.cost || 0; }
   for (const l of credits) { const x = at(key(l)); if (l.return_stock) x.back += l.qty; else x.less += l.cost || 0; }
-  let total = 0, stock = 0;
+  let total = 0, stock = 0, other = 0;
   for (const [k, x] of g) {
     const unit = x.qty > 0 ? x.cost / x.qty : 0;
     const kept = Math.max(0, x.qty - x.back);
-    // a bill line that is no Job item (transport, a one-off) counts in full
+    // a bill line that is no Job item (sacks, packing material on credit, transport, a one-off) counts in full
     const used = need.has(k) ? Math.min(kept, need.get(k)) : kept;
     total += used * unit - x.less;
     stock += (kept - used) * unit;
+    if (!need.has(k)) other += used * unit - x.less;
   }
-  return { purchases: round2(Math.max(0, total)), to_stock: round2(stock) };
+  return { purchases: round2(Math.max(0, total)), to_stock: round2(stock), not_items: round2(Math.max(0, other)) };
 }
 
 export function jobEconomics(db, jobId) {
@@ -308,12 +309,12 @@ export function jobEconomics(db, jobId) {
   // supplier bills before tax, with their freight / charges and less their discount. Only what the Job needs counts:
   // bought more than ordered (a whole carton for 150 of 180), the rest went into stock and is costed to the Job that uses it.
   // Goods sent back on a vendor credit don't count either; a credit for a rate difference lowers the cost.
-  const { purchases, to_stock: toStock } = purchaseCost(db, jobId, items);
+  const { purchases, to_stock: toStock, not_items: billedExtras } = purchaseCost(db, jobId, items);
   const fromStock = round2(items.filter((i) => i.procurement_status === "from_stock").reduce((a, i) => a + delivered(i).qty * (i.purchase_rate || 0), 0));
   const direct = round2(db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE job_id = ?").get(jobId).v);
   const revenue = invoiced || expected;
   const cost = round2(purchases + fromStock + direct);
-  return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, bought_for_stock: toStock, stock_cost: fromStock, direct_costs: direct, total_cost: cost,
+  return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, bought_for_stock: toStock, billed_extras: billedExtras, stock_cost: fromStock, direct_costs: direct, total_cost: cost,
     gross_profit: round2(revenue - cost), margin_pct: revenue ? round2(((revenue - cost) / revenue) * 100) : 0,
     // profit isn't final while anything is still to buy, or nothing bought has a supplier bill yet
     cost_pending: purchases + fromStock === 0 || items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)),
@@ -359,7 +360,8 @@ function rationFor(db, job, can) {
     const e = jobEconomics(db, job.id);
     // one bag: its goods at today's purchase rates, plus this order's labour, packing, loading and delivery shared per bag
     const goods = round2(db.prepare("SELECT COALESCE(SUM(ji.qty * COALESCE(i.purchase_rate, 0)), 0) AS v FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.job_id = ?").get(job.id).v / job.bags);
-    st.direct_costs = e?.direct_costs || 0;
+    // labour, packing etc: paid as direct costs, or billed by a supplier as lines that are no item of the order
+    st.direct_costs = round2((e?.direct_costs || 0) + (e?.billed_extras || 0));
     st.goods_cost_per_bag = goods;
     st.other_cost_per_bag = round2(st.direct_costs / job.bags);
     st.cost_per_bag = round2(goods + st.other_cost_per_bag);
