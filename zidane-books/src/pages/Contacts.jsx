@@ -73,7 +73,7 @@ function Statement({ contactId, isCust }) {
   return (
     <section className="card">
       <div className="stmt-head">
-        <div><h3>Statement of account</h3><p className="muted small">{isCust ? "Positive balance = customer owes us. Negative = customer has advance with us." : "Positive balance = we owe the supplier. Negative = our advance with them."}</p></div>
+        <div><h3>Statement of account</h3><p className="muted small">{isCust ? "Positive balance = customer owes us. Negative = customer has advance with us." : "Positive balance = we owe the supplier. Negative = the supplier owes us (goods returned or paid in advance)."}</p></div>
         <div className="actions">
           <input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} aria-label="From" /><span className="muted">to</span>
           <input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} aria-label="To" />
@@ -85,11 +85,12 @@ function Statement({ contactId, isCust }) {
           <div className="stmt-sum">
             <div className="stat"><small>Opening</small><b>{money(st.opening)}</b></div>
             <div className="stat"><small>{isCust ? "Invoiced" : "Billed"}</small><b>{money(st.charges)}</b></div>
-            <div className="stat"><small>{isCust ? "Received" : "Paid"}</small><b>{money(st.payments)}</b></div>
-            <div className="stat"><small>Closing balance</small><b className={st.closing > 0 ? "neg" : st.closing < 0 ? "pos" : ""}>{money(st.closing)}</b><span className="muted">{st.closing < 0 ? "advance" : st.closing > 0 ? (isCust ? "receivable" : "payable") : "settled"}</span></div>
+            <div className="stat"><small>{isCust ? "Received" : "Paid"}</small><b>{money(st.payments - (st.credits || 0))}</b></div>
+            {st.credits > 0 && <div className="stat"><small>{isCust ? "Credit notes (returns)" : "Vendor credits (returns)"}</small><b>{money(st.credits)}</b></div>}
+            <div className="stat"><small>Closing balance</small><b className={st.closing > 0 ? "neg" : st.closing < 0 ? "pos" : ""}>{money(st.closing)}</b><span className="muted">{st.closing < 0 ? (isCust ? "we owe them (credit / advance)" : "they owe us (return / advance)") : st.closing > 0 ? (isCust ? "receivable" : "payable") : "settled"}</span></div>
           </div>
           <div className="tablewrap"><table className="table compact">
-            <thead><tr><th>Date</th><th>Transaction</th><th>Details</th><th className="r">{isCust ? "Invoice" : "Bill"}</th><th className="r">{isCust ? "Payment" : "Paid"}</th><th className="r">Balance</th></tr></thead>
+            <thead><tr><th>Date</th><th>Transaction</th><th>Details</th><th className="r">{isCust ? "Invoice" : "Bill"}</th><th className="r">{isCust ? "Payment / credit" : "Paid / credit"}</th><th className="r">Balance</th></tr></thead>
             <tbody>
               <tr><td>{st.from && st.from !== "0000-01-01" ? fmtDate(st.from) : ""}</td><td colSpan={4}><i>Opening balance</i></td><td className="r">{money(st.opening)}</td></tr>
               {st.rows.map((r, i) => (
@@ -139,7 +140,7 @@ export function ContactView() {
               </dl>
             </section>
             {!c.money_hidden && <section className="card stat big"><small>{isCust ? "They owe you" : "You owe them"}</small><b className={outstanding > 0 ? "neg" : ""}>{money(outstanding)}</b>
-              {c.credits > 0 && <span className="pos">{isCust ? "Customer advance (unused):" : "Our advance with them (unused):"} <b>{money(c.credits)}</b></span>}
+              {c.credits > 0 && <span className="pos">{isCust ? "Customer's credit / advance with us (unused):" : "Supplier owes us (returns / advance, not yet refunded or adjusted):"} <b>{money(c.credits)}</b></span>}
               {c.credits > 0 && outstanding > 0 && <span className="muted small">Open an {isCust ? "invoice" : "bill"} and use "Apply credits" to adjust it.</span>}
               {c.credit && <span className={c.credit.over ? "neg small" : "muted small"}>Credit limit {money(c.credit.limit)} · used {money(c.credit.owed)}</span>}
               {(c.payment_terms_days ?? null) !== null && <span className="muted small">Terms: {c.payment_terms_days} days</span>}</section>}

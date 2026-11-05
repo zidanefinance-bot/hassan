@@ -412,7 +412,9 @@ export function statement(db, contactId, from = "0000-01-01", to = "9999-12-31")
   let bal = opening;
   const rows = entries.filter((e) => e.date >= from && e.date <= to).map((e) => ({ ...e, balance: (bal = round2(bal + e.charge - e.payment)) }));
   return { contact: { id: c.id, name: c.name, type: c.type, phone: c.phone, address: c.address }, from, to, opening, rows,
-    charges: round2(rows.reduce((a, r) => a + r.charge, 0)), payments: round2(rows.reduce((a, r) => a + r.payment, 0)), closing: bal };
+    charges: round2(rows.reduce((a, r) => a + r.charge, 0)), payments: round2(rows.reduce((a, r) => a + r.payment, 0)),
+    // returns / credit notes are not money paid: shown on their own
+    credits: round2(rows.filter((r) => r.type === creditKind).reduce((a, r) => a + r.payment, 0)), closing: bal };
 }
 
 // copy a document as a new draft (same contact, lines, notes and extras), dated today
