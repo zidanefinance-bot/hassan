@@ -19,7 +19,7 @@ else
   if [ -n "$(git -C "$SRC" status --porcelain --untracked-files=no)" ]; then
     echo "==> Files changed on the server itself; kept in a git stash (see: git -C $SRC stash list)"
     git -C "$SRC" diff --stat
-    git -C "$SRC" stash push --quiet -m "edited on server, set aside by update $(date +%F-%H%M)"
+    git -C "$SRC" -c user.name="Zidane Books update" -c user.email=update@localhost stash push --quiet -m "edited on server, set aside by update $(date +%F-%H%M)"
   fi
   git -C "$SRC" fetch --depth 1 origin "$BRANCH" && git -C "$SRC" checkout -B "$BRANCH" FETCH_HEAD
   cd "$SRC/zidane-books"
