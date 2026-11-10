@@ -522,7 +522,7 @@ export function deliverPrecheck(db, jobId) {
   if (items.every((i) => invoiced(i).qty >= i.qty - 0.001)) throw httpError(400, "This Job is already fully invoiced. Use 'Create DC' to send the goods.");
 }
 
-export function dcFromJob(db, userId, jobId, { admin = false, bags, point_id } = {}) {
+export function dcFromJob(db, userId, jobId, { admin = false, bags, point_id, show_as } = {}) {
   const job = db.prepare("SELECT * FROM jobs WHERE id = ?").get(jobId);
   if (!job) throw httpError(404, "Job not found");
   if (RA.isRation(job)) {
@@ -543,7 +543,7 @@ export function dcFromJob(db, userId, jobId, { admin = false, bags, point_id } =
     const n = round2(Number(bags) || allowed);
     if (n > allowed + 0.001) throw httpError(400, point?.left !== null && point?.left !== undefined && point.left < RA.bagsAllowed(db, job, "dc", { admin }) ? `${point.name} needs only ${point.left} more bags` : `Only ${allowed} packed bags are left to send`);
     const id = saveDocument(db, userId, { kind: "dc", contact_id: job.customer_id, job_id: jobId, status: "draft", reference: job.customer_po_number || job.number, lines: RA.bagLines(db, job, n).map((l) => ({ ...l, rate: 0 })) });
-    RA.markBags(db, id, n, job.kit_name);
+    RA.markBags(db, id, n, job.kit_name, show_as);
     if (point) db.prepare("UPDATE documents SET delivery_point_id = ?, deliver_to = ? WHERE id = ?").run(point.id, RA.pointLabel(point), id);
     return id;
   }

@@ -1,7 +1,7 @@
 // Ration kits: what one bag holds and the rate of each item in it. A kit becomes a quotation for N bags.
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Field, Loading, Modal, money, num, PageHead, useAuth, useLoad, useToast } from "../lib.jsx";
+import { api, Field, Loading, Modal, money, num, PageHead, SHOW_AS_OPTIONS, useAuth, useLoad, useToast } from "../lib.jsx";
 import Picker from "../components/Picker.jsx";
 
 // one bag's line-item table, reused for the customer-facing items and the internal-only packing materials
@@ -78,10 +78,7 @@ function QuoteModal({ kit, onClose }) {
           <Field label="How many bags? *"><input type="number" min="1" step="1" value={q.bags} onChange={(e) => setQ({ ...q, bags: e.target.value })} required /></Field>
           <Field label="Show the customer">
             <select value={q.show_as} onChange={(e) => setQ({ ...q, show_as: e.target.value })}>
-              <option value="bags">Each item's rate + bag total</option>
-              <option value="bags_total">Items & qty only, bag total (rates hidden)</option>
-              <option value="bag_only">Bag qty × rate only (all items hidden)</option>
-              <option value="items">Item by item (full quantities)</option>
+              {SHOW_AS_OPTIONS(false).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </Field>
         </div>

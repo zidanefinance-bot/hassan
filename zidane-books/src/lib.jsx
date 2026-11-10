@@ -175,3 +175,8 @@ export function useForm(init) {
 export function Search({ value, onChange, placeholder = "Search…" }) {
   return <input className="search" type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />;
 }
+
+// the four ways a ration document can show its bags (a DC never shows prices, so its labels speak of contents only)
+export const SHOW_AS_OPTIONS = (dc) => dc
+  ? [["bags", "Bags + what's in each bag"], ["bags_total", "Bags + what's in each bag (same as above on a DC)"], ["bag_only", "Only bags qty (contents hidden)"], ["items", "Item by item"]]
+  : [["bags", "Bags × rate + each item's rate"], ["bags_total", "Bags × rate + items & qty (item rates hidden)"], ["bag_only", "Only Ration bag · qty · rate · amount (all items hidden)"], ["items", "Item by item"]];

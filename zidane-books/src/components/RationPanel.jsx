@@ -1,7 +1,7 @@
 // On a ration Job: bags ordered / packed / sent / invoiced, packing entries, and DC / invoice by number of bags.
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Field, fmtDate, Modal, money, num, today, useAuth, useToast } from "../lib.jsx";
+import { api, Field, fmtDate, Modal, money, num, today, useAuth, useToast, SHOW_AS_OPTIONS } from "../lib.jsx";
 
 export default function RationPanel({ job, onChange }) {
   const r = job.ration;
@@ -148,16 +148,11 @@ function BagDocModal({ job, kind, onClose, onSaved }) {
           </Field>
         )}
         <Field label="Bags *"><input type="number" min="1" step="1" value={b.bags} onChange={(e) => setB({ ...b, bags: e.target.value })} required autoFocus /></Field>
-        {kind === "invoice" && (
-          <Field label="Show the customer">
-            <select value={b.show_as} onChange={(e) => setB({ ...b, show_as: e.target.value })}>
-              <option value="bags">Bags × rate, with each item's rate in the bag</option>
-              <option value="bags_total">Bags × rate, contents only (item rates hidden)</option>
-              <option value="bag_only">Only "Ration bag · qty · rate · amount" (contents hidden)</option>
-              <option value="items">Item by item</option>
-            </select>
-          </Field>
-        )}
+        <Field label="Show the customer">
+          <select value={b.show_as} onChange={(e) => setB({ ...b, show_as: e.target.value })}>
+            {SHOW_AS_OPTIONS(kind === "dc").map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Field>
         {err && <div className="form-error">{err}</div>}
         <div className="form-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary">Create draft</button></div>
       </form>

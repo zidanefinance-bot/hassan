@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast, SHOW_AS_OPTIONS } from "../lib.jsx";
 import AccountSelect from "../components/AccountSelect.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
 import Attachments from "../components/Attachments.jsx";
@@ -90,7 +90,7 @@ export function bagView(d) {
   if (!(d.bags > 0) || d.show_as === "items" || ["po", "bill", "vendor_credit"].includes(d.kind)) return null;
   const r2 = (n) => Math.round(n * 100) / 100;
   const net = r2(d.lines.reduce((s, l) => s + l.amount, 0));
-  return { bags: d.bags, kit_name: d.kit_name || "Ration bag", rate_per_bag: r2(net / d.bags), amount: net, item_rates: !["bags_total", "bag_only"].includes(d.show_as), show_contents: d.kind === "dc" || d.show_as !== "bag_only",
+  return { bags: d.bags, kit_name: d.kit_name || "Ration bag", rate_per_bag: r2(net / d.bags), amount: net, item_rates: !["bags_total", "bag_only"].includes(d.show_as), show_contents: d.show_as !== "bag_only",
     contents: d.lines.map((l) => ({ ...l, per_bag: r2(l.qty / d.bags), amount_per_bag: r2(l.amount / d.bags) })) };
 }
 
@@ -198,10 +198,7 @@ export default function DocumentView({ kind }) {
             {writer && <button className="btn" onClick={async () => { const r = await post("/clone", {}, "Copied as a new draft"); if (r) nav(`/${K.path}/${r.id}/edit`); }}>Copy</button>}
             {d.bags > 0 && writer && !["po", "bill", "vendor_credit"].includes(kind) && (
               <select className="show-as" value={d.show_as || "bags"} title="How the customer sees it" onChange={(e) => act(() => api(`/documents/${d.id}/show-as`, { method: "POST", body: { show_as: e.target.value } }), "Customer view changed")}>
-                <option value="bags">{isDc ? "Bags + contents" : "Bags + each item's rate"}</option>
-                {!isDc && <option value="bags_total">Bags + contents, bag rate only</option>}
-                {!isDc && <option value="bag_only">Bags × rate only (nothing inside shown)</option>}
-                <option value="items">Item by item</option>
+                {SHOW_AS_OPTIONS(isDc).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             )}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
