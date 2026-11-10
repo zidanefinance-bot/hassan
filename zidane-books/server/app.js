@@ -27,6 +27,7 @@ import * as RA from "./ration.js";
 import * as GD from "./guard.js";
 import * as MB from "./digest.js";
 import * as WH from "./wht.js";
+import * as PDC from "./pdc.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -433,6 +434,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       job: d.job_id ? db.prepare("SELECT id, number, customer_po_number, delivery_location FROM jobs WHERE id = ?").get(d.job_id) : null,
       // the other paperwork of the same Job that this person may see (DC ↔ invoice ↔ credit note, bill ↔ PO)
       linked_numbers: J.linkedNumbers(db, d),
+      ...(d.kind === "bill" && can(req.user, "money") ? { pdcs: PDC.pdcsForDocument(db, d.id) } : {}),
       ...(d.kind === "invoice" ? { wht_expected: { income: d.wht_income_exp, sales: d.wht_sales_exp }, wht_outstanding: WH.whtOutstanding(db, d) } : {}),
       related: d.job_id ? db.prepare("SELECT id, kind, number, status FROM documents WHERE job_id = ? AND id != ? AND status != 'void' ORDER BY id").all(d.job_id, d.id).filter((x) => canAny(req.user, DOC_READ[x.kind])) : [],
       verified_by_name: d.verified_by ? db.prepare("SELECT name FROM users WHERE id = ?").get(d.verified_by)?.name : null,
@@ -839,6 +841,20 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     if (!(d.bags > 0)) throw httpError(400, "This isn't a ration document");
     RA.markBags(db, d.id, d.bags, d.kit_name, req.body?.show_as);
   }));
+
+  // ---- post-dated cheques given to suppliers (Accounts / director)
+  api.get("/pdcs", requirePerm("money"), (req, res) => res.json(PDC.listPdcs(db, req.query)));
+  api.get("/pdcs/:id", requirePerm("money"), (req, res) => res.json(PDC.getPdc(db, id(req))));
+  api.post("/pdcs", requirePerm("money"), (req, res) => res.json({ id: PDC.savePdc(db, req.user.id, req.body || {}) }));
+  api.put("/pdcs/:id", requirePerm("money"), (req, res) => { PDC.savePdc(db, req.user.id, req.body || {}, id(req)); res.json({ ok: true }); });
+  api.post("/pdcs/:id/clear", requirePerm("money"), (req, res) => res.json({ payment_id: PDC.clearPdc(db, req.user.id, id(req), req.body || {}) }));
+  api.post("/pdcs/:id/close", requirePerm("money"), (req, res) => { PDC.closePdc(db, req.user.id, id(req), req.body?.status, req.body?.note); res.json({ ok: true }); });
+  api.get("/pdcs/:id/receiving.pdf", requirePerm("money"), async (req, res) => {
+    const f = await PDC.receivingPdf(db, id(req));
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${f.filename}"`);
+    res.send(f.buffer);
+  });
 
   // ---- accounts: Chart of Accounts, general ledger, manual entries, trial balance, balance sheet
   // Anyone who records money picks the account (names only); Accounts and directors see balances and the books.

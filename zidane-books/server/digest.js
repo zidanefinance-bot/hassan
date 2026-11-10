@@ -93,6 +93,11 @@ export function buildBrief(db) {
   add("📦", "PO diya, maal / bill nahi aaya", "Supplier se pucho, maal kab aayega.",
     openPo.map((d) => ({ text: `${d.number} · ${d.contact_name}`, ask: `${ago(days(d.date, t))} se PO open. Maal aaya? Bill kahan hai?`, link: docLink(d), days: days(d.date, t) })));
 
+  // 10b. post-dated cheques coming due: the money must be in the bank by then
+  const pdcs = db.prepare("SELECT p.*, c.name AS contact_name FROM pdcs p JOIN contacts c ON c.id = p.contact_id WHERE p.status = 'issued' AND p.cheque_date <= date(?, '+7 days') ORDER BY p.cheque_date").all(t);
+  add("🏦", "PDC cheques due: bank mein paisa rakho", "Cheque ki date se pehle bank balance check karo.",
+    pdcs.map((p) => ({ text: `Cheque ${p.cheque_no} · ${p.contact_name}`, ask: `${rs(p.amount)} · ${p.cheque_date < t ? `${ago(days(p.cheque_date, t))} se date guzar gayi. Clear hua ya bounce?` : p.cheque_date === t ? "AAJ ki date hai!" : `${days(t, p.cheque_date)} din mein (${dd(p.cheque_date)})`}`, link: `/pdcs?open=${p.id}`, days: -days(t, p.cheque_date) })), "red");
+
   // 11. what we owe suppliers
   const pay = docs("d.kind = 'bill' AND d.status = 'open' AND d.due_date <= date(?, '+3 days')", t).filter((d) => d.balance > 0.5).sort((a, b) => a.due_date.localeCompare(b.due_date));
   add("💸", "Supplier ko payment karni hai", "Overdue pehle, phir 3 din wali.",

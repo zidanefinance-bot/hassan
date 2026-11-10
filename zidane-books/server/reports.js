@@ -197,6 +197,12 @@ export function home(db, user, can, { from, to } = {}) {
       .map((j) => ({ ...j, e: jobEconomics(db, j.id) })).filter((j) => !j.e.cost_pending && j.e.margin_pct < minPct);
     queues.push(q(can("admin") ? "Director" : "Margins", "margin", `Jobs below ${minPct}% margin`, recent.map((j) => ({ label: `${j.number}${j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""} · ${j.customer_name}`, sub: `${j.e.gross_profit < 0 ? "Loss" : "Margin"} ${j.e.margin_pct}% · profit Rs ${j.e.gross_profit.toLocaleString("en-PK")}`, link: `/jobs/${j.id}` })), "red"));
   }
+  if (can("money")) {
+    // post-dated cheques we gave, due within a week (or past their date and not cleared): money must be in the bank
+    const pdcs = db.prepare("SELECT p.*, c.name AS contact_name FROM pdcs p JOIN contacts c ON c.id = p.contact_id WHERE p.status = 'issued' AND p.cheque_date <= ? ORDER BY p.cheque_date").all(soon(7));
+    queues.unshift(q("Accounts", "pdc", "PDC cheques due: keep money in the bank", pdcs.map((p) => ({ label: `Cheque ${p.cheque_no} · Rs ${Math.round(p.amount).toLocaleString("en-PK")} · ${p.contact_name}`,
+      sub: p.cheque_date < t ? `Dated ${p.cheque_date}, PAST: clear it or mark bounced` : p.cheque_date === t ? "Dated TODAY" : `Dated ${p.cheque_date}`, link: `/pdcs?open=${p.id}`, due: p.cheque_date })), "red"));
+  }
   if (can("verify") || can("money")) {
     queues.push(
       q("Accounts", "vbill", "Supplier bills to verify", docs("d.kind = 'bill' AND d.status = 'open' AND d.verified_at IS NULL").map((d) => docItem(d, `Rs ${d.total.toLocaleString("en-PK")}`))),

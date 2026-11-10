@@ -2,6 +2,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { setupGuard } from "./guard.js";
 import { setupWht } from "./wht.js";
+import { setupPdc } from "./pdc.js";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { setupAccounts } from "./ledger.js";
@@ -33,6 +34,7 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   setupRation(db); // ration kits, bags on Jobs and documents, packing progress
   setupGuard(db); // delete requests waiting for a director
   setupWht(db); // withholding the customer deducts, per Job line
+  setupPdc(db); // post-dated cheques given to suppliers
   // the email's HTML too: an RFQ typed as a table in the email is read from it when the plain text isn't enough
   // which DCs an invoice bills (so it prints "DC: DC-00012, DC-00013" and each DC is billed once)
   if (!db.prepare("SELECT 1 FROM pragma_table_info('documents') WHERE name = 'dc_numbers'").get()) db.exec("ALTER TABLE documents ADD COLUMN dc_numbers TEXT");
@@ -71,15 +73,23 @@ function tidyItems(db) {
 }
 
 // run fn inside a transaction; rolls back on throw
+// one transaction; a tx inside another becomes a savepoint, so a step that is itself a transaction
+// (recording a payment) can be part of a bigger one (clearing a cheque) and still all-or-nothing
+const depth = new WeakMap();
 export function tx(db, fn) {
-  db.exec("BEGIN");
+  const d = depth.get(db) || 0;
+  const sp = `sp${d}`;
+  db.exec(d ? `SAVEPOINT ${sp}` : "BEGIN");
+  depth.set(db, d + 1);
   try {
     const r = fn();
-    db.exec("COMMIT");
+    db.exec(d ? `RELEASE ${sp}` : "COMMIT");
     return r;
   } catch (e) {
-    db.exec("ROLLBACK");
+    db.exec(d ? `ROLLBACK TO ${sp}; RELEASE ${sp}` : "ROLLBACK");
     throw e;
+  } finally {
+    depth.set(db, d);
   }
 }
 
@@ -95,8 +105,8 @@ export const DEFAULT_SETTINGS = {
   },
   currency: "PKR",
   taxes: [{ name: "GST", rate: 18 }, { name: "Reduced GST", rate: 10 }, { name: "Exempt", rate: 0 }],
-  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-", receipt: "RCPT-", payment: "PMT-", credit_note: "CN-", vendor_credit: "VC-", refund: "RF-" },
-  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1, receipt: 1, payment: 1, credit_note: 1, vendor_credit: 1, refund: 1 },
+  prefixes: { quote: "QT-", invoice: "INV-", po: "PO-", bill: "BILL-", dc: "DC-", job: "JOB-", receipt: "RCPT-", payment: "PMT-", credit_note: "CN-", vendor_credit: "VC-", refund: "RF-", pdc: "PDC-" },
+  nextNumbers: { quote: 1, invoice: 1, po: 1, bill: 1, dc: 1, job: 1, receipt: 1, payment: 1, credit_note: 1, vendor_credit: 1, refund: 1, pdc: 1 },
   paymentTermsDays: 15,
   // every item sits in one of these (Items page opens by category)
   // a PO we're sure about (known customer, PO #, every item matched) becomes a Job without anyone touching it

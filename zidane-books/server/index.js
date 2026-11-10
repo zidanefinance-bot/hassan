@@ -6,6 +6,7 @@ import { createApp } from "./app.js";
 import { ensureAdmin } from "./seed.js";
 import { startMailPoller } from "./inbox.js";
 import { startMorningBrief } from "./digest.js";
+import { startPdcReminders } from "./pdc.js";
 import { startTelegram } from "./telegram.js";
 import { startPush } from "./push.js";
 
@@ -15,6 +16,7 @@ const uploadDir = process.env.UPLOAD_DIR || join(dirname(process.env.DB_FILE || 
 const app = createApp(db, { uploadDir });
 if (startMailPoller(db, uploadDir)) console.log("Orders inbox: checking email every few minutes");
 startMorningBrief(db); // the director's email every morning (Settings → Morning brief)
+startPdcReminders(db); // post-dated cheques: every other day from 7 days before their date
 if (startTelegram(db, uploadDir)) console.log("Telegram bot: on");
 startPush(db);
 

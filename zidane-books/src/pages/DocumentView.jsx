@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast, SHOW_AS_OPTIONS } from "../lib.jsx";
 import AccountSelect from "../components/AccountSelect.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
+import { PdcForm } from "./Pdcs.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
 import Activity from "../components/Activity.jsx";
@@ -201,6 +202,7 @@ export default function DocumentView({ kind }) {
                 {SHOW_AS_OPTIONS(isDc).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             )}
+            {kind === "bill" && can("money") && d.status === "open" && d.balance > 0 && <button className="btn" onClick={() => setModal("pdc")}>Give PDC cheque</button>}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
             {writer && !["draft", "void", "enquiry"].includes(d.status) && <button className="btn" onClick={() => setModal("email")}>Email</button>}
             {phone && <a className="btn wa-btn" href={`https://wa.me/${phone}?text=${encodeURIComponent(waText(d, company))}`} target="_blank" rel="noreferrer">WhatsApp</a>}
@@ -218,6 +220,7 @@ export default function DocumentView({ kind }) {
             {d.signed_at && <>Received by {d.signed_by_name} on {fmtDate(d.signed_at)}. </>}
           </p>
 
+          {d.pdcs?.length > 0 && <div className="pdc-on-bill no-print">✎ PDC given: {d.pdcs.map((p) => <Link key={p.id} to={`/pdcs?open=${p.id}`} style={{ marginRight: 12 }}>cheque {p.cheque_no} · {money(p.amount)} · dated {fmtDate(p.cheque_date)}</Link>)} Don't pay this bill again.</div>}
           <article className="paper">
             <header className="paper-head">
               <div><img src="/logo.svg" alt="" className="paper-logo" /><div className="muted small">{company.address}<br />{company.phone} · {company.email}{company.ntn && <><br />NTN {company.ntn}{company.strn && ` · STRN ${company.strn}`}</>}</div></div>
@@ -318,6 +321,7 @@ export default function DocumentView({ kind }) {
           <Comments entity="document" id={d.id} />
           <Activity entity="document" id={d.id} />
           {modal === "refund" && <RefundModal source={{ credit_id: d.id }} number={d.number} unused={d.balance} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Refund recorded"); state.reload(); }} />}
+          {modal === "pdc" && <PdcForm preset={{ contact_id: d.contact_id, bill_id: d.id, amount: d.balance }} onClose={() => setModal(null)} onSaved={(pid) => { setModal(null); nav(`/pdcs?open=${pid}`); }} />}
           {modal === "credits" && <ApplyCreditsModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Credits applied"); state.reload(); }} />}
           {modal === "email" && <EmailModal doc={d} onClose={() => setModal(null)} onSent={(r) => { setModal(null); toast(`Emailed to ${r.to}`); state.reload(); }} />}
           {modal === "sign" && <SignModal doc={d} onClose={() => setModal(null)} onSaved={() => { setModal(null); toast("Signed DC recorded. Job marked delivered."); state.reload(); }} />}

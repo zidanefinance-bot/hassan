@@ -549,3 +549,17 @@ code.key { display: block; word-break: break-all; background: #F3F4F7; padding: 
 .chip.alert:not(.on) { border-color: #f0b4b4; color: #b42318; }
 td.warn { color: #b45309; font-weight: 600; }
 td.nowrap, .nowrap { white-space: nowrap; }
+
+/* PDC cheques: what falls due stands out */
+.nav-badge { margin-left: auto; background: #e5484d; color: #fff; border-radius: 999px; font-size: 11px; font-weight: 800; padding: 1px 7px; min-width: 18px; text-align: center; }
+.pdc-alert { background: #fff1f0; border: 1px solid #f5b5b0; color: #9b1c1c; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; }
+.pdc-row.overdue td, .pdc-row.soon td { background: #fff1f0; }
+.pdc-row.week td { background: #fff8e6; }
+.pdc-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-radius: var(--radius); padding: 14px; background: #eef4ff; border: 2px solid #c7d7fe; }
+.pdc-hero.red { background: #fff1f0; border-color: #f5b5b0; }
+.pdc-hero.amber { background: #fff8e6; border-color: #f2d48a; }
+.pdc-hero.green { background: #ecfdf3; border-color: #abefc6; }
+.pdc-hero small { display: block; color: var(--muted); font-size: 12px; }
+.pdc-hero b { font-size: 20px; color: var(--ink); }
+.pdc-hero span { display: block; font-weight: 700; font-size: 13px; color: #9b1c1c; }
+.pdc-on-bill { background: #fff8e6; border: 1px solid #f2d48a; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-weight: 600; }
