@@ -15,6 +15,12 @@ if [ "$PKG_DIR" != "$SRC/zidane-books" ]; then
 else
   BRANCH="${BRANCH:-$(git -C "$SRC" rev-parse --abbrev-ref HEAD)}"
   echo "==> Code from GitHub ($BRANCH)"
+  # a file edited by hand on the server would block the update forever: keep the edit in a stash, then update
+  if [ -n "$(git -C "$SRC" status --porcelain --untracked-files=no)" ]; then
+    echo "==> Files changed on the server itself; kept in a git stash (see: git -C $SRC stash list)"
+    git -C "$SRC" diff --stat
+    git -C "$SRC" stash push --quiet -m "edited on server, set aside by update $(date +%F-%H%M)"
+  fi
   git -C "$SRC" fetch --depth 1 origin "$BRANCH" && git -C "$SRC" checkout -B "$BRANCH" FETCH_HEAD
   cd "$SRC/zidane-books"
   npm ci && npm run build && npm prune --omit=dev
