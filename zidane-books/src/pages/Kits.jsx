@@ -80,6 +80,7 @@ function QuoteModal({ kit, onClose }) {
             <select value={q.show_as} onChange={(e) => setQ({ ...q, show_as: e.target.value })}>
               <option value="bags">Each item's rate + bag total</option>
               <option value="bags_total">Items & qty only, bag total (rates hidden)</option>
+              <option value="bag_only">Bag qty × rate only (all items hidden)</option>
               <option value="items">Item by item (full quantities)</option>
             </select>
           </Field>

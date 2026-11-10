@@ -123,6 +123,13 @@ test("ration quote can hide each item's rate: contents and the bag rate only", a
   const { documentPdf } = await import("./pdf.js");
   const pdf = await documentPdf(db, q);
   assert.ok(pdf.buffer.length > 1000);
+  // "bag_only": nothing about the contents on the paper
+  RA.markBags(db, q, 200, "Standard bag", "bag_only");
+  const only = RA.bagView(db.prepare("SELECT * FROM documents WHERE id = ?").get(q), lines);
+  assert.equal(only.show_contents, false);
+  assert.equal(only.item_rates, false);
+  const pdf2 = await documentPdf(db, q);
+  assert.ok(pdf2.buffer.length > 1000);
   RA.markBags(db, q, 200, "Standard bag", "nonsense");
   assert.equal(db.prepare("SELECT show_as FROM documents WHERE id = ?").get(q).show_as, "bags", "unknown modes fall back to bags");
 });

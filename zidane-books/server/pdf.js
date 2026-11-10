@@ -78,6 +78,7 @@ export function documentPdf(db, docId) {
     const taxes = [...new Set(lines.map((l) => l.tax_rate))];
     row(isDc ? [1, bag.kit_name, `${qty(bag.bags)} bags`] : [1, bag.kit_name, `${qty(bag.bags)} bags`, rs(bag.rate_per_bag), taxes.length === 1 ? `${qty(taxes[0])}%` : "see below", rs(bag.amount)]);
     y += 8;
+    if (bag.show_contents || isDc) {
     const rates = !isDc && bag.item_rates; // "bags_total": the customer sees what's in a bag, not each item's price
     pdf.font("Helvetica-Bold").fontSize(9).fillColor(INK).text(rates ? "Each bag contains (rate per bag)" : "Each bag contains", L, y);
     y = pdf.y + 4;
@@ -95,6 +96,7 @@ export function documentPdf(db, docId) {
     else if (!isDc) subRow([`Rate per bag: ${rs(bag.rate_per_bag)}`, ""], true);
     pdf.moveTo(L, y).lineTo(L + W, y).strokeColor(LINE).lineWidth(0.5).stroke();
     y += 4;
+    } // "bag_only": just the bags line, nothing about what's inside
   } else {
     lines.forEach((l, i) => {
       const label = itemName(l);

@@ -84,8 +84,9 @@ export function saveKit(db, input, id = null) {
 // how a ration document is shown to the customer:
 //   bags        N bags × rate, then one bag's contents with each item's rate
 //   bags_total  N bags × rate, then one bag's contents (items and quantities only, no item rates)
+//   bag_only    just "N bags × rate = amount": what's inside the bag is not shown at all
 //   items       item by item, like any document
-export const SHOW_AS = ["bags", "bags_total", "items"];
+export const SHOW_AS = ["bags", "bags_total", "bag_only", "items"];
 export function markBags(db, docId, bags, kitName, showAs = "bags", kitId = undefined) {
   if (kitId === undefined) db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ? WHERE id = ?").run(bags ? round2(bags) : null, kitName || null, SHOW_AS.includes(showAs) ? showAs : "bags", docId);
   else db.prepare("UPDATE documents SET bags = ?, kit_name = ?, show_as = ?, kit_id = ? WHERE id = ?").run(bags ? round2(bags) : null, kitName || null, SHOW_AS.includes(showAs) ? showAs : "bags", kitId || null, docId);
@@ -173,7 +174,7 @@ export function bagView(doc, lines) {
   if (!(doc.bags > 0) || doc.show_as === "items" || ["po", "bill", "vendor_credit"].includes(doc.kind)) return null;
   const contents = lines.map((l) => ({ ...l, per_bag: round2(l.qty / doc.bags), amount_per_bag: round2(l.amount / doc.bags) }));
   const net = round2(lines.reduce((s, l) => s + l.amount, 0));
-  return { bags: doc.bags, kit_name: doc.kit_name || "Ration bag", rate_per_bag: round2(net / doc.bags), amount: net, contents, item_rates: doc.show_as !== "bags_total" };
+  return { bags: doc.bags, kit_name: doc.kit_name || "Ration bag", rate_per_bag: round2(net / doc.bags), amount: net, contents, item_rates: !["bags_total", "bag_only"].includes(doc.show_as), show_contents: doc.show_as !== "bag_only" };
 }
 
 // after a ration DC / invoice is edited by hand: count the bags again from its lines; if the lines no longer make

@@ -90,7 +90,7 @@ export function bagView(d) {
   if (!(d.bags > 0) || d.show_as === "items" || ["po", "bill", "vendor_credit"].includes(d.kind)) return null;
   const r2 = (n) => Math.round(n * 100) / 100;
   const net = r2(d.lines.reduce((s, l) => s + l.amount, 0));
-  return { bags: d.bags, kit_name: d.kit_name || "Ration bag", rate_per_bag: r2(net / d.bags), amount: net, item_rates: d.show_as !== "bags_total",
+  return { bags: d.bags, kit_name: d.kit_name || "Ration bag", rate_per_bag: r2(net / d.bags), amount: net, item_rates: !["bags_total", "bag_only"].includes(d.show_as), show_contents: d.kind === "dc" || d.show_as !== "bag_only",
     contents: d.lines.map((l) => ({ ...l, per_bag: r2(l.qty / d.bags), amount_per_bag: r2(l.amount / d.bags) })) };
 }
 
@@ -98,7 +98,7 @@ function waText(d, company) {
   const isDc = d.kind === "dc";
   const bag = bagView(d);
   const lines = bag
-    ? `${bag.kit_name}: ${num(bag.bags)} bags${isDc ? "" : ` × ${money(bag.rate_per_bag)} = ${money(bag.amount)}`}\nEach bag contains:\n${bag.contents.map((l) => `• ${l.item_name || l.description} × ${num(l.per_bag)}${isDc || !bag.item_rates ? ` ${l.unit || ""}` : ` @ ${money(l.rate)}`}`).join("\n")}`
+    ? `${bag.kit_name}: ${num(bag.bags)} bags${isDc ? "" : ` × ${money(bag.rate_per_bag)} = ${money(bag.amount)}`}${bag.show_contents ? `\nEach bag contains:\n${bag.contents.map((l) => `• ${l.item_name || l.description} × ${num(l.per_bag)}${isDc || !bag.item_rates ? ` ${l.unit || ""}` : ` @ ${money(l.rate)}`}`).join("\n")}` : ""}`
     : d.lines.map((l) => `• ${l.item_name || l.description} × ${num(l.qty)}${isDc ? ` ${l.unit || ""}` : ` = ${money(l.amount)}`}`).join("\n");
   const head = `Assalam o Alaikum ${d.contact.name},\n\n${KIND[d.kind].label} ${d.number} from ${company.name}\nDate: ${fmtDate(d.date)}${d.due_date ? `\nDue: ${fmtDate(d.due_date)}` : ""}${d.job?.customer_po_number ? `\nYour PO: ${d.job.customer_po_number}` : ""}${d.linked_numbers?.length ? `\n${d.kind === "dc" ? "Invoice" : "DC"}: ${d.linked_numbers.join(", ")}` : ""}`;
   const credited = (d.payments || []).filter((p) => p.source === "credit").reduce((t, p) => t + p.amount, 0);
@@ -200,6 +200,7 @@ export default function DocumentView({ kind }) {
               <select className="show-as" value={d.show_as || "bags"} title="How the customer sees it" onChange={(e) => act(() => api(`/documents/${d.id}/show-as`, { method: "POST", body: { show_as: e.target.value } }), "Customer view changed")}>
                 <option value="bags">{isDc ? "Bags + contents" : "Bags + each item's rate"}</option>
                 {!isDc && <option value="bags_total">Bags + contents, bag rate only</option>}
+                {!isDc && <option value="bag_only">Bags × rate only (nothing inside shown)</option>}
                 <option value="items">Item by item</option>
               </select>
             )}
@@ -234,12 +235,14 @@ export default function DocumentView({ kind }) {
                   <thead><tr><th>#</th><th>Item</th><th className="r">Qty</th>{!isDc && <><th className="r">Rate per bag</th><th className="r">Amount</th></>}</tr></thead>
                   <tbody><tr><td>1</td><td><b>{bag.kit_name}</b></td><td className="r">{num(bag.bags)} bags</td>{!isDc && <><td className="r">{money(bag.rate_per_bag)}</td><td className="r">{money(bag.amount)}</td></>}</tr></tbody>
                 </table>
+                {bag.show_contents && <>
                 <h4 className="bag-sub">Each bag contains</h4>
                 <table className="table compact paper-lines bag-contents">
                   <thead><tr><th>Item</th><th className="r">Per bag</th>{isDc ? <th className="r">Total</th> : bag.item_rates && <><th className="r">Rate</th><th className="r">Amount / bag</th></>}</tr></thead>
                   <tbody>{bag.contents.map((l) => <tr key={l.id}><td>{l.item_name || l.description}</td><td className="r">{num(l.per_bag)} {l.unit || ""}</td>{isDc ? <td className="r">{num(l.qty)} {l.unit || ""}</td> : bag.item_rates && <><td className="r">{money(l.rate)}</td><td className="r">{money(l.amount_per_bag)}</td></>}</tr>)}</tbody>
                   {!isDc && <tfoot><tr><td colSpan={bag.item_rates ? 3 : 1}>{bag.item_rates ? "One bag" : "Rate per bag"}</td><td className="r">{money(bag.rate_per_bag)}</td></tr></tfoot>}
                 </table>
+                </>}
               </>
             ) : (
             <table className="table paper-lines">
