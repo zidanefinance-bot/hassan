@@ -403,7 +403,16 @@ export function jobList(db, { q = "", status = "", scope = "" } = {}) {
       (SELECT COUNT(*) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status = 'draft') AS draft_dc_count,
       (SELECT MAX(date) FROM documents WHERE job_id = j.id AND kind = 'dc' AND status = 'signed') AS delivered_on,
       (SELECT MAX(date(at)) FROM activity WHERE entity = 'job' AND entity_id = j.id AND action = 'closed job') AS closed_on
-    FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE (j.number LIKE ? OR c.name LIKE ? OR IFNULL(j.customer_po_number, '') LIKE ?) ORDER BY j.closed, COALESCE(j.required_date, '9999'), j.id DESC LIMIT 500`).all(like, like, like);
+    FROM jobs j JOIN contacts c ON c.id = j.customer_id WHERE (j.number LIKE ? OR c.name LIKE ? OR IFNULL(j.customer_po_number, '') LIKE ?
+      OR EXISTS (SELECT 1 FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.job_id = j.id AND (COALESCE(i.name, ji.description) LIKE ? OR IFNULL(i.sku, '') LIKE ?)))
+    ORDER BY j.closed, COALESCE(j.required_date, '9999'), j.id DESC LIMIT 500`).all(like, like, like, like, like);
+  // searching an item: say which line matched and how much of it the Job has
+  const q2 = String(q || "").trim();
+  if (q2) {
+    const hit = db.prepare(`SELECT ji.job_id, COALESCE(i.name, ji.description) AS name, ji.qty, i.unit FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id
+      WHERE COALESCE(i.name, ji.description) LIKE ? OR IFNULL(i.sku, '') LIKE ?`).all(like, like);
+    for (const j of rows) { const m = hit.filter((h) => h.job_id === j.id); if (m.length) j.matched_items = m.map((h) => ({ name: h.name, qty: h.qty, unit: h.unit || "" })); }
+  }
   return rows.filter((j) => (!status || j.ops_status === status) && (scope !== "active" || !j.closed));
 }
 

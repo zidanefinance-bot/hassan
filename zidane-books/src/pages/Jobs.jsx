@@ -58,7 +58,7 @@ export default function Jobs() {
   return (
     <>
       <PageHead title="Jobs" sub="Every confirmed customer order becomes a Job. Sales creates it, Operations fulfils it.">
-        <Search value={q} onChange={setQ} placeholder="Search PO #, job or customer…" />
+        <Search value={q} onChange={setQ} placeholder="Search PO #, job, customer or item…" />
         {can("sales.write") && <Link className="btn primary" to="/jobs/new">+ New Job</Link>}
       </PageHead>
       <div className="chips">{FILTERS.map(([k, name, f]) => {
@@ -70,7 +70,8 @@ export default function Jobs() {
           <thead><tr><th>Job</th><th>Created</th><th>Age</th><th>Customer PO</th><th>Customer</th><th>Needed by</th><th>Priority</th><th>Fulfilment</th><th className="r">Items</th>{can("sales.read") && <th>Customer side</th>}</tr></thead>
           <tbody>{rows.map((j) => { const a = age(j); return (
             <tr key={j.id} className="click" onClick={() => nav(`/jobs/${j.id}`)}>
-              <td><b>{j.number}</b>{j.fulfilment_type === "direct" && <span className="badge blue sm">direct</span>}{j.closed ? <span className="badge grey sm">closed</span> : null}</td>
+              <td><b>{j.number}</b>{j.fulfilment_type === "direct" && <span className="badge blue sm">direct</span>}{j.closed ? <span className="badge grey sm">closed</span> : null}
+                {j.matched_items && <div className="small muted">{j.matched_items.map((m) => `${m.name} · ${num(m.qty)} ${m.unit}`).join(", ")}</div>}</td>
               <td className="nowrap">{fmtDate(karachiDay(j.created_at))}</td>
               <td className={`nowrap ${a.tone}`}>{a.text}</td>
               <td>{j.customer_po_number ? <b className="po">{j.customer_po_number}</b> : <span className="muted">—</span>}</td>

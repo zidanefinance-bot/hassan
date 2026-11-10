@@ -124,3 +124,16 @@ test("a supplier bill's delivery charge shows on the Job as its share, without b
   assert.deepEqual(d.bill_charges.map((c) => [c.label, c.bill_charges, c.job_share]), [["Delivery", 500, 500]]);
   assert.equal(d.economics.purchases, 1500, "the charge is counted once, inside purchases");
 });
+
+test("searching Jobs by an item finds every Job that has it, and says how much", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const a = J.createJob(db, 1, { customer_id: cust, items: [{ description: "Dry Mop Complete", qty: 100, sale_rate: 650 }] });
+  const b = J.createJob(db, 1, { customer_id: cust, items: [{ description: "dry mop complete", qty: 20, sale_rate: 650 }, { description: "Gloves", qty: 5, sale_rate: 10 }] });
+  J.createJob(db, 1, { customer_id: cust, items: [{ description: "Gloves", qty: 5, sale_rate: 10 }] });
+  const found = J.jobList(db, { q: "dry mop" });
+  assert.deepEqual(found.map((j) => j.id).sort(), [a, b].sort());
+  assert.equal(found.find((j) => j.id === b).matched_items[0].qty, 20);
+});
