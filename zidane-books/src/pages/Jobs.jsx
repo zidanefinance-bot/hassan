@@ -402,6 +402,13 @@ export function JobView() {
                 <tbody>{j.expenses.map((e) => <tr key={e.id}><td>{fmtDate(e.date)}</td><td>{e.category}</td><td>{e.account_name || e.paid_through}</td><td className="muted">{e.notes}</td><td className="r">{money(e.amount)}</td></tr>)}</tbody></table>
             </section>
           )}
+          {j.bill_charges?.length > 0 && (
+            <section className="card flush">
+              <h3 className="pad">Delivery / loading charges on supplier bills <span className="muted small">(already inside Purchases above, shown here so you can see them)</span></h3>
+              <table className="table"><thead><tr><th>Bill</th><th>Supplier</th><th>Charge</th><th className="r">On the bill</th><th className="r">This Job's share</th></tr></thead>
+                <tbody>{j.bill_charges.map((c) => <tr key={c.document_id}><td><Link to={`/bills/${c.document_id}`}>{c.number}</Link></td><td>{c.supplier}</td><td>{c.label}</td><td className="r">{money(c.bill_charges)}</td><td className="r">{money(c.job_share)}</td></tr>)}</tbody></table>
+            </section>
+          )}
           <Attachments entity="job" id={j.id} labels={["Customer PO", "Delivery photo", "Supplier quotation", "Other evidence"]} />
           <Comments entity="job" id={j.id} />
           <Activity entity="job" id={j.id} />

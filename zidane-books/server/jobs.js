@@ -301,6 +301,23 @@ function purchaseCost(db, jobId, items) {
   return { purchases: round2(Math.max(0, total)), to_stock: round2(stock), not_items: round2(Math.max(0, other)) };
 }
 
+// Delivery/loading/carriage charges typed on a supplier bill (its "charges" field) aren't their own line —
+// they're spread over the bill's lines by value (see LINE_COST). This breaks that back out per bill, per Job,
+// just for visibility: it's already inside purchaseCost()'s total above, not an extra cost to add again.
+export function billCharges(db, jobId) {
+  const rows = db.prepare(`SELECT d.id, d.number, d.charges, d.charges_label, d.subtotal, d.discount_total, d.doc_discount, c.name AS supplier,
+      SUM(l.amount) AS job_amount
+    FROM document_lines l JOIN documents d ON d.id = l.document_id JOIN contacts c ON c.id = d.contact_id
+    WHERE ${LINE_JOB} = ? AND d.kind = 'bill' AND d.status = 'open' AND d.charges > 0
+    GROUP BY d.id`).all(jobId);
+  return rows.map((r) => {
+    const base = r.subtotal - r.discount_total;
+    const factor = base > 0 ? (r.charges - (r.doc_discount || 0)) / base : 0;
+    return { document_id: r.id, number: r.number, supplier: r.supplier, label: r.charges_label || "Charges",
+      bill_charges: round2(r.charges), job_share: round2(r.job_amount * factor) };
+  });
+}
+
 export function jobEconomics(db, jobId) {
   const items = db.prepare("SELECT ji.*, i.purchase_rate FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE job_id = ?").all(jobId);
   const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
@@ -344,6 +361,7 @@ export function jobDetail(db, id, can) {
     // each side only sees its own paperwork on the Job (credit notes are Sales', vendor credits Operations')
     documents: docs.filter((d) => DOC_READ[d.kind].some(can)).map((d) => (can("money") ? d : { ...d, paid: undefined })),
     expenses: can("ops.read") ? db.prepare("SELECT e.*, a.name AS account_name FROM expenses e LEFT JOIN accounts a ON a.id = e.account_id WHERE e.job_id = ? ORDER BY e.date").all(id) : [],
+    bill_charges: can("ops.read") ? billCharges(db, id) : [],
     economics: can("profit.view") ? jobEconomics(db, id) : null,
     wht: can("price.view") ? jobWht(db, id) : null, // what the customer will withhold, per line
     ration: rationFor(db, job, can),

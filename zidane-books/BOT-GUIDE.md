@@ -64,6 +64,8 @@ The inbox reads it (RFQ tables typed in emails are read without AI) and Sales tu
 - Repo `zidanefinance-bot/hassan`, folder `zidane-books/`, branch **`ccr-52506c1f-ufvep1`** (the server
   auto-updates from it every 10 minutes, or `sudo bash /opt/zidane-books-src/zidane-books/deploy/update-on-server.sh`).
 - Stack: Node 22 (`node:sqlite`), Express (`server/`), React + Vite (`src/`). No native modules.
+- **Never edit files in `/opt/zidane-books-src` on the server.** A change made there blocks every update
+  ("Your local changes would be overwritten"). Change the code in a checkout of the repo, commit and push.
 - Before every push: `npm test` (all must pass) and `npm run build`. Add a test for what you change.
 - Always `git fetch` and fast-forward before pushing: another assistant (Claude) works on the same branch.
 - Never put customer data, passwords or keys in the repo (it may be public).

@@ -111,3 +111,16 @@ test("packing material bought on credit (a bill line that is no Job item) counts
   assert.equal(d.ration.other_cost_per_bag, 25);
   assert.ok(RA);
 });
+
+test("a supplier bill's delivery charge shows on the Job as its share, without being added again", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const sup = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const jobId = J.createJob(db, 1, { customer_id: cust, items: [{ description: "Gloves", qty: 10, sale_rate: 200 }] });
+  B.saveDocument(db, 1, { kind: "bill", contact_id: sup, job_id: jobId, status: "open", reference: "CH-1", charges: 500, charges_label: "Delivery", lines: [{ description: "Gloves", qty: 10, rate: 100 }] });
+  const d = J.jobDetail(db, jobId, () => true);
+  assert.deepEqual(d.bill_charges.map((c) => [c.label, c.bill_charges, c.job_share]), [["Delivery", 500, 500]]);
+  assert.equal(d.economics.purchases, 1500, "the charge is counted once, inside purchases");
+});
