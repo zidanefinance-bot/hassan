@@ -103,6 +103,11 @@ export function setItemProcurement(db, userId, jobItemId, status) {
   }
   tx(db, () => {
     db.prepare("UPDATE job_items SET procurement_status = ? WHERE id = ?").run(status, jobItemId);
+    // fix the stock cost now, so a newer purchase price later doesn't change this Job's profit
+    if (status === "from_stock" && !(it.stock_rate > 0)) {
+      const rate = stockUnitCost(db, it.item_id);
+      if (rate > 0) db.prepare("UPDATE job_items SET stock_rate = ? WHERE id = ?").run(rate, jobItemId);
+    }
     rollupOps(db, it.job_id);
     log(db, userId, `item ${status.replace(/_/g, " ")}`, "job", it.job_id, it.number);
   });
@@ -289,16 +294,49 @@ function purchaseCost(db, jobId, items) {
   for (const l of bills) { const x = at(key(l)); x.qty += l.qty; x.cost += l.cost || 0; }
   for (const l of credits) { const x = at(key(l)); if (l.return_stock) x.back += l.qty; else x.less += l.cost || 0; }
   let total = 0, stock = 0, other = 0;
+  const usedQty = new Map();
   for (const [k, x] of g) {
     const unit = x.qty > 0 ? x.cost / x.qty : 0;
     const kept = Math.max(0, x.qty - x.back);
     // a bill line that is no Job item (sacks, packing material on credit, transport, a one-off) counts in full
     const used = need.has(k) ? Math.min(kept, need.get(k)) : kept;
+    usedQty.set(k, used);
     total += used * unit - x.less;
     stock += (kept - used) * unit;
     if (!need.has(k)) other += used * unit - x.less;
   }
-  return { purchases: round2(Math.max(0, total)), to_stock: round2(stock), not_items: round2(Math.max(0, other)) };
+  return { purchases: round2(Math.max(0, total)), to_stock: round2(stock), not_items: round2(Math.max(0, other)), billed_qty: (i) => usedQty.get(key(i)) || 0 };
+}
+
+// What one unit of an item in our stock cost us: the last purchase price on the item, else its last supplier bill.
+export function stockUnitCost(db, itemId) {
+  if (!itemId) return 0;
+  const rate = db.prepare("SELECT purchase_rate FROM items WHERE id = ?").get(itemId)?.purchase_rate || 0;
+  if (rate > 0) return round2(rate);
+  const last = db.prepare(`SELECT ${LINE_COST} AS cost, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id
+    WHERE l.item_id = ? AND d.kind = 'bill' AND d.status = 'open' AND l.qty > 0 ORDER BY d.date DESC, d.id DESC LIMIT 1`).get(itemId);
+  return last ? round2((last.cost || 0) / last.qty) : 0;
+}
+
+// Items a Job takes from our own stock, at cost. The whole qty the Job needs counts from the day it's marked
+// "from stock" (not only once delivered), less anything a supplier bill on this Job already covers.
+function stockLines(db, items, billedQty) {
+  return items.filter((i) => i.procurement_status === "from_stock").map((i) => {
+    const qty = round2(Math.max(0, i.qty - billedQty(i)));
+    const rate = i.stock_rate > 0 ? i.stock_rate : stockUnitCost(db, i.item_id);
+    return { job_item_id: i.id, item_id: i.item_id, name: i.item_name || i.description, unit: i.unit || "", qty, unit_cost: rate, amount: round2(qty * rate), no_cost: qty > 0 && !(rate > 0) };
+  }).filter((l) => l.qty > 0);
+}
+
+// Director / Accounts correct what a stock item cost for this Job
+export function setStockRate(db, userId, jobItemId, rate) {
+  const it = db.prepare("SELECT ji.*, j.number FROM job_items ji JOIN jobs j ON j.id = ji.job_id WHERE ji.id = ?").get(jobItemId);
+  if (!it) throw httpError(404, "Not found");
+  if (it.procurement_status !== "from_stock") throw httpError(400, "Only an item taken from stock has a stock cost");
+  const r = Number(rate);
+  if (!(r >= 0)) throw httpError(400, "Enter the cost per unit");
+  db.prepare("UPDATE job_items SET stock_rate = ? WHERE id = ?").run(round2(r), jobItemId);
+  log(db, userId, `set stock cost ${round2(r)}`, "job", it.job_id, `${it.number}: ${it.description || ""}`.trim());
 }
 
 // Delivery/loading/carriage charges typed on a supplier bill (its "charges" field) aren't their own line —
@@ -319,23 +357,24 @@ export function billCharges(db, jobId) {
 }
 
 export function jobEconomics(db, jobId) {
-  const items = db.prepare("SELECT ji.*, i.purchase_rate FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE job_id = ?").all(jobId);
-  const delivered = lineTotals(db, jobId, "dc", ["issued", "signed"]);
+  const items = db.prepare("SELECT ji.*, i.purchase_rate, i.name AS item_name, i.unit FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE job_id = ?").all(jobId);
   const expected = round2(items.reduce((a, i) => a + i.qty * i.sale_rate, 0));
   const invoiced = round2(db.prepare("SELECT COALESCE(SUM(subtotal - discount_total), 0) AS v FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'open'").get(jobId).v);
   // supplier bills before tax, with their freight / charges and less their discount. Only what the Job needs counts:
   // bought more than ordered (a whole carton for 150 of 180), the rest went into stock and is costed to the Job that uses it.
   // Goods sent back on a vendor credit don't count either; a credit for a rate difference lowers the cost.
-  const { purchases, to_stock: toStock, not_items: billedExtras } = purchaseCost(db, jobId, items);
-  const fromStock = round2(items.filter((i) => i.procurement_status === "from_stock").reduce((a, i) => a + delivered(i).qty * (i.purchase_rate || 0), 0));
+  const { purchases, to_stock: toStock, not_items: billedExtras, billed_qty: billedQty } = purchaseCost(db, jobId, items);
+  const stock = stockLines(db, items, billedQty);
+  const fromStock = round2(stock.reduce((a, l) => a + l.amount, 0));
+  const noCost = stock.filter((l) => l.no_cost).map((l) => l.name);
   const direct = round2(db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE job_id = ?").get(jobId).v);
   const revenue = invoiced || expected;
   const cost = round2(purchases + fromStock + direct);
-  return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, bought_for_stock: toStock, billed_extras: billedExtras, stock_cost: fromStock, direct_costs: direct, total_cost: cost,
+  return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, bought_for_stock: toStock, billed_extras: billedExtras, stock_cost: fromStock, stock_lines: stock, stock_no_cost: noCost, direct_costs: direct, total_cost: cost,
     gross_profit: round2(revenue - cost), margin_pct: revenue ? round2(((revenue - cost) / revenue) * 100) : 0,
     // profit isn't final while anything is still to buy, or nothing bought has a supplier bill yet
-    cost_pending: purchases + fromStock === 0 || items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)),
-    cost_pending_reason: purchases + fromStock === 0 ? "no_bill" : items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)) ? "still_buying" : null };
+    cost_pending: purchases + fromStock === 0 || noCost.length > 0 || items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)),
+    cost_pending_reason: purchases + fromStock === 0 && !noCost.length ? "no_bill" : items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)) ? "still_buying" : noCost.length ? "no_stock_cost" : null };
 }
 
 // One Job, shaped for the viewer's role (see auth.js caps)

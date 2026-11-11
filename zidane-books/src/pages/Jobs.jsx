@@ -1,5 +1,5 @@
 // Internal Jobs: Sales creates, Operations fulfils, Sales delivers and invoices. One screen, shaped by role.
-import React, { useEffect, useRef, useState } from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, OPS_STEPS, PageHead, Search, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import RationPanel from "../components/RationPanel.jsx";
@@ -290,6 +290,11 @@ export function JobView() {
   const [deliver, setDeliver] = useState(false);
   // reload on failure too, so a refused change (e.g. a status dropdown) snaps back to what's saved
   const act = async (fn, msg) => { try { const r = await fn(); if (msg) toast(msg); state.reload(); return r; } catch (x) { toast(x.message, "err"); state.reload(); } };
+  const stockRate = (l) => {
+    const v = window.prompt(`What did one ${l.unit || "unit"} of ${l.name} cost us? (Rs, before tax)`, l.unit_cost || "");
+    if (v === null || v.trim() === "") return;
+    act(() => api(`/job-items/${l.job_item_id}/stock-rate`, { method: "POST", body: { rate: Number(v.replace(/[^\d.]/g, "")) } }), "Stock cost saved");
+  };
   return (
     <Loading state={state}>{(j) => {
       const step = OPS_STEPS.indexOf(j.ops_status);
@@ -341,11 +346,17 @@ export function JobView() {
                   <dt>Revenue ({j.economics.revenue_basis})</dt><dd>{money(j.economics.revenue_basis === "invoiced" ? j.economics.invoiced_revenue : j.economics.expected_revenue)}</dd>
                   <dt className="indent">Purchases (supplier bills)</dt><dd className="muted">− {money(j.economics.purchases)}</dd>
                   {j.economics.bought_for_stock > 0 && <><dt className="indent small muted">Bought extra, now in stock (not counted here)</dt><dd className="muted small">{money(j.economics.bought_for_stock)}</dd></>}
-                  {j.economics.stock_cost > 0 && <><dt className="indent">From own stock (at cost)</dt><dd className="muted">− {money(j.economics.stock_cost)}</dd></>}
+                  {j.economics.stock_lines?.length > 0 && <><dt className="indent">From own stock (at cost)</dt><dd className="muted">− {money(j.economics.stock_cost)}</dd>
+                    {j.economics.stock_lines.map((l) => (
+                      <Fragment key={l.job_item_id}>
+                        <dt className="indent small muted">↳ {l.name}: {l.qty} {l.unit} × <button type="button" className={`linkish ${l.no_cost ? "neg" : ""}`} title="Change the cost per unit for this Job" onClick={() => stockRate(l)}>{l.no_cost ? "set cost" : money(l.unit_cost)}</button></dt>
+                        <dd className="muted small">{money(l.amount)}</dd>
+                      </Fragment>
+                    ))}</>}
                   <dt className="indent">Freight & direct costs</dt><dd className="muted">− {money(j.economics.direct_costs)}</dd>
                   <dt className="grand">Gross profit</dt><dd className={`grand ${j.economics.gross_profit < 0 ? "neg" : "pos"}`}>{money(j.economics.gross_profit)} <small className="muted">({j.economics.margin_pct}%)</small></dd>
                 </dl>
-                {j.economics.cost_pending && <p className="neg small">{j.economics.cost_pending_reason === "no_bill" ? "Profit not final: no supplier bill on this Job yet." : "Profit not final: some items are still to buy."}</p>}
+                {j.economics.cost_pending && <p className="neg small">{j.economics.cost_pending_reason === "no_bill" ? "Profit not final: no supplier bill on this Job yet." : j.economics.cost_pending_reason === "no_stock_cost" ? `Profit not final: no cost known for ${j.economics.stock_no_cost.join(", ")} from stock. Click "set cost" above.` : "Profit not final: some items are still to buy."}</p>}
               </section>
             ) : (
               <section className="card"><h3>Documents</h3>{j.documents.length === 0 ? <p className="muted">None yet.</p> : <DocList docs={j.documents} />}</section>

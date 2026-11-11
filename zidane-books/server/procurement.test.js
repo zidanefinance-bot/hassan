@@ -137,3 +137,40 @@ test("searching Jobs by an item finds every Job that has it, and says how much",
   assert.deepEqual(found.map((j) => j.id).sort(), [a, b].sort());
   assert.equal(found.find((j) => j.id === b).matched_items[0].qty, 20);
 });
+
+test("items taken from our own stock cost the Job straight away, at a fixed rate that can be corrected", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const customer = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const supplier = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const a = db.prepare("INSERT INTO items (name, unit, sale_rate, purchase_rate, stock_qty, track_stock) VALUES ('Stock Soap', 'pcs', 100, 60, 500, 1)").run().lastInsertRowid;
+  const b = db.prepare("INSERT INTO items (name, unit, sale_rate, purchase_rate, stock_qty, track_stock) VALUES ('Old Mop', 'pcs', 300, 0, 50, 1)").run().lastInsertRowid;
+  const job = J.createJob(db, 1, { customer_id: customer, items: [{ item_id: a, qty: 10, sale_rate: 100 }, { item_id: b, qty: 4, sale_rate: 300 }] });
+  const jobId = job.id ?? job;
+  const [ia, ib] = db.prepare("SELECT id FROM job_items WHERE job_id = ? ORDER BY id").all(jobId).map((r) => r.id);
+  J.setItemProcurement(db, 1, ia, "from_stock");
+  J.setItemProcurement(db, 1, ib, "from_stock");
+
+  let e = J.jobEconomics(db, jobId);
+  assert.equal(e.stock_cost, 600, "10 × Rs 60 counts before anything is delivered");
+  assert.deepEqual(e.stock_no_cost, ["Old Mop"]);
+  assert.equal(e.cost_pending_reason, "no_stock_cost");
+
+  // a newer purchase price doesn't move this Job's cost: it was fixed when marked from stock
+  db.prepare("UPDATE items SET purchase_rate = 80 WHERE id = ?").run(a);
+  assert.equal(J.jobEconomics(db, jobId).stock_cost, 600);
+
+  // no rate on the item: the last supplier bill for it gives the cost
+  B.saveDocument(db, 1, { kind: "bill", contact_id: supplier, status: "open", lines: [{ item_id: b, qty: 2, rate: 150 }] });
+  db.prepare("UPDATE items SET purchase_rate = 0 WHERE id = ?").run(b);
+  e = J.jobEconomics(db, jobId);
+  assert.equal(e.stock_cost, 600 + 4 * 150);
+  assert.equal(e.cost_pending, false);
+
+  // corrected by hand
+  J.setStockRate(db, 1, ib, 120);
+  e = J.jobEconomics(db, jobId);
+  assert.equal(e.stock_cost, 600 + 480);
+  assert.equal(e.gross_profit, 10 * 100 + 4 * 300 - 1080);
+});

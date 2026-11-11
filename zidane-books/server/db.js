@@ -40,6 +40,8 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   if (!db.prepare("SELECT 1 FROM pragma_table_info('documents') WHERE name = 'dc_numbers'").get()) db.exec("ALTER TABLE documents ADD COLUMN dc_numbers TEXT");
   if (!db.prepare("SELECT 1 FROM pragma_table_info('inbox_messages') WHERE name = 'body_html'").get()) db.exec("ALTER TABLE inbox_messages ADD COLUMN body_html TEXT");
   if (!db.prepare("SELECT 1 FROM pragma_table_info('items') WHERE name = 'notes'").get()) db.exec("ALTER TABLE items ADD COLUMN notes TEXT");
+  // cost per unit of a Job line taken from our own stock, fixed when it is marked "from stock" (editable on the Job)
+  if (!db.prepare("SELECT 1 FROM pragma_table_info('job_items') WHERE name = 'stock_rate'").get()) db.exec("ALTER TABLE job_items ADD COLUMN stock_rate REAL");
   setupAccounts(db); // Chart of Accounts, and "paid through" on money records made before it
   // "delivered" only comes from a signed DC: a Job whose signed DC was removed earlier steps back
   db.prepare(`UPDATE jobs SET ops_status = CASE WHEN EXISTS (SELECT 1 FROM documents d WHERE d.job_id = jobs.id AND d.kind = 'dc' AND d.status = 'issued') THEN 'dispatched' ELSE 'material_ready' END

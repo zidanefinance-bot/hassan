@@ -563,3 +563,7 @@ td.nowrap, .nowrap { white-space: nowrap; }
 .pdc-hero b { font-size: 20px; color: var(--ink); }
 .pdc-hero span { display: block; font-weight: 700; font-size: 13px; color: #9b1c1c; }
 .pdc-on-bill { background: #fff8e6; border: 1px solid #f2d48a; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-weight: 600; }
+
+/* a button that reads like a link (e.g. the stock cost on Job economics) */
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--brand, #c62828); text-decoration: underline dotted; cursor: pointer; }
+.linkish.neg { font-weight: 600; }
