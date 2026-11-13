@@ -5,6 +5,19 @@ import { Badge, fmtDate, KIND, Loading, money, num, PageHead, today, useAuth, us
 const TABS = [["pnl", "Profit & Loss", "reports.finance"], ["job-profit", "Job profit", "profit.view"], ["receivables", "Receivables", "*"], ["payables", "Payables", "reports.finance"], ["inventory", "Inventory", "reports.finance"], ["sales-by-customer", "Sales by customer", "*"], ["sales-by-item", "Sales by item", "reports.finance"], ["tax", "Sales tax", "reports.finance"], ["balance-sheet", "Balance sheet", "reports.finance"], ["trial-balance", "Trial balance", "reports.finance"]];
 const AS_OF = ["balance-sheet", "trial-balance"];
 const RANGED = ["pnl", "job-profit", "sales-by-customer", "sales-by-item", "tax"];
+// one-click periods next to the dates
+const iso = (d) => d.toISOString().slice(0, 10);
+function periods() {
+  const t = today(), [y, m] = t.split("-").map(Number), q = Math.floor((m - 1) / 3) * 3;
+  return [
+    ["This month", `${t.slice(0, 8)}01`, t],
+    ["Last month", iso(new Date(Date.UTC(y, m - 2, 1))), iso(new Date(Date.UTC(y, m - 1, 0)))],
+    ["This quarter", iso(new Date(Date.UTC(y, q, 1))), t],
+    ["Last 6 months", iso(new Date(Date.UTC(y, m - 6, 1))), t],
+    ["This year", `${y}-01-01`, t],
+    ["All time", "2000-01-01", t],
+  ];
+}
 
 function csv(name, header, rows) {
   const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -58,15 +71,29 @@ function Report({ tab, data: d }) {
       <p className="muted small">Cost of goods sold uses each item's purchase rate at the time it was invoiced. Sales tax collected ({money(d.tax_collected)}) is not income.</p>
     </div>
   );
-  if (tab === "job-profit") return d.length === 0 ? <div className="empty">No Jobs created in this period.</div> : (
+  if (tab === "job-profit") {
+    if (d.length === 0) return <div className="empty">No Jobs created in this period. Pick "All time" above to see every Job.</div>;
+    const sum = (f) => d.reduce((s, j) => s + f(j), 0);
+    const rev = sum((j) => (j.revenue_basis === "invoiced" ? j.invoiced_revenue : j.expected_revenue)), gp = sum((j) => j.gross_profit);
+    return (<>
+    <div className="stats">
+      <div className="stat"><small>Jobs</small><b>{d.length}</b></div>
+      <div className="stat"><small>Revenue</small><b>{money(rev)}</b></div>
+      <div className="stat"><small>Gross profit</small><b className={gp < 0 ? "neg" : "pos"}>{money(gp)}</b></div>
+      <div className="stat"><small>Margin</small><b>{rev ? Math.round((gp / rev) * 1000) / 10 : 0}%</b></div>
+      <div className="stat"><small>Profit not final yet</small><b className={d.some((j) => j.cost_pending) ? "neg" : ""}>{d.filter((j) => j.cost_pending).length} Jobs</b></div>
+    </div>
+    <p className="muted small">Jobs created in the dates above. Click a heading to sort.</p>
     <div className="card flush"><table className="table">
       <thead><tr><th>Job</th><th>Customer</th><th>Status</th><th className="r">Revenue</th><th className="r">Purchases</th><th className="r">Direct costs</th><th className="r">Gross profit</th><th className="r">Margin</th></tr></thead>
       <tbody>{d.map((j) => <tr key={j.id}><td><Link to={`/jobs/${j.id}`}>{j.number}</Link></td><td>{j.customer_name}</td><td><Badge status={j.ops_status} /></td>
         <td className="r">{money(j.revenue_basis === "invoiced" ? j.invoiced_revenue : j.expected_revenue)}{j.revenue_basis === "expected" && <div className="muted small">expected</div>}</td>
         <td className="r">{money(j.purchases + j.stock_cost)}{j.cost_pending && <div className="neg small">cost pending</div>}</td><td className="r">{money(j.direct_costs)}</td>
         <td className={`r ${j.gross_profit < 0 ? "neg" : "pos"}`}><b>{money(j.gross_profit)}</b></td><td className="r">{j.margin_pct}%</td></tr>)}</tbody>
+      <tfoot><tr><td>Total ({d.length})</td><td /><td /><td className="r">{money(rev)}</td><td className="r">{money(sum((j) => j.purchases + j.stock_cost))}</td><td className="r">{money(sum((j) => j.direct_costs))}</td><td className="r"><b>{money(gp)}</b></td><td className="r">{rev ? Math.round((gp / rev) * 1000) / 10 : 0}%</td></tr></tfoot>
     </table></div>
-  );
+  </>);
+  }
   if (tab === "receivables") return <Aging d={d} kind="invoice" />;
   if (tab === "payables") return <Aging d={d} kind="bill" />;
   if (tab === "inventory") return (
@@ -151,8 +178,14 @@ export default function Reports() {
   // the dashboard links here with ?tab=…&from=…&to=…
   const qs = new URLSearchParams(useLocation().search);
   const [tab, setTab] = useState(tabs.some(([k]) => k === qs.get("tab")) ? qs.get("tab") : tabs[0][0]);
-  const [from, setFrom] = useState(qs.get("from") || today().slice(0, 8) + "01");
+  const [from, setFrom] = useState(qs.get("from") || (qs.get("tab") === "job-profit" ? "2000-01-01" : today().slice(0, 8) + "01"));
   const [to, setTo] = useState(qs.get("to") || today());
+  // Job profit lists every Job by default; the money reports stay on this month
+  const pickTab = (k) => {
+    if (k === "job-profit" && from === today().slice(0, 8) + "01" && to === today()) setFrom("2000-01-01");
+    else if (k !== "job-profit" && tab === "job-profit" && from === "2000-01-01") setFrom(today().slice(0, 8) + "01");
+    setTab(k);
+  };
   const path = `/reports/${tab}${RANGED.includes(tab) ? `?from=${from}&to=${to}` : AS_OF.includes(tab) ? `?to=${to}` : ""}`;
   const loaded = useLoad(path);
   const state = loaded.path === path ? loaded : { ...loaded, data: null, loading: true }; // don't render one tab's data with another tab's view
@@ -160,11 +193,13 @@ export default function Reports() {
     <>
       <PageHead title="Reports">
         {AS_OF.includes(tab) && <><span className="muted">As of</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></>}
+        {RANGED.includes(tab) && <select value={periods().find(([, f, t]) => f === from && t === to)?.[0] || ""} onChange={(e) => { const p = periods().find(([n]) => n === e.target.value); if (p) { setFrom(p[1]); setTo(p[2]); } }}>
+          <option value="">Custom dates</option>{periods().map(([n]) => <option key={n}>{n}</option>)}</select>}
         {RANGED.includes(tab) && <><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /><span className="muted">to</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></>}
         <button className="btn" disabled={!state.data} onClick={() => csv(`zidane-${tab}-${today()}`, ...toCsv(tab, state.data))}>Export CSV</button>
         <button className="btn" onClick={() => window.print()}>Print</button>
       </PageHead>
-      <div className="tabs">{tabs.map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{l}</button>)}</div>
+      <div className="tabs">{tabs.map(([k, l]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => pickTab(k)}>{l}</button>)}</div>
       <Loading state={state}>{(d) => <Report tab={tab} data={d} />}</Loading>
     </>
   );
