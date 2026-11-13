@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS delete_requests (
 export const setupGuard = (db) => db.exec(SCHEMA);
 
 const ROUTES = [["contacts", "contact"], ["items", "item"], ["jobs", "job"], ["documents", "document"], ["payments", "payment"], ["expenses", "expense"],
-  ["refunds", "refund"], ["allocations", "allocation"], ["packing", "packing"], ["attachments", "attachment"], ["journals", "journal"], ["accounts", "account"], ["kits", "kit"]];
+  ["refunds", "refund"], ["allocations", "allocation"], ["packing", "packing"], ["attachments", "attachment"], ["journals", "journal"], ["accounts", "account"], ["kits", "kit"], ["loans", "loan"]];
 const EDIT_NEEDS_REASON = new Set(["contact", "item", "job", "document", "expense", "account", "kit"]);
 const DOC_KINDS = Object.keys(DOC_PATH);
 
@@ -39,6 +39,7 @@ export function describe(db, kind, id) {
   if (kind === "attachment") { const a = one("SELECT entity, entity_id, filename FROM attachments WHERE id = ?"); if (!a) return null; const d = a.entity === "document" ? one(`SELECT kind FROM documents WHERE id = ${Number(a.entity_id)}`) : null; return { entity: d ? d.kind : a.entity, entityId: a.entity_id, title: `File ${a.filename}`, link: null }; }
   if (kind === "journal") { const j = one("SELECT number, kind FROM journal_entries WHERE id = ?"); return j && { entity: "journal", entityId: id, title: `${j.kind === "transfer" ? "Transfer" : "Journal"} ${j.number}`, link: "/journals" }; }
   if (kind === "account") { const a = one("SELECT code, name FROM accounts WHERE id = ?"); return a && { entity: "account", entityId: id, title: `${a.code} ${a.name}`, link: `/accounts/${id}` }; }
+  if (kind === "loan") { const l = one("SELECT number, lender, principal FROM loans WHERE id = ?"); return l && { entity: "loan", entityId: id, title: `Loan ${l.number} · ${l.lender} · Rs ${l.principal}`, link: `/loans?open=${id}` }; }
   if (kind === "kit") { const k = one("SELECT name FROM kits WHERE id = ?"); return k && { entity: "kit", entityId: id, title: `Kit ${k.name}`, link: "/ration-kits" }; }
   return null;
 }

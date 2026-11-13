@@ -28,6 +28,7 @@ import * as GD from "./guard.js";
 import * as MB from "./digest.js";
 import * as WH from "./wht.js";
 import * as PDC from "./pdc.js";
+import * as LOAN from "./loans.js";
 
 const { httpError, round2, today } = B;
 const { DOC_READ, CONTACT_READ } = C;
@@ -844,6 +845,16 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   }));
 
   // ---- post-dated cheques given to suppliers (Accounts / director)
+  api.get("/loans", requirePerm("money"), (req, res) => res.json(LOAN.listLoans(db, req.query)));
+  api.get("/loans/due", requirePerm("money"), (req, res) => res.json(LOAN.dueInstallments(db)));
+  api.post("/loans/preview", requirePerm("money"), (req, res) => res.json(LOAN.previewLoan(db, req.body || {})));
+  api.get("/loans/:id", requirePerm("money"), (req, res) => res.json(LOAN.getLoan(db, id(req))));
+  api.post("/loans", requirePerm("money"), (req, res) => res.json({ id: LOAN.createLoan(db, req.user.id, req.body || {}) }));
+  api.put("/loans/:id", requirePerm("money"), (req, res) => { LOAN.updateLoan(db, req.user.id, id(req), req.body || {}); res.json({ ok: true }); });
+  api.delete("/loans/:id", requirePerm("money"), (req, res) => { LOAN.deleteLoan(db, req.user.id, id(req)); res.json({ ok: true }); });
+  api.put("/loans/:id/installments/:iid", requirePerm("money"), (req, res) => { LOAN.updateInstallment(db, req.user.id, id(req), Number(req.params.iid), req.body || {}); res.json({ ok: true }); });
+  api.post("/loans/:id/installments/:iid/pay", requirePerm("money"), (req, res) => res.json({ journal_id: LOAN.payInstallment(db, req.user.id, id(req), Number(req.params.iid), req.body || {}) }));
+  api.post("/loans/:id/installments/:iid/undo", requirePerm("money"), (req, res) => { LOAN.undoInstallment(db, req.user.id, id(req), Number(req.params.iid)); res.json({ ok: true }); });
   api.get("/pdcs", requirePerm("money"), (req, res) => res.json(PDC.listPdcs(db, req.query)));
   api.get("/pdcs/:id", requirePerm("money"), (req, res) => res.json(PDC.getPdc(db, id(req))));
   api.post("/pdcs", requirePerm("money"), (req, res) => res.json({ id: PDC.savePdc(db, req.user.id, req.body || {}) }));
@@ -910,6 +921,8 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.delete("/journals/:id", (req, res) => {
     books(req);
     const j = L.getJournal(db, id(req));
+    const loan = db.prepare("SELECT l.number FROM loans l WHERE l.disburse_journal_id = ? UNION SELECT l.number FROM loan_installments i JOIN loans l ON l.id = i.loan_id WHERE i.journal_id = ?").get(j.id, j.id);
+    if (loan) throw httpError(400, `This entry belongs to loan ${loan.number}. Undo it from the Loans page.`);
     db.prepare("DELETE FROM journal_entries WHERE id = ?").run(j.id);
     B.log(db, req.user.id, "deleted journal entry", "journal", j.id, j.number);
     res.json({ ok: true });

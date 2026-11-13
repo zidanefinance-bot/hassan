@@ -4,6 +4,7 @@ import nodemailer from "nodemailer";
 import { getSetting, PAID_SQL, round2, setSetting, today } from "./books.js";
 import { jobList, netBought, OPS_STATUSES, procurementList, uninvoicedDcs } from "./jobs.js";
 import { DOC_PATH } from "./collab.js";
+import { dueInstallments } from "./loans.js";
 
 const TZ = "Asia/Karachi";
 const step = (s) => OPS_STATUSES.indexOf(s);
@@ -97,6 +98,10 @@ export function buildBrief(db) {
   const pdcs = db.prepare("SELECT p.*, c.name AS contact_name FROM pdcs p JOIN contacts c ON c.id = p.contact_id WHERE p.status = 'issued' AND p.cheque_date <= date(?, '+7 days') ORDER BY p.cheque_date").all(t);
   add("🏦", "PDC cheques due: bank mein paisa rakho", "Cheque ki date se pehle bank balance check karo.",
     pdcs.map((p) => ({ text: `Cheque ${p.cheque_no} · ${p.contact_name}`, ask: `${rs(p.amount)} · ${p.cheque_date < t ? `${ago(days(p.cheque_date, t))} se date guzar gayi. Clear hua ya bounce?` : p.cheque_date === t ? "AAJ ki date hai!" : `${days(t, p.cheque_date)} din mein (${dd(p.cheque_date)})`}`, link: `/pdcs?open=${p.id}`, days: -days(t, p.cheque_date) })), "red");
+
+  // 10c. bank loan installments coming due
+  add("🏛", "Loan ki qist: bank mein paisa rakho", "Qist ki date se pehle bank balance check karo. Bank ne kaat li ho to Loans page par 'Paid' karo.",
+    dueInstallments(db, t, 7).map((i) => ({ text: `${i.lender} · qist ${i.seq}`, ask: `${rs(i.amount)} · ${i.days_left < 0 ? `${ago(-i.days_left)} se due. Bank ne kaati? Paid mark karo.` : i.days_left === 0 ? "AAJ due hai!" : `${i.days_left} din mein (${dd(i.due_date)})`}`, link: `/loans?open=${i.loan_id}`, days: -i.days_left })), "red");
 
   // 11. what we owe suppliers
   const pay = docs("d.kind = 'bill' AND d.status = 'open' AND d.due_date <= date(?, '+3 days')", t).filter((d) => d.balance > 0.5).sort((a, b) => a.due_date.localeCompare(b.due_date));

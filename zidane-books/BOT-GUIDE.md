@@ -57,6 +57,8 @@ The inbox reads it (RFQ tables typed in emails are read without AI) and Sales tu
   supplier bills paid from that wallet.
 - An invoice names the DCs it bills ("DC: …"). Numbers (invoice, DC, Job…) can be changed in Edit, unique.
 - Deletes need a reason; only the Director deletes, others' deletes wait in **Approvals & activity**.
+- **Bank loans** (Accounts → Bank loans): each installment = principal (loan account goes down) + interest
+  (expense "Interest on loans"). Mark "Paid" there when the bank takes it; never a manual journal for a loan installment.
 - Every morning Books emails Hassan a **Morning brief** of everything stuck (Settings → Morning brief).
 
 ## 4. Changing the code

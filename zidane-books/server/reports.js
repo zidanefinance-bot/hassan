@@ -1,5 +1,6 @@
 // Reports. P&L is document-based: sales (ex-tax) − cost of goods sold (cost captured on each invoice line) − expenses.
 import { round2, today, displayStatus, getSetting, creditStatus, PAID_SQL, UNUSED_SQL, CREDIT_UNUSED_SQL } from "./books.js";
+import { dueInstallments } from "./loans.js";
 import { jobEconomics, jobList, OPS_STATUSES, procurementList, uninvoicedDcs } from "./jobs.js";
 
 const ISSUED = "status = 'open'";
@@ -200,6 +201,9 @@ export function home(db, user, can, { from, to } = {}) {
   if (can("money")) {
     // post-dated cheques we gave, due within a week (or past their date and not cleared): money must be in the bank
     const pdcs = db.prepare("SELECT p.*, c.name AS contact_name FROM pdcs p JOIN contacts c ON c.id = p.contact_id WHERE p.status = 'issued' AND p.cheque_date <= ? ORDER BY p.cheque_date").all(soon(7));
+    const inst = dueInstallments(db, t, 7);
+    queues.unshift(q("Accounts", "loan", "Loan installments due: keep money in the bank", inst.map((i) => ({ label: `${i.lender} · Rs ${Math.round(i.amount).toLocaleString("en-PK")} · installment ${i.seq}`,
+      sub: i.days_left < 0 ? `Due ${i.due_date}, PAST: paid? Mark it paid on the loan` : i.days_left === 0 ? "Due TODAY" : `Due ${i.due_date} (in ${i.days_left} day${i.days_left === 1 ? "" : "s"})`, link: `/loans?open=${i.loan_id}`, due: i.due_date })), "red"));
     queues.unshift(q("Accounts", "pdc", "PDC cheques due: keep money in the bank", pdcs.map((p) => ({ label: `Cheque ${p.cheque_no} · Rs ${Math.round(p.amount).toLocaleString("en-PK")} · ${p.contact_name}`,
       sub: p.cheque_date < t ? `Dated ${p.cheque_date}, PAST: clear it or mark bounced` : p.cheque_date === t ? "Dated TODAY" : `Dated ${p.cheque_date}`, link: `/pdcs?open=${p.id}`, due: p.cheque_date })), "red"));
   }

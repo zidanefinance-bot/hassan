@@ -20,6 +20,7 @@ import Reports from "./pages/Reports.jsx";
 import Accounts, { AccountLedger, Journals } from "./pages/Accounts.jsx";
 import Kits from "./pages/Kits.jsx";
 import Pdcs from "./pages/Pdcs.jsx";
+import Loans from "./pages/Loans.jsx";
 import Settings from "./pages/Settings.jsx";
 import Inbox from "./pages/Inbox.jsx";
 import Account from "./pages/Account.jsx";
@@ -50,6 +51,7 @@ const NAV = [
   { to: "/payments-received", label: "Payments Received", icon: "↓", any: ["money"] },
   { to: "/payments-made", label: "Payments Made", icon: "↑", any: ["money"] },
   { to: "/pdcs", label: "PDC cheques", icon: "✎", any: ["money"], badge: "pdc" },
+  { to: "/loans", label: "Bank loans", icon: "🏛", any: ["money"], badge: "loan" },
   { to: "/expenses", label: "Expenses", icon: "₨", any: ["expenses"] },
   { to: "/accounts", label: "Chart of Accounts", icon: "☰", any: ["reports.finance"] },
   { to: "/journals", label: "Journal & Transfers", icon: "⇄", any: ["reports.finance"] },
@@ -75,6 +77,19 @@ function PdcBadge() {
   return n ? <span className="nav-badge" title="PDC cheques due within 7 days">{n}</span> : null;
 }
 
+// loan installments due within 7 days (or past due, not marked paid)
+function LoanBadge() {
+  const [n, setN] = React.useState(0);
+  React.useEffect(() => {
+    const load = () => api("/loans/due").then((l) => setN(l.length)).catch(() => {});
+    load();
+    const t = setInterval(load, 10 * 60000);
+    window.addEventListener("zb:changed", load);
+    return () => { clearInterval(t); window.removeEventListener("zb:changed", load); };
+  }, []);
+  return n ? <span className="nav-badge" title="Loan installments due within 7 days">{n}</span> : null;
+}
+
 function Shell() {
   const { user, logout, can, retry } = useAuth();
   const install = useInstall();
@@ -93,7 +108,7 @@ function Shell() {
         <nav>
           {NAV.filter((n) => (!n.any || n.any.some(can)) && !(n.none || []).some(can)).map((n, i) =>
             n.group ? <div key={i} className="nav-group">{n.group}</div>
-              : <NavLink key={n.to} to={n.to} end={n.end}><span className="nav-icon">{n.icon}</span>{n.label}{n.badge === "pdc" && <PdcBadge />}</NavLink>)}
+              : <NavLink key={n.to} to={n.to} end={n.end}><span className="nav-icon">{n.icon}</span>{n.label}{n.badge === "pdc" && <PdcBadge />}{n.badge === "loan" && <LoanBadge />}</NavLink>)}
         </nav>
       </aside>
       <div className="main">
@@ -130,6 +145,7 @@ function Shell() {
             <Route path="/payments-received" element={<Payments direction="in" />} />
             <Route path="/payments-made" element={<Payments direction="out" />} />
             <Route path="/pdcs" element={<Pdcs />} />
+            <Route path="/loans" element={<Loans />} />
             <Route path="/payments/new" element={<RecordPayment />} />
             <Route path="/payments/:id" element={<PaymentView />} />
             <Route path="/expenses" element={<Expenses />} />

@@ -567,3 +567,4 @@ td.nowrap, .nowrap { white-space: nowrap; }
 /* a button that reads like a link (e.g. the stock cost on Job economics) */
 .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--brand, #c62828); text-decoration: underline dotted; cursor: pointer; }
 .linkish.neg { font-weight: 600; }
+.loan-sched td { white-space: nowrap; }
