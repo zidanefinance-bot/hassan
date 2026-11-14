@@ -482,7 +482,7 @@ function DocList({ docs }) {
       {docs.map((d) => (
         <tr key={d.id}>
           <td>{KIND[d.kind].label}</td><td><Link to={`/${KIND[d.kind].path}/${d.id}`}>{d.number}</Link></td><td className="muted">{d.contact_name}</td>
-          <td><Badge status={d.status} />{d.verified_at && <span className="badge green sm">verified</span>}{d.submitted_date && <span className="badge blue sm">submitted</span>}</td>
+          <td><Badge status={d.display_status || d.status} />{d.verified_at && <span className="badge green sm">verified</span>}{d.submitted_date && <span className="badge blue sm">submitted</span>}</td>
           <td className="r">{d.kind !== "dc" ? money(d.total) : d.signed_by_name || ""}</td>
         </tr>
       ))}

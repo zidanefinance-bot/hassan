@@ -244,7 +244,7 @@ export function ItemView() {
                 <thead><tr><th>Date</th><th>Type</th><th>Number</th><th>Customer / supplier</th><th>Job</th><th>Status</th><th className="r">Qty</th><th className="r">Rate</th><th className="r">Amount</th></tr></thead>
                 <tbody>{tx.map((t, n) => (
                   <tr key={n} className="click" onClick={() => nav(`/${KIND[t.kind].path}/${t.id}`)}>
-                    <td>{fmtDate(t.date)}</td><td>{KIND[t.kind].label}</td><td><b>{t.number}</b></td><td>{t.contact_name}</td><td className="muted">{t.job_number || "—"}</td><td><Badge status={t.status} /></td>
+                    <td>{fmtDate(t.date)}</td><td>{KIND[t.kind].label}</td><td><b>{t.number}</b></td><td>{t.contact_name}</td><td className="muted">{t.job_number || "—"}</td><td><Badge status={t.display_status || t.status} /></td>
                     <td className="r">{num(t.qty)}</td><td className="r">{t.rate === undefined || t.kind === "dc" ? "—" : money(t.rate)}{t.discount_pct ? <div className="muted small">−{t.discount_pct}%</div> : null}</td><td className="r">{t.amount === undefined || t.kind === "dc" ? "—" : money(t.amount)}</td>
                   </tr>
                 ))}</tbody>

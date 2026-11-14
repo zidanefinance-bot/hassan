@@ -2,7 +2,7 @@
 // Sales creates the Job from customer demand; Operations fulfils it (procurement, purchases, supplier bills,
 // direct costs, fulfilment status); Sales then raises the customer DC and invoice from it.
 import { tx } from "./db.js";
-import { getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
+import { displayStatus, getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
 import { DOC_READ } from "./collab.js";
 import * as RA from "./ration.js";
 import { jobWht, setLineWht, syncInvoiceWht } from "./wht.js";
@@ -387,7 +387,8 @@ export function jobDetail(db, id, can) {
   const bought = lineTotals(db, id, "bill", ["open", "draft"]);
   const ready = readyQty(db, id);
   const docs = db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.status, d.total, d.submitted_date, d.verified_at, d.signed_at, d.signed_by_name, c.name AS contact_name, ${PAID_SQL} AS paid FROM documents d JOIN contacts c ON c.id = d.contact_id
-    WHERE d.job_id = ? OR EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = d.id AND l.job_id = ?) ORDER BY d.id`).all(id, id);
+    WHERE d.job_id = ? OR EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = d.id AND l.job_id = ?) ORDER BY d.id`).all(id, id)
+    .map((d) => ({ ...d, display_status: displayStatus(d, d.paid) })); // a paid bill / invoice shows "paid", not "open"
   const out = {
     ...job,
     items: items.map((i) => ({

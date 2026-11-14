@@ -29,7 +29,7 @@ export default function ItemHistory({ id, onClose }) {
           <table className="table compact">
             <thead><tr><th>Date</th><th>Type</th><th>Number</th><th>Customer / supplier</th><th>Job</th><th>Status</th><th className="r">Qty</th><th className="r">Rate</th></tr></thead>
             <tbody>{rows.map((t, n) => (
-              <tr key={n}><td className="nowrap">{fmtDate(t.date)}</td><td>{KIND[t.kind].label}</td><td><Link to={`/${KIND[t.kind].path}/${t.id}`} onClick={onClose}><b>{t.number}</b></Link></td><td>{t.contact_name}</td><td className="muted">{t.job_number || "—"}</td><td><Badge status={t.status} /></td>
+              <tr key={n}><td className="nowrap">{fmtDate(t.date)}</td><td>{KIND[t.kind].label}</td><td><Link to={`/${KIND[t.kind].path}/${t.id}`} onClick={onClose}><b>{t.number}</b></Link></td><td>{t.contact_name}</td><td className="muted">{t.job_number || "—"}</td><td><Badge status={t.display_status || t.status} /></td>
                 <td className="r">{num(t.qty)}</td><td className="r">{t.rate === undefined || t.kind === "dc" ? "—" : money(t.rate * (1 - (t.discount_pct || 0) / 100))}</td></tr>
             ))}</tbody>
           </table>

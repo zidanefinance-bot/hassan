@@ -1,6 +1,6 @@
 // Item 360: every transaction an item appears in, its buying and selling rate history, change log, and CSV import.
 import { tx } from "./db.js";
-import { adjustStock, httpError, log, round2, today } from "./books.js";
+import { adjustStock, displayStatus, httpError, log, PAID_SQL, round2, today } from "./books.js";
 
 import { DOC_READ } from "./collab.js";
 
@@ -14,10 +14,11 @@ export const visibleKinds = (can) => [...(can("sales.read") ? SALES_KINDS : []),
 export function itemTransactions(db, itemId, can) {
   const kinds = visibleKinds(can);
   if (kinds.length === 0) return [];
-  const rows = db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.status, c.name AS contact_name, j.number AS job_number, l.qty, l.rate, l.discount_pct, l.amount
+  const rows = db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.status, d.total, d.due_date, ${PAID_SQL} AS paid, c.name AS contact_name, j.number AS job_number, l.qty, l.rate, l.discount_pct, l.amount
     FROM document_lines l JOIN documents d ON d.id = l.document_id JOIN contacts c ON c.id = d.contact_id LEFT JOIN jobs j ON j.id = d.job_id
     WHERE l.item_id = ? AND d.kind IN (${kinds.map(() => "?").join(",")}) ORDER BY d.date DESC, d.id DESC LIMIT 300`).all(itemId, ...kinds);
-  return rows.map((r) => {
+  return rows.map(({ paid, total, due_date, ...r }) => {
+    r.display_status = displayStatus({ ...r, total, due_date }, paid);
     const showRate = SALES_KINDS.includes(r.kind) ? can("price.view") : can("cost.view");
     return showRate ? r : { ...r, rate: undefined, amount: undefined, discount_pct: undefined };
   });

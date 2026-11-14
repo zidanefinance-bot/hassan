@@ -1368,3 +1368,19 @@ test("Telegram alerts and API keys: not for Operations, and an old key of theirs
     assert.equal(await st({ authorization: `Bearer ${oldKey}` }, "/jobs"), 401, "an Operations key made earlier no longer works");
   } finally { server.close(); }
 });
+
+test("a paid bill shows 'paid' on the Job and in item history, not 'open'", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const job = db.prepare("SELECT id FROM jobs LIMIT 1").get().id;
+  const sup = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const item = db.prepare("SELECT id FROM items LIMIT 1").get().id;
+  const bill = B.saveDocument(db, 1, { kind: "bill", contact_id: sup, job_id: job, status: "open", lines: [{ item_id: item, qty: 2, rate: 500 }] });
+  const all = () => true;
+  const st = () => J.jobDetail(db, job, all).documents.find((d) => d.id === bill).display_status;
+  assert.equal(st(), "open");
+  B.recordPayment(db, 1, { direction: "out", contact_id: sup, amount: 1000, date: "2026-11-14", mode: "bank", allocations: [{ document_id: bill, amount: 1000 }] });
+  assert.equal(st(), "paid");
+  assert.equal(I.itemTransactions(db, item, all).find((t) => t.id === bill).display_status, "paid");
+});
