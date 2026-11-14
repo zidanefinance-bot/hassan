@@ -37,6 +37,8 @@ export const ROLES = {
 };
 export const ROLE_LABELS = { director: "Director", sales: "Sales", operations: "Operations", purchaser: "Field Purchaser", accounts: "Accounts" };
 export const can = (user, perm) => Boolean(user && ROLES[user.role]?.includes(perm));
+// Telegram alerts and personal API keys (bots): not for Operations. (A field purchaser keeps Telegram: bill photos from the market.)
+export const canLinkApps = (user) => Boolean(user && ROLES[user.role] && user.role !== "operations");
 
 // Personal API keys (for an assistant bot such as OpenClaw). Only work while a director has switched them on in Settings,
 // act as the key's owner with that person's role, and are limited to reading and drafting (see API_ALLOWED in app.js).
@@ -76,7 +78,7 @@ export function authMiddleware(db) {
     if (bearer) {
       if (!apiKeysOn(db)) return next();
       const row = db.prepare("SELECT k.id AS key_id, u.id, u.name, u.email, u.role, u.active FROM api_keys k JOIN users u ON u.id = k.user_id WHERE k.key_hash = ? AND k.revoked_at IS NULL").get(hashKey(bearer));
-      if (row?.active) {
+      if (row?.active && canLinkApps(row)) {
         req.user = { id: row.id, name: row.name, email: row.email, role: row.role };
         req.viaApi = row.key_id;
         db.prepare("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?").run(row.key_id);

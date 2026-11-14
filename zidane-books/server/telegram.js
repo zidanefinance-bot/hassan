@@ -2,7 +2,7 @@
 // customer's order message to the bot, which drops it into the Orders Inbox for AI to read.
 // Needs TELEGRAM_BOT_TOKEN (from @BotFather). Uses long polling, so no webhook or extra nginx setup is needed.
 import { randomBytes } from "node:crypto";
-import { can } from "./auth.js";
+import { can, canLinkApps } from "./auth.js";
 import { onNotify } from "./collab.js";
 import { addMessage, canUseInbox, enqueue } from "./inbox.js";
 
@@ -45,6 +45,8 @@ export function startTelegram(db, uploadDir, log = console) {
   onNotify((db2, user, n) => {
     const chat = db2.prepare("SELECT chat_id FROM user_telegram WHERE user_id = ? AND chat_id IS NOT NULL").get(user.id)?.chat_id;
     if (!chat) return;
+    const who = db2.prepare("SELECT role FROM users WHERE id = ?").get(user.id);
+    if (!canLinkApps(who)) return; // Operations / purchasers: alerts in the app only
     const url = appLink(n.link);
     tg("sendMessage", { chat_id: chat, parse_mode: "HTML", disable_web_page_preview: true, text: `🔔 <b>${esc(n.title)}</b>${n.body ? `\n${esc(n.body)}` : ""}${url ? `\n<a href="${url}">Open</a>` : ""}` }).catch((e) => log.error("Telegram send failed:", e.message));
   });
@@ -86,6 +88,7 @@ export async function handle(db, uploadDir, msg) {
   }
   const link = db.prepare("SELECT u.* FROM user_telegram t JOIN users u ON u.id = t.user_id WHERE t.chat_id = ? AND u.active = 1").get(String(msg.chat.id));
   if (!link) return reply(msg, "Hi! I only work for the Zidane Books team. Link your account from Settings → Telegram in the app.");
+  if (!canLinkApps(link)) return reply(msg, "Telegram is not available for your role. Please use the Zidane Books app.");
   if (/^\/(help|start)/.test(text)) return reply(msg, "Send a supplier bill photo/PDF or forward a customer's order and I'll add it to the Orders Inbox for AI to read. Alerts from the app arrive here automatically.");
   if (!canUseInbox(link)) return reply(msg, "Your role can't add orders or bills. Your alerts still arrive here.");
 

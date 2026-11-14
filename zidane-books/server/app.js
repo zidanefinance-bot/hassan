@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { authMiddleware, can, checkPassword, createApiKey, createSession, hashPassword, requirePerm, requireUser, ROLE_LABELS, ROLES } from "./auth.js";
+import { authMiddleware, can, canLinkApps, checkPassword, createApiKey, createSession, hashPassword, requirePerm, requireUser, ROLE_LABELS, ROLES } from "./auth.js";
 import * as TG from "./telegram.js";
 import * as PUSH from "./push.js";
 import * as B from "./books.js";
@@ -710,12 +710,14 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.post("/push/test", (req, res) => { C.notify(db, [req.user.id], { kind: "test", title: "Alerts are working ✓", body: "This is how Zidane Books alerts will look on this device.", link: "/" }); res.json({ ok: true }); });
 
   // ---- my Telegram link and API keys
-  api.get("/me/telegram", (req, res) => res.json(TG.telegramStatus(db, req.user.id)));
-  api.post("/me/telegram", async (req, res) => { if (!TG.telegramReady()) throw httpError(503, "Telegram is not set up on the server yet"); res.json(await TG.linkCode(db, req.user.id)); });
+  const appsOnly = (req) => { if (!canLinkApps(req.user)) throw httpError(403, "Telegram alerts and API keys are not available for Operations"); };
+  api.get("/me/telegram", (req, res) => { appsOnly(req); res.json(TG.telegramStatus(db, req.user.id)); });
+  api.post("/me/telegram", async (req, res) => { appsOnly(req); if (!TG.telegramReady()) throw httpError(503, "Telegram is not set up on the server yet"); res.json(await TG.linkCode(db, req.user.id)); });
   api.delete("/me/telegram", (req, res) => { TG.unlink(db, req.user.id); res.json({ ok: true }); });
-  api.get("/api-keys", (req, res) => res.json({ enabled: B.getSetting(db, "apiKeysEnabled") === true,
+  api.get("/api-keys", (req, res) => appsOnly(req) || res.json({ enabled: B.getSetting(db, "apiKeysEnabled") === true,
     keys: db.prepare("SELECT k.id, k.name, k.prefix, k.created_at, k.last_used_at, k.revoked_at, k.user_id, u.name AS user_name FROM api_keys k JOIN users u ON u.id = k.user_id WHERE k.user_id = ? OR ? ORDER BY k.id DESC").all(req.user.id, can(req.user, "admin") ? 1 : 0) }));
   api.post("/api-keys", (req, res) => {
+    appsOnly(req);
     if (B.getSetting(db, "apiKeysEnabled") !== true) throw httpError(403, "API keys are switched off. A director can turn them on in Settings.");
     const key = createApiKey(db, req.user.id, req.body?.name);
     B.log(db, req.user.id, "created API key", "api", null, req.body?.name || "");

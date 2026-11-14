@@ -91,14 +91,16 @@ function ApiKeys() {
 
 export default function Account() {
   const { user } = useAuth();
+  // Telegram alerts and API keys: not for Operations
+  const apps = user.role !== "operations";
   return (
     <>
       <PageHead title="My account" sub={`${user.name} · ${user.email} · ${user.role_label}`} />
       <div className="grid-2">
         <ThisDevice />
-        <Telegram />
+        {apps && <Telegram />}
         <Password />
-        <ApiKeys />
+        {apps && <ApiKeys />}
       </div>
     </>
   );

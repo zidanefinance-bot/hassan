@@ -1341,3 +1341,30 @@ test("buying again: a PO / bill line shows the item's last bill from any supplie
   assert.equal(x.last.document_id, b2, "the bill being edited is left out");
   assert.deepEqual(I.lastPurchases(db, [item], (p) => p !== "cost.view"), {}, "no costs for Sales");
 });
+
+test("Telegram alerts and API keys: not for Operations, and an old key of theirs stops working", async () => {
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  B.setSetting(db, "apiKeysEnabled", true);
+  const { createApiKey } = await import("./auth.js");
+  const opsId = db.prepare("SELECT id FROM users WHERE role = 'operations'").get().id;
+  const oldKey = createApiKey(db, opsId, "made before");
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const st = async (headers, path, method = "GET") => (await fetch(base + path, { method, headers: { ...headers, "content-type": "application/json" }, body: method === "POST" ? "{}" : undefined })).status;
+  try {
+    const [dir, sales, ops, pur] = [await login(director.email, director.password), await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk"), await login("purchaser@zidane.com.pk")];
+    assert.equal(await st({ cookie: pur }, "/me/telegram"), 200, "the field purchaser keeps Telegram for bill photos");
+    for (const ck of [ops]) {
+      assert.equal(await st({ cookie: ck }, "/me/telegram"), 403);
+      assert.equal(await st({ cookie: ck }, "/me/telegram", "POST"), 403);
+      assert.equal(await st({ cookie: ck }, "/api-keys"), 403);
+      assert.equal(await st({ cookie: ck }, "/api-keys", "POST"), 403);
+    }
+    assert.equal(await st({ cookie: sales }, "/api-keys"), 200);
+    assert.equal(await st({ cookie: dir }, "/me/telegram"), 200);
+    assert.equal(await st({ authorization: `Bearer ${oldKey}` }, "/jobs"), 401, "an Operations key made earlier no longer works");
+  } finally { server.close(); }
+});
