@@ -60,10 +60,14 @@ export default function DocumentForm({ kind }) {
   const jobItemIds = dcJob.data ? new Set(dcJob.data.items.map((i) => String(i.item_id)).filter((x) => x && x !== "null")) : null;
 
   useEffect(() => {
-    if (id && existing.data) setDoc({ ...existing.data, lines: existing.data.lines.map((l) => ({ ...l, key: l.id, item_id: l.item_id || "" })) });
+    if (id && existing.data) {
+      const e = existing.data, from = (e.kind === "invoice" && e.submitted_date) || e.date;
+      const days = e.credit_days ?? (e.due_date ? Math.max(0, Math.round((Date.parse(e.due_date) - Date.parse(from)) / 864e5)) : "");
+      setDoc({ ...e, credit_days: days, lines: e.lines.map((l) => ({ ...l, key: l.id, item_id: l.item_id || "" })) });
+    }
     if (!id && settings.data && !doc) {
       const d = today();
-      setDoc({ contact_id: params.get("contact") || "", job_id: params.get("job") || "", date: d, due_date: ["invoice", "bill"].includes(kind) ? addDays(d, settings.data.paymentTermsDays || 0) : "", reference: "", notes: "", terms: "",
+      setDoc({ contact_id: params.get("contact") || "", job_id: params.get("job") || "", date: d, due_date: ["invoice", "bill"].includes(kind) ? addDays(d, settings.data.paymentTermsDays || 0) : "", credit_days: ["invoice", "bill"].includes(kind) ? settings.data.paymentTermsDays || 0 : "", reference: "", notes: "", terms: "",
         doc_discount: 0, charges: 0, charges_label: "", adjustment: 0, return_stock: 1, lines: [blankLine()] });
       // credit note from an invoice / vendor credit from a bill: start from its contact and lines
       const from = params.get("from");
@@ -96,6 +100,7 @@ export default function DocumentForm({ kind }) {
       contact_id: x.party_match_id ? String(x.party_match_id) : d.contact_id,
       date: x.date || d.date,
       due_date: kind === "bill" && x.required_date ? x.required_date : termsDue || d.due_date,
+      credit_days: x.payment_terms_days != null ? x.payment_terms_days : kind === "bill" && x.required_date ? Math.max(0, Math.round((Date.parse(x.required_date) - Date.parse(x.date || today())) / 864e5)) : d.credit_days,
       reference: x.reference || (x.their_refs?.length ? `Your PR ${x.their_refs.join(", ")}` : d.reference),
       terms: x.payment_terms ? `Payment terms: ${x.payment_terms}` : d.terms,
       notes: [d.notes, !x.party_match_id && x.party_name ? `${isSale ? "Customer" : "Supplier"} on paper: ${x.party_name}` : null, kind !== "bill" && x.required_date ? `Needed by ${x.required_date}` : null, x.buyer_name ? `${isSale ? "Buyer" : "Contact"}: ${[x.buyer_name, x.contact_phone].filter(Boolean).join(", ")}` : null, x.delivery_location ? `Deliver to: ${x.delivery_location}` : null, x.notes].filter(Boolean).join("\n"),
@@ -185,7 +190,7 @@ export default function DocumentForm({ kind }) {
     if (!doc.contact_id) return setErr(`Choose a ${K.contact}`);
     if (lines.length === 0) return setErr("Add at least one item");
     const status = asEnquiry ? "enquiry" : issue ? ISSUE_STATUS[kind] : id ? doc.status : "draft";
-    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, reference: doc.reference, ...(String(doc.number || "").trim() ? { number: String(doc.number).trim() } : {}), ...(kind === "invoice" ? { dc_numbers: doc.dc_numbers || "" } : {}), notes: doc.notes, terms: doc.terms, status, lines,
+    const body = { kind, contact_id: Number(doc.contact_id), date: doc.date, due_date: doc.due_date || null, ...(["invoice", "bill"].includes(kind) ? { credit_days: doc.credit_days === "" ? null : Number(doc.credit_days) } : {}), reference: doc.reference, ...(String(doc.number || "").trim() ? { number: String(doc.number).trim() } : {}), ...(kind === "invoice" ? { dc_numbers: doc.dc_numbers || "" } : {}), notes: doc.notes, terms: doc.terms, status, lines,
       doc_discount: doc.doc_discount, charges: doc.charges, charges_label: doc.charges_label, adjustment: doc.adjustment, return_stock: doc.return_stock ? 1 : 0,
       ...(forJob ? { job_id: doc.job_id ? Number(doc.job_id) : null } : {}) };
     setBusy(true);
@@ -202,7 +207,7 @@ export default function DocumentForm({ kind }) {
   // picking a contact applies their payment terms to the due date
   const pickContact = (cid) => {
     const c = (contacts.data || []).find((x) => String(x.id) === String(cid));
-    setDoc((d) => ({ ...d, contact_id: cid, ...(["invoice", "bill"].includes(kind) && c?.payment_terms_days != null ? { due_date: addDays(d.date, c.payment_terms_days) } : {}) }));
+    setDoc((d) => ({ ...d, contact_id: cid, ...(["invoice", "bill"].includes(kind) && c?.payment_terms_days != null ? { due_date: addDays(d.date, c.payment_terms_days), credit_days: c.payment_terms_days } : {}) }));
   };
   const overLimit = kind === "invoice" && contact?.credit_limit && (!id || doc.status === "draft") && contact.outstanding + totals.total > contact.credit_limit;
   const showExtras = !isDc;
@@ -236,7 +241,21 @@ export default function DocumentForm({ kind }) {
           </Field>
           <Field label={`${K.label} number`} hint={id ? "Change it if needed (e.g. to match Zoho). Must be unique." : "Leave empty for the next number"}><input value={doc.number || ""} onChange={(e) => set("number", e.target.value)} placeholder={id ? "" : "Auto"} /></Field>
           <Field label="Date"><input type="date" value={doc.date} onChange={(e) => set("date", e.target.value)} /></Field>
-          {["invoice", "bill"].includes(kind) && <Field label="Due date"><input type="date" value={doc.due_date || ""} onChange={(e) => set("due_date", e.target.value)} /></Field>}
+          {["invoice", "bill"].includes(kind) && (() => {
+            const days = doc.credit_days === "" || doc.credit_days == null ? null : Number(doc.credit_days);
+            const from = kind === "invoice" ? doc.submitted_date : doc.date;
+            const due = days !== null && from ? addDays(from, days) : null;
+            return (
+              <Field label="Payment in (days)" hint={days === null ? "Empty = no due date"
+                : kind === "invoice" ? (doc.submitted_date ? `Due ${fmtDate(due)}: ${days} days from submission (${fmtDate(doc.submitted_date)})` : `${days} days from the day you mark it submitted`)
+                : `Due ${fmtDate(due)}`}>
+                <input type="number" min="0" step="1" value={doc.credit_days ?? ""} placeholder="e.g. 30"
+                  onChange={(e) => setDoc((d) => ({ ...d, credit_days: e.target.value, due_date: e.target.value === "" ? "" : addDays((kind === "invoice" && d.submitted_date) || d.date, Number(e.target.value)) }))} />
+                <div className="chips mt">{[0, 15, 30, 45, 60, 90].map((n) => <button type="button" key={n} className={`chip ${String(doc.credit_days) === String(n) ? "on" : ""}`}
+                  onClick={() => setDoc((d) => ({ ...d, credit_days: n, due_date: addDays((kind === "invoice" && d.submitted_date) || d.date, n) }))}>{n === 0 ? "Cash" : n}</button>)}</div>
+              </Field>
+            );
+          })()}
           <Field label={kind === "bill" ? "Supplier bill #" : kind === "credit_note" ? "Against invoice #" : kind === "vendor_credit" ? "Against bill #" : "Reference"}><input value={doc.reference || ""} onChange={(e) => set("reference", e.target.value)} /></Field>
           {kind === "invoice" && <Field label="DC numbers" hint="Printed on the invoice. Several are fine, with commas."><input value={doc.dc_numbers || ""} onChange={(e) => set("dc_numbers", e.target.value)} placeholder="DC-00012, DC-00013" /></Field>}
         </div>

@@ -1,7 +1,7 @@
 // Sending email (documents as PDF attachments) through the company's own mailbox (SMTP).
 // Settings come from the server environment: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_FROM.
 import nodemailer from "nodemailer";
-import { getSetting, httpError } from "./books.js";
+import { getSetting, httpError, markSubmitted } from "./books.js";
 import { documentPdf } from "./pdf.js";
 
 // tests swap in a fake transport that captures mail instead of sending it
@@ -40,7 +40,7 @@ export async function emailDocuments(db, userId, docIds, { to, cc, message } = {
     db.prepare("INSERT INTO email_log (to_addr, subject, document_ids, status, sent_by) VALUES (?, ?, ?, 'sent', ?)").run(toAddr, subject, docIds.join(","), userId);
     for (const d of docs) {
       db.prepare("INSERT INTO activity (user_id, action, entity, entity_id, summary) VALUES (?, 'emailed', ?, ?, ?)").run(userId, d.kind, d.id, `${d.number} to ${toAddr}`);
-      if (d.kind === "invoice" && !d.submitted_date) db.prepare("UPDATE documents SET submitted_date = date('now') WHERE id = ?").run(d.id);
+      if (d.kind === "invoice" && !d.submitted_date) markSubmitted(db, d.id);
     }
     return { to: toAddr, subject, count: docs.length };
   } catch (e) {

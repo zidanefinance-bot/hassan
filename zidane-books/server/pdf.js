@@ -44,7 +44,7 @@ export function documentPdf(db, docId) {
   const headBottom = pdf.y;
   pdf.fillColor(RED).font("Helvetica-Bold").fontSize(18).text(TITLE[d.kind], L, 48, { width: W, align: "right" });
   pdf.fillColor(INK).font("Helvetica-Bold").fontSize(11).text(d.number, { width: W, align: "right" });
-  pdf.font("Helvetica").fontSize(9).fillColor(MUTED).text([`Date: ${date(d.date)}`, d.due_date && !isDc && `Due: ${date(d.due_date)}`, job && !supplierSide && `Job: ${job.number}`, ref && `${!supplierSide && job?.customer_po_number ? "Your PO" : "Ref"}: ${ref}`, linked.length && `${isDc ? "Invoice" : "DC"}: ${linked.join(", ")}`].filter(Boolean).join("\n"), { width: W, align: "right" });
+  pdf.font("Helvetica").fontSize(9).fillColor(MUTED).text([`Date: ${date(d.date)}`, !isDc && (d.kind === "invoice" && !d.submitted_date && d.credit_days != null ? `Payment: ${d.credit_days ? `${d.credit_days} days from receipt` : "on receipt"}` : d.due_date && `Due: ${date(d.due_date)}`), job && !supplierSide && `Job: ${job.number}`, ref && `${!supplierSide && job?.customer_po_number ? "Your PO" : "Ref"}: ${ref}`, linked.length && `${isDc ? "Invoice" : "DC"}: ${linked.join(", ")}`].filter(Boolean).join("\n"), { width: W, align: "right" });
   let y = Math.max(headBottom, pdf.y) + 18;
 
   // bill to / deliver to

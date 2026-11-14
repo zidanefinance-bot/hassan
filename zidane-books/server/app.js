@@ -531,7 +531,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   api.post("/documents/:id/sign", docAction(DOC_WRITE, (req) => { J.signDc(db, req.user.id, id(req), req.body || {}); }));
   api.post("/documents/:id/submit", docAction(DOC_WRITE, (req, d) => {
     if (d.kind !== "invoice" || d.status !== "open") throw httpError(400, "Issue the invoice before marking it submitted");
-    db.prepare("UPDATE documents SET submitted_date = ? WHERE id = ?").run(req.body?.date || today(), d.id);
+    B.markSubmitted(db, d.id, /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : today());
     B.log(db, req.user.id, "submitted invoice", "invoice", d.id, d.number);
   }));
   api.post("/documents/:id/verify", (req, res) => {

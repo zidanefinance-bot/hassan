@@ -1459,3 +1459,26 @@ test("an invoice for a Job: only the Job's items, no more than ordered less what
   B.saveDocument(db, 1, { kind: "credit_note", contact_id: cust, job_id: jobId, status: "open", lines: [{ item_id: a, qty: 3, rate: 100 }] });
   B.setStatus(db, 1, draft, "open");
 });
+
+test("credit days: a bill is due N days from its date; an invoice N days from the day it's submitted", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const sup = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const item = db.prepare("SELECT id FROM items LIMIT 1").get().id;
+  const get = (id) => db.prepare("SELECT due_date, credit_days, submitted_date FROM documents WHERE id = ?").get(id);
+  const bill = B.saveDocument(db, 1, { kind: "bill", contact_id: sup, date: "2026-11-01", status: "open", credit_days: 15, lines: [{ item_id: item, qty: 1, rate: 10 }] });
+  assert.equal(get(bill).due_date, "2026-11-16");
+  const inv = B.saveDocument(db, 1, { kind: "invoice", contact_id: cust, date: "2026-11-01", status: "open", credit_days: 30, lines: [{ item_id: item, qty: 1, rate: 10 }] });
+  assert.equal(get(inv).due_date, "2026-12-01", "until submitted, from its date");
+  B.markSubmitted(db, inv, "2026-11-10");
+  assert.equal(get(inv).due_date, "2026-12-10", "30 days from submission");
+  B.saveDocument(db, 1, { kind: "invoice", contact_id: cust, date: "2026-11-01", status: "open", credit_days: 45, lines: [{ item_id: item, qty: 1, rate: 10 }] }, inv);
+  assert.equal(get(inv).due_date, "2026-12-25", "changed to 45 days, still from submission");
+  // an old invoice with only a due date keeps its length when submitted
+  const old = B.saveDocument(db, 1, { kind: "invoice", contact_id: cust, date: "2026-11-01", due_date: "2026-11-21", status: "open", lines: [{ item_id: item, qty: 1, rate: 10 }] });
+  db.prepare("UPDATE documents SET credit_days = NULL WHERE id = ?").run(old);
+  B.markSubmitted(db, old, "2026-11-05");
+  assert.deepEqual([get(old).credit_days, get(old).due_date], [20, "2026-11-25"]);
+});

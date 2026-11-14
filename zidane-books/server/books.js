@@ -201,6 +201,21 @@ export function checkJobQty(db, kind, job, lines, excludeId = 0) {
   }
 }
 
+// Due date from credit days: a bill from its date; an invoice from the day it was submitted (until then, from its date)
+const plusDays = (d, n) => new Date(Date.parse(String(d).slice(0, 10) + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+export function defaultCreditDays(db, contactId) {
+  const c = db.prepare("SELECT payment_terms_days FROM contacts WHERE id = ?").get(Number(contactId));
+  return c?.payment_terms_days ?? getSetting(db, "paymentTermsDays") ?? 0;
+}
+// the invoice went to the customer: its credit days start today (or the date given)
+export function markSubmitted(db, id, date = today()) {
+  const d = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
+  if (!d || d.kind !== "invoice") return;
+  const days = d.credit_days ?? (d.due_date ? Math.max(0, daysBetween(d.date, d.due_date)) : defaultCreditDays(db, d.contact_id));
+  db.prepare("UPDATE documents SET submitted_date = ?, credit_days = ?, due_date = ? WHERE id = ?").run(date, days, plusDays(date, days), id);
+}
+
 export function saveDocument(db, userId, input, id = null) {
   const kind = input.kind;
   if (!KIND_STATUSES[kind]) throw httpError(400, "Unknown document kind");
@@ -225,6 +240,13 @@ export function saveDocument(db, userId, input, id = null) {
     const dup = db.prepare("SELECT number FROM documents WHERE kind = 'bill' AND contact_id = ? AND lower(trim(reference)) = lower(trim(?)) AND status != 'void' AND id != ?").get(input.contact_id, input.reference, id || 0);
     if (dup) throw httpError(400, `This supplier's bill # ${input.reference.trim()} is already recorded as ${dup.number}`);
   }
+  // credit days → due date (an invoice counts from its submission once it has one)
+  let creditDays = input.credit_days === "" || input.credit_days == null ? null : Math.max(0, Math.round(Number(input.credit_days) || 0));
+  if (["invoice", "bill"].includes(kind)) {
+    if (creditDays === null && !input.due_date && !existing) creditDays = defaultCreditDays(db, input.contact_id);
+    if (creditDays !== null) input = { ...input, due_date: plusDays((kind === "invoice" && existing?.submitted_date) || input.date || today(), creditDays) };
+    else if (existing?.credit_days != null && input.due_date) creditDays = Math.max(0, daysBetween((kind === "invoice" && existing.submitted_date) || input.date || existing.date, input.due_date));
+  } else creditDays = null;
   const calc = computeTotals(input.lines, input);
   const isUpdate = Boolean(id);
   const returnStock = input.return_stock === false || input.return_stock === 0 ? 0 : 1;
@@ -263,6 +285,7 @@ export function saveDocument(db, userId, input, id = null) {
     }
     doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
     applyStock(db, doc, calc.lines);
+    db.prepare("UPDATE documents SET credit_days = ? WHERE id = ?").run(creditDays, id);
     log(db, userId, isUpdate ? "updated" : "created", kind, id, `${doc.number} · ${calc.total}`);
     // the DCs an invoice bills, as typed on the invoice (several are fine: "DC-00012, DC-00013")
     if (kind === "invoice" && input.dc_numbers !== undefined) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(String(input.dc_numbers || "").split(/[,\n]+/).map((x) => x.trim()).filter(Boolean).join(", ") || null, id);

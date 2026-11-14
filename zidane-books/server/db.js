@@ -42,6 +42,13 @@ export function openDb(file = process.env.DB_FILE || "data/zidane-books.db") {
   if (!db.prepare("SELECT 1 FROM pragma_table_info('documents') WHERE name = 'dc_numbers'").get()) db.exec("ALTER TABLE documents ADD COLUMN dc_numbers TEXT");
   if (!db.prepare("SELECT 1 FROM pragma_table_info('inbox_messages') WHERE name = 'body_html'").get()) db.exec("ALTER TABLE inbox_messages ADD COLUMN body_html TEXT");
   if (!db.prepare("SELECT 1 FROM pragma_table_info('items') WHERE name = 'notes'").get()) db.exec("ALTER TABLE items ADD COLUMN notes TEXT");
+  // credit days on an invoice / bill: an invoice's due date counts from the day it's submitted to the customer
+  if (!db.prepare("SELECT 1 FROM pragma_table_info('documents') WHERE name = 'credit_days'").get()) {
+    db.exec("ALTER TABLE documents ADD COLUMN credit_days INTEGER");
+    // once: existing due dates stay as they are; their days are read back from them (from the submission when there is one)
+    db.exec(`UPDATE documents SET credit_days = MAX(0, CAST(julianday(due_date) - julianday(CASE WHEN kind = 'invoice' AND submitted_date IS NOT NULL THEN submitted_date ELSE date END) AS INTEGER))
+      WHERE kind IN ('invoice','bill') AND due_date IS NOT NULL`);
+  }
   // cost per unit of a Job line taken from our own stock, fixed when it is marked "from stock" (editable on the Job)
   if (!db.prepare("SELECT 1 FROM pragma_table_info('job_items') WHERE name = 'stock_rate'").get()) db.exec("ALTER TABLE job_items ADD COLUMN stock_rate REAL");
   setupAccounts(db); // Chart of Accounts, and "paid through" on money records made before it
