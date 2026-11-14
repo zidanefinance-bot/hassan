@@ -1437,3 +1437,25 @@ test("audit fixes: paisa-only balance is paid, duplicate item lines share totals
   assert.ok(q && q.items.length >= 1, "listed for Accounts");
   assert.ok(bLine && bill);
 });
+
+test("an invoice for a Job: only the Job's items, no more than ordered less what's invoiced, also when a draft is issued later", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const [a, other] = db.prepare("SELECT id FROM items LIMIT 2").all().map((r) => r.id);
+  const job = J.createJob(db, 1, { customer_id: cust, items: [{ item_id: a, qty: 10, sale_rate: 100 }] });
+  const jobId = job.id ?? job;
+  const inv = (qty, status = "open", item = a) => ({ kind: "invoice", contact_id: cust, job_id: jobId, status, lines: [{ item_id: item, qty, rate: 100 }] });
+  const first = B.saveDocument(db, 1, inv(6));
+  assert.throws(() => B.saveDocument(db, 1, inv(5)), /only 4 .*left to invoice/);
+  assert.throws(() => B.saveDocument(db, 1, inv(1, "open", other)), /isn't on Job/);
+  assert.throws(() => B.saveDocument(db, 1, inv(11), first), /only 10 .*left to invoice/, "editing up past the Job");
+  B.saveDocument(db, 1, inv(10), first);
+  // a draft can be saved, but not issued past the Job
+  const draft = B.saveDocument(db, 1, inv(3, "draft"));
+  assert.throws(() => B.setStatus(db, 1, draft, "open"), /left to invoice/);
+  // a credit note gives the quantity back
+  B.saveDocument(db, 1, { kind: "credit_note", contact_id: cust, job_id: jobId, status: "open", lines: [{ item_id: a, qty: 3, rate: 100 }] });
+  B.setStatus(db, 1, draft, "open");
+});

@@ -56,7 +56,7 @@ export default function DocumentForm({ kind }) {
   const photo = useRef(null);
   // made for a Job: the Job's customer is fixed, and a DC carries only the Job's items
   const lockedJob = !isPurchase && kind !== "vendor_credit" && doc?.job_id ? String(doc.job_id) : "";
-  const dcJob = useLoad(isDc && lockedJob ? `/jobs/${lockedJob}` : null, [lockedJob]);
+  const dcJob = useLoad((isDc || kind === "invoice") && lockedJob ? `/jobs/${lockedJob}` : null, [lockedJob]);
   const jobItemIds = dcJob.data ? new Set(dcJob.data.items.map((i) => String(i.item_id)).filter((x) => x && x !== "null")) : null;
 
   useEffect(() => {

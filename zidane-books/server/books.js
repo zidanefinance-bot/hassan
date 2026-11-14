@@ -158,6 +158,7 @@ function checkJobDocument(db, kind, input, existing, jobId) {
     const name = db.prepare("SELECT name FROM contacts WHERE id = ?").get(job.customer_id)?.name;
     throw httpError(400, `This is for Job ${job.number}, so the customer must be ${name}. To deliver to someone else, make a new Job.`);
   }
+  if (kind === "invoice") { if (job && (input.status || existing?.status) === "open") checkJobQty(db, kind, job, input.lines, existing?.id || 0); return; }
   if (kind !== "dc") return;
   if (existing) {
     if (existing.job_id && Number(jobId || 0) !== existing.job_id) throw httpError(400, "A delivery challan can't move to another Job");
@@ -169,24 +170,34 @@ function checkJobDocument(db, kind, input, existing, jobId) {
     if (!changed) return;
   }
   if (!job || job.bags > 0) return; // ration DCs are made from the Job in bags (checked there)
+  checkJobQty(db, kind, job, input.lines, existing?.id || 0);
+}
+
+// A DC / invoice for a Job carries only the Job's items, and no more of each than the Job ordered, less what other
+// issued DCs delivered / other issued invoices billed (an invoice gets back what a credit note took off).
+export function checkJobQty(db, kind, job, lines, excludeId = 0) {
+  if (!job || job.bags > 0 || !["dc", "invoice"].includes(kind)) return;
+  const what = kind === "dc" ? "deliver" : "invoice";
   const items = db.prepare("SELECT ji.item_id, ji.description, ji.qty, COALESCE(i.name, ji.description) AS name, i.unit FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.job_id = ?").all(job.id);
   const onJob = new Map();
   for (const i of items) { const k = lineKey(i); const x = onJob.get(k) || { qty: 0, name: i.name, unit: i.unit || "" }; x.qty += i.qty; onJob.set(k, x); }
-  const sent = new Map();
-  for (const l of db.prepare("SELECT l.item_id, l.description, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = ? AND d.kind = 'dc' AND d.status IN ('issued','signed') AND d.id != ?").all(job.id, existing?.id || 0))
-    sent.set(lineKey(l), (sent.get(lineKey(l)) || 0) + l.qty);
+  const done = new Map();
+  const add = (rows, sign) => { for (const l of rows) done.set(lineKey(l), (done.get(lineKey(l)) || 0) + sign * l.qty); };
+  const q = (k, st) => db.prepare(`SELECT l.item_id, l.description, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = ? AND d.kind = '${k}' AND d.status IN (${st}) AND d.id != ?`).all(job.id, excludeId);
+  if (kind === "dc") add(q("dc", "'issued','signed'"), 1);
+  else { add(q("invoice", "'open'"), 1); add(q("credit_note", "'open'"), -1); }
   const want = new Map();
-  for (const l of input.lines.filter((x) => x.item_id || x.description)) {
+  for (const l of lines.filter((x) => x.item_id || x.description)) {
     const k = lineKey(l);
     if (!onJob.has(k)) {
       const name = l.item_id ? db.prepare("SELECT name FROM items WHERE id = ?").get(Number(l.item_id))?.name : l.description;
-      throw httpError(400, `${name || "This item"} isn't on Job ${job.number}. A DC can only carry the Job's items. Add it to the Job first.`);
+      throw httpError(400, `${name || "This item"} isn't on Job ${job.number}. ${kind === "dc" ? "A DC" : "An invoice"} for a Job carries only the Job's items. Add it to the Job first.`);
     }
     want.set(k, (want.get(k) || 0) + (Number(l.qty) || 0));
   }
-  for (const [k, q] of want) {
-    const x = onJob.get(k), left = round2(x.qty - (sent.get(k) || 0));
-    if (q > left + 0.001) throw httpError(400, `${x.name}: only ${Math.max(0, left)} ${x.unit} left to deliver on Job ${job.number} (ordered ${round2(x.qty)}), not ${round2(q)}.`);
+  for (const [k, qty] of want) {
+    const x = onJob.get(k), left = round2(x.qty - (done.get(k) || 0));
+    if (qty > left + 0.001) throw httpError(400, `${x.name}: only ${Math.max(0, left)} ${x.unit} left to ${what} on Job ${job.number} (ordered ${round2(x.qty)}), not ${round2(qty)}.`);
   }
 }
 
@@ -264,6 +275,8 @@ export function setStatus(db, userId, id, status, { admin = false } = {}) {
   if (!doc) throw httpError(404, "Not found");
   if (status === doc.status) return;
   checkTransition(db, doc, status, { admin });
+  if (doc.job_id && ((doc.kind === "dc" && ["issued", "signed"].includes(status) && doc.status === "draft") || (doc.kind === "invoice" && status === "open")))
+    checkJobQty(db, doc.kind, db.prepare("SELECT id, number, bags FROM jobs WHERE id = ?").get(doc.job_id), db.prepare("SELECT item_id, description, qty FROM document_lines WHERE document_id = ?").all(id), id);
   return tx(db, () => {
     reverseStock(db, id);
     db.prepare("UPDATE documents SET status = ? WHERE id = ?").run(status, id);
