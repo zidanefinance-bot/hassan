@@ -1384,3 +1384,28 @@ test("a paid bill shows 'paid' on the Job and in item history, not 'open'", () =
   assert.equal(st(), "paid");
   assert.equal(I.itemTransactions(db, item, all).find((t) => t.id === bill).display_status, "paid");
 });
+
+test("a DC for a Job: the Job's customer only, the Job's items only, no more than is left, and locked once invoiced", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const [c1, c2] = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 2").all().map((r) => r.id);
+  const [a, b, other] = db.prepare("SELECT id FROM items LIMIT 3").all().map((r) => r.id);
+  const job = J.createJob(db, 1, { customer_id: c1, items: [{ item_id: a, qty: 10, sale_rate: 100 }, { item_id: b, qty: 5, sale_rate: 50 }] });
+  const jobId = job.id ?? job;
+  const dc = (lines, extra = {}) => ({ kind: "dc", contact_id: c1, job_id: jobId, status: "issued", lines, ...extra });
+  const first = B.saveDocument(db, 1, dc([{ item_id: a, qty: 6 }]));
+  assert.throws(() => B.saveDocument(db, 1, dc([{ item_id: a, qty: 5 }])), /only 4 .*left to deliver/);
+  assert.throws(() => B.saveDocument(db, 1, dc([{ item_id: other, qty: 1 }])), /isn't on Job/);
+  assert.throws(() => B.saveDocument(db, 1, dc([{ item_id: b, qty: 1 }], { contact_id: c2 })), /customer must be/);
+  // editing: change qty within what's left is fine; another customer is not
+  B.saveDocument(db, 1, dc([{ item_id: a, qty: 10 }]), first);
+  assert.throws(() => B.saveDocument(db, 1, dc([{ item_id: a, qty: 11 }]), first), /left to deliver/);
+  assert.throws(() => B.saveDocument(db, 1, dc([{ item_id: a, qty: 10 }], { contact_id: c2 }), first), /customer must be/);
+  // invoiced: lines locked, notes still fine
+  const num = db.prepare("SELECT number FROM documents WHERE id = ?").get(first).number;
+  B.saveDocument(db, 1, { kind: "invoice", contact_id: c1, job_id: jobId, status: "open", dc_numbers: num, lines: [{ item_id: a, qty: 10, rate: 100 }] });
+  assert.throws(() => B.saveDocument(db, 1, dc([{ item_id: a, qty: 9 }]), first), /already invoiced/);
+  B.saveDocument(db, 1, dc([{ item_id: a, qty: 10 }], { notes: "gate 2" }), first);
+  assert.equal(db.prepare("SELECT notes FROM documents WHERE id = ?").get(first).notes, "gate 2");
+});

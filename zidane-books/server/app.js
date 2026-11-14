@@ -427,6 +427,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       applications: isCredit ? db.prepare("SELECT a.*, x.kind, x.number FROM payment_allocations a JOIN documents x ON x.id = a.document_id WHERE a.credit_id = ? ORDER BY a.id").all(d.id) : [],
       refunds: isCredit ? db.prepare("SELECT * FROM refunds WHERE credit_id = ? ORDER BY id").all(d.id) : [],
       contact: db.prepare("SELECT * FROM contacts WHERE id = ?").get(d.contact_id),
+      job_number: d.job_id ? db.prepare("SELECT number FROM jobs WHERE id = ?").get(d.job_id)?.number : null,
       lines: db.prepare("SELECT l.id, l.item_id, l.description, l.qty, l.rate, l.discount_pct, l.tax_rate, l.amount, l.job_id, j.number AS job_number, i.name AS item_name, i.unit FROM document_lines l LEFT JOIN items i ON i.id = l.item_id LEFT JOIN jobs j ON j.id = l.job_id WHERE document_id = ? ORDER BY l.id").all(d.id),
       payments: db.prepare(`SELECT a.id AS allocation_id, a.amount, a.date AS applied_on, COALESCE(p.id, c.id) AS id, CASE WHEN p.id IS NULL THEN 'credit' ELSE 'payment' END AS source,
         COALESCE(p.number, c.number) AS number, COALESCE(p.date, c.date) AS date, COALESCE(p.mode, CASE c.kind WHEN 'credit_note' THEN 'credit note' ELSE 'vendor credit' END) AS mode, COALESCE(p.reference, c.reference) AS reference, c.kind AS credit_kind

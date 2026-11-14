@@ -54,6 +54,10 @@ export default function DocumentForm({ kind }) {
     api(`/items/last-purchases?ids=${buyIds}${id ? `&exclude=${id}` : ""}`).then(setLastBuys).catch(() => {});
   }, [buyIds, id]);
   const photo = useRef(null);
+  // made for a Job: the Job's customer is fixed, and a DC carries only the Job's items
+  const lockedJob = !isPurchase && kind !== "vendor_credit" && doc?.job_id ? String(doc.job_id) : "";
+  const dcJob = useLoad(isDc && lockedJob ? `/jobs/${lockedJob}` : null, [lockedJob]);
+  const jobItemIds = dcJob.data ? new Set(dcJob.data.items.map((i) => String(i.item_id)).filter((x) => x && x !== "null")) : null;
 
   useEffect(() => {
     if (id && existing.data) setDoc({ ...existing.data, lines: existing.data.lines.map((l) => ({ ...l, key: l.id, item_id: l.item_id || "" })) });
@@ -222,11 +226,12 @@ export default function DocumentForm({ kind }) {
       )}
       <div className="card form doc-form">
         <div className="row-4">
-          <Field label={`${K.contact === "customer" ? "Customer" : "Supplier"} *`}>
+          <Field label={`${K.contact === "customer" ? "Customer" : "Supplier"} *`} hint={lockedJob ? `Fixed: this is for ${doc.job_number || "a Job"}` : undefined}>
             <div className="with-btn">
-              <Picker options={contactOptions(contacts.data)} value={doc.contact_id} onChange={(v) => pickContact(String(v))} placeholder={`Type ${K.contact} name…`}
+              {lockedJob ? <input value={contact?.name || ""} disabled title="This is for a Job: its customer can't change" />
+              : <><Picker options={contactOptions(contacts.data)} value={doc.contact_id} onChange={(v) => pickContact(String(v))} placeholder={`Type ${K.contact} name…`}
                 createLabel={K.contact} onCreate={canAddContact(can, K.contact) ? (name) => setAddingContact(name) : null} />
-              {canAddContact(can, K.contact) && <button type="button" className="btn sm" title={`New ${K.contact}`} onClick={() => setAddingContact("")}>+</button>}
+              {canAddContact(can, K.contact) && <button type="button" className="btn sm" title={`New ${K.contact}`} onClick={() => setAddingContact("")}>+</button>}</>}
             </div>
           </Field>
           <Field label={`${K.label} number`} hint={id ? "Change it if needed (e.g. to match Zoho). Must be unique." : "Leave empty for the next number"}><input value={doc.number || ""} onChange={(e) => set("number", e.target.value)} placeholder={id ? "" : "Auto"} /></Field>
@@ -261,7 +266,7 @@ export default function DocumentForm({ kind }) {
                   <td>
                     {l.ai && l.ai !== "high" && <small className="ai-flag" title="What the paper said">check: “{l.ai_text}”
                       {!l.item_id && <> · <button type="button" className="link-btn" onClick={() => setAddingItem({ line: i, name: l.ai_text, preset: { unit: unitOf(l.ai_unit), category: guessCategory(l.ai_text, items.data, settings.data?.itemCategories), [isSale ? "sale_rate" : "purchase_rate"]: l.ai_rate ?? "" } })}>+ add as new item</button></>}</small>}
-                    <Picker options={itemOptions(items.data)} value={l.item_id} onChange={(v) => pickItem(i, v)} emptyLabel="— custom line (not an item) —" placeholder="Type item name or SKU…"
+                    <Picker options={itemOptions(jobItemIds ? (items.data || []).filter((x) => jobItemIds.has(String(x.id))) : items.data)} value={l.item_id} onChange={(v) => pickItem(i, v)} emptyLabel="— custom line (not an item) —" placeholder="Type item name or SKU…"
                       createLabel="item" onCreate={(name) => setAddingItem({ line: i, name })} />
                     {!l.item_id && <input className="mt" placeholder="Description" value={l.description || ""} onChange={(e) => setLine(i, { description: e.target.value })} />}
                     {forJob && (jobs.data || []).length > 0 && (

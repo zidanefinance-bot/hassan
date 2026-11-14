@@ -140,6 +140,56 @@ function renumber(db, userId, doc, number) {
   log(db, userId, "changed number", doc.kind, doc.id, `${doc.number} → ${n}`);
 }
 
+// A DC / invoice / quote made for a Job is for that Job's customer, and a DC carries only that Job's items, up to
+// what is still to deliver. A DC that is invoiced (or a ration DC, counted in bags) keeps its customer and lines.
+const lineKey = (l) => (l.item_id ? `i${Number(l.item_id)}` : `d${String(l.description || "").trim().toLowerCase()}`);
+const sameLines = (a, b) => {
+  const norm = (ls) => ls.filter((l) => l.item_id || l.description).map((l) => `${lineKey(l)}|${round2(Number(l.qty) || 0)}`).sort().join(";");
+  return norm(a) === norm(b);
+};
+function dcInvoices(db, dc) {
+  if (!dc.job_id) return [];
+  return db.prepare("SELECT id, number, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status IN ('open','draft')").all(dc.job_id)
+    .filter((i) => (i.dc_numbers ? i.dc_numbers.split(",").map((x) => x.trim()).includes(dc.number) : i.id > dc.id)).map((i) => i.number);
+}
+function checkJobDocument(db, kind, input, existing, jobId) {
+  const job = jobId ? db.prepare("SELECT id, number, customer_id, bags FROM jobs WHERE id = ?").get(jobId) : null;
+  if (job && ["quote", "invoice", "dc", "credit_note"].includes(kind) && Number(input.contact_id) !== job.customer_id) {
+    const name = db.prepare("SELECT name FROM contacts WHERE id = ?").get(job.customer_id)?.name;
+    throw httpError(400, `This is for Job ${job.number}, so the customer must be ${name}. To deliver to someone else, make a new Job.`);
+  }
+  if (kind !== "dc") return;
+  if (existing) {
+    if (existing.job_id && Number(jobId || 0) !== existing.job_id) throw httpError(400, "A delivery challan can't move to another Job");
+    const before = db.prepare("SELECT item_id, description, qty FROM document_lines WHERE document_id = ?").all(existing.id);
+    const changed = Number(input.contact_id) !== existing.contact_id || !sameLines(before, input.lines);
+    const inv = changed && existing.status !== "draft" ? dcInvoices(db, existing) : [];
+    if (inv.length) throw httpError(400, `${existing.number} is already invoiced (${inv.join(", ")}), so its customer and items can't change. Fix it with a credit note, or change the invoice first.`);
+    if (changed && existing.bags > 0) throw httpError(400, `${existing.number} is counted in bags. To change it, delete it and make the DC again from the Job.`);
+    if (!changed) return;
+  }
+  if (!job || job.bags > 0) return; // ration DCs are made from the Job in bags (checked there)
+  const items = db.prepare("SELECT ji.item_id, ji.description, ji.qty, COALESCE(i.name, ji.description) AS name, i.unit FROM job_items ji LEFT JOIN items i ON i.id = ji.item_id WHERE ji.job_id = ?").all(job.id);
+  const onJob = new Map();
+  for (const i of items) { const k = lineKey(i); const x = onJob.get(k) || { qty: 0, name: i.name, unit: i.unit || "" }; x.qty += i.qty; onJob.set(k, x); }
+  const sent = new Map();
+  for (const l of db.prepare("SELECT l.item_id, l.description, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = ? AND d.kind = 'dc' AND d.status IN ('issued','signed') AND d.id != ?").all(job.id, existing?.id || 0))
+    sent.set(lineKey(l), (sent.get(lineKey(l)) || 0) + l.qty);
+  const want = new Map();
+  for (const l of input.lines.filter((x) => x.item_id || x.description)) {
+    const k = lineKey(l);
+    if (!onJob.has(k)) {
+      const name = l.item_id ? db.prepare("SELECT name FROM items WHERE id = ?").get(Number(l.item_id))?.name : l.description;
+      throw httpError(400, `${name || "This item"} isn't on Job ${job.number}. A DC can only carry the Job's items. Add it to the Job first.`);
+    }
+    want.set(k, (want.get(k) || 0) + (Number(l.qty) || 0));
+  }
+  for (const [k, q] of want) {
+    const x = onJob.get(k), left = round2(x.qty - (sent.get(k) || 0));
+    if (q > left + 0.001) throw httpError(400, `${x.name}: only ${Math.max(0, left)} ${x.unit} left to deliver on Job ${job.number} (ordered ${round2(x.qty)}), not ${round2(q)}.`);
+  }
+}
+
 export function saveDocument(db, userId, input, id = null) {
   const kind = input.kind;
   if (!KIND_STATUSES[kind]) throw httpError(400, "Unknown document kind");
@@ -159,6 +209,7 @@ export function saveDocument(db, userId, input, id = null) {
   }
   const jobId = input.job_id === undefined ? existing?.job_id : input.job_id || null;
   if (jobId && jobId !== existing?.job_id && db.prepare("SELECT closed FROM jobs WHERE id = ?").get(jobId)?.closed) throw httpError(400, "That Job is closed");
+  checkJobDocument(db, kind, input, existing, jobId ? Number(jobId) : null);
   if (kind === "bill" && input.reference?.trim()) {
     const dup = db.prepare("SELECT number FROM documents WHERE kind = 'bill' AND contact_id = ? AND lower(trim(reference)) = lower(trim(?)) AND status != 'void' AND id != ?").get(input.contact_id, input.reference, id || 0);
     if (dup) throw httpError(400, `This supplier's bill # ${input.reference.trim()} is already recorded as ${dup.number}`);
