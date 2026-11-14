@@ -6,6 +6,7 @@ import * as R from "./reports.js";
 import { createApp } from "./app.js";
 import { ensureAdmin, seedDemo } from "./seed.js";
 import * as J from "./jobs.js";
+import * as I from "./items.js";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -1318,4 +1319,25 @@ test("item history popup: Jobs for Sales and Operations, each sees only their ow
     assert.ok(!s.transactions.some((t) => ["po", "bill"].includes(t.kind)), "no POs / bills for Sales");
     assert.equal(s.rates.purchase, undefined);
   } finally { server.close(); }
+});
+
+test("buying again: a PO / bill line shows the item's last bill from any supplier, and a cheaper one if there was", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const all = () => true;
+  const [s1, s2] = db.prepare("SELECT id, name FROM contacts WHERE type = 'supplier' LIMIT 2").all();
+  const item = db.prepare("INSERT INTO items (name, unit) VALUES ('Test Mop', 'pcs')").run().lastInsertRowid;
+  B.saveDocument(db, 1, { kind: "bill", contact_id: s1.id, date: "2026-09-01", status: "open", lines: [{ item_id: item, qty: 5, rate: 90 }] });
+  const b2 = B.saveDocument(db, 1, { kind: "bill", contact_id: s2.id, date: "2026-10-01", status: "open", lines: [{ item_id: item, qty: 5, rate: 100, discount_pct: 10 }] });
+  B.saveDocument(db, 1, { kind: "bill", contact_id: s1.id, date: "2026-10-05", status: "draft", lines: [{ item_id: item, qty: 5, rate: 50 }] });
+  let x = I.lastPurchases(db, [item], all)[item];
+  assert.deepEqual([x.last.rate, x.last.supplier, x.last.date], [90, s2.name, "2026-10-01"], "after discount, a draft doesn't count");
+  assert.equal(x.cheapest, null, "same rate elsewhere is not 'cheaper'");
+  B.saveDocument(db, 1, { kind: "bill", contact_id: s1.id, date: "2026-10-03", status: "open", lines: [{ item_id: item, qty: 5, rate: 80 }] });
+  x = I.lastPurchases(db, [item], all)[item];
+  assert.equal(x.last.rate, 80);
+  x = I.lastPurchases(db, [item], all, db.prepare("SELECT MAX(id) AS m FROM documents WHERE kind = 'bill' AND status = 'open'").get().m)[item];
+  assert.equal(x.last.document_id, b2, "the bill being edited is left out");
+  assert.deepEqual(I.lastPurchases(db, [item], (p) => p !== "cost.view"), {}, "no costs for Sales");
 });

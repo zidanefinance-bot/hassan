@@ -67,6 +67,23 @@ export function itemRates(db, itemId, can) {
   return out;
 }
 
+// Buying again: each item's last supplier bill from anyone (rate after discount, who, when), and the cheapest
+// recent one if another supplier was cheaper. Shown under the lines of a PO / bill. Costs only.
+export function lastPurchases(db, itemIds, can, excludeDocId = 0) {
+  if (!can("cost.view")) return {};
+  const out = {};
+  const q = db.prepare(`SELECT d.id, d.number, d.date, c.name AS supplier, l.rate * (1 - l.discount_pct / 100) AS rate FROM document_lines l JOIN documents d ON d.id = l.document_id JOIN contacts c ON c.id = d.contact_id
+    WHERE l.item_id = ? AND d.kind = 'bill' AND d.status = 'open' AND d.id != ? AND l.rate > 0 ORDER BY d.date DESC, d.id DESC LIMIT 20`);
+  for (const id of [...new Set(itemIds.map(Number).filter(Boolean))].slice(0, 200)) {
+    const rows = q.all(id, excludeDocId || 0);
+    if (!rows.length) continue;
+    const last = rows[0], cheapest = rows.reduce((a, b) => (b.rate < a.rate ? b : a));
+    const shape = (r) => ({ rate: round2(r.rate), supplier: r.supplier, date: r.date, number: r.number, document_id: r.id });
+    out[id] = { last: shape(last), cheapest: cheapest.rate < last.rate - 0.005 && cheapest.supplier !== last.supplier ? shape(cheapest) : null };
+  }
+  return out;
+}
+
 // for the line editor: what we last charged this customer / paid this supplier for the item
 export function lastRate(db, itemId, contactId, side, can) {
   const kinds = side === "sale" ? (can("price.view") ? ["invoice", "quote"] : []) : can("cost.view") ? ["bill", "po"] : [];

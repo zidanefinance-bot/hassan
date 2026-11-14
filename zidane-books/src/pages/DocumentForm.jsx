@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { addDays, api, Field, KIND, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
+import { addDays, api, Field, fmtDate, KIND, money, num, PageHead, today, useAuth, useLoad, useToast } from "../lib.jsx";
 import Picker from "../components/Picker.jsx";
 import { cleanLine, guessCategory, learnedLines, missingLines, partyPreset, unitOf } from "../components/draftLines.js";
 import NewItems from "../components/NewItems.jsx";
@@ -46,6 +46,13 @@ export default function DocumentForm({ kind }) {
   const [inboxId, setInboxId] = useState(params.get("inbox"));
   const [draft, setDraft] = useState(null);
   const [reading, setReading] = useState(false);
+  // buying again: the last bill for each item (any supplier), shown under its line on a PO / bill
+  const [lastBuys, setLastBuys] = useState({});
+  const buyIds = isPurchase && can("cost.view") && doc ? [...new Set(doc.lines.map((l) => l.item_id).filter(Boolean))].sort().join(",") : "";
+  useEffect(() => {
+    if (!buyIds) return;
+    api(`/items/last-purchases?ids=${buyIds}${id ? `&exclude=${id}` : ""}`).then(setLastBuys).catch(() => {});
+  }, [buyIds, id]);
   const photo = useRef(null);
 
   useEffect(() => {
@@ -156,6 +163,7 @@ export default function DocumentForm({ kind }) {
   };
 
   if (!doc) return <div className="empty">Loading…</div>;
+  const lastBuy = lastBuys || {};
   const set = (k, v) => setDoc((d) => ({ ...d, [k]: v }));
   const setLine = (i, patch) => setDoc((d) => ({ ...d, lines: d.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
   const pickItem = (i, itemId, list = items.data) => {
@@ -262,6 +270,10 @@ export default function DocumentForm({ kind }) {
                         {(jobs.data || []).filter((j) => String(j.id) !== String(doc.job_id)).map((j) => <option key={j.id} value={j.id}>For {j.number} · {j.customer_name}{j.customer_po_number ? ` · PO ${j.customer_po_number}` : ""}</option>)}
                       </select>
                     )}
+                    {isPurchase && l.item_id && lastBuy[l.item_id] && (() => { const b = lastBuy[l.item_id]; const diff = Number(l.rate) > 0 ? Number(l.rate) - b.last.rate : 0; return (
+                      <small className="last-buy">Last bought <button type="button" className="link-btn" title="Use this rate" onClick={() => setLine(i, { rate: b.last.rate })}>{money(b.last.rate)}</button> from <b>{b.last.supplier}</b> · {fmtDate(b.last.date)} ({b.last.number})
+                        {Math.abs(diff) >= 0.01 && <span className={diff > 0 ? "neg" : "pos"}> · now {diff > 0 ? "+" : "−"}{money(Math.abs(diff))}</span>}
+                        {b.cheapest && <> · cheapest <button type="button" className="link-btn" onClick={() => setLine(i, { rate: b.cheapest.rate })}>{money(b.cheapest.rate)}</button> from <b>{b.cheapest.supplier}</b> ({fmtDate(b.cheapest.date)})</>}</small>); })()}
                     {it && isSale && it.track_stock && Number(l.qty) > it.stock_qty && <small className="neg">Only {it.stock_qty} in stock</small>}
                   </td>
                   <td><input type="number" step="0.01" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>

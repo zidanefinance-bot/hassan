@@ -572,3 +572,6 @@ td.nowrap, .nowrap { white-space: nowrap; }
 .item-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted #9aa3b2; text-underline-offset: 3px; }
 .item-link:hover { color: var(--brand, #c62828); }
 @media print { .item-link { text-decoration: none; } }
+/* under a PO / bill line: the last time we bought it */
+.last-buy { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.last-buy .link-btn { font-size: 12px; }

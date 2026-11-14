@@ -271,6 +271,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
     const q = `%${req.query.q || ""}%`;
     res.json(db.prepare("SELECT * FROM items WHERE active = 1 AND (name LIKE ? OR IFNULL(sku,'') LIKE ? OR IFNULL(category,'') LIKE ?) ORDER BY name").all(q, q, q).map((i) => shapeItem(req, i)));
   });
+  api.get("/items/last-purchases", (req, res) => res.json(I.lastPurchases(db, String(req.query.ids || "").split(","), cans(req), Number(req.query.exclude) || 0)));
   api.get("/items/last-rate", (req, res) => {
     res.json(I.lastRate(db, Number(req.query.item_id), Number(req.query.contact_id), req.query.side === "purchase" ? "purchase" : "sale", cans(req)));
   });
