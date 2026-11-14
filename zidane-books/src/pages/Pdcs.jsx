@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, Field, fmtDate, Loading, Modal, money, PageHead, today, useLoad, useToast } from "../lib.jsx";
 import Picker from "../components/Picker.jsx";
 import AccountSelect from "../components/AccountSelect.jsx";
+import ShareButton from "../components/ShareButton.jsx";
 import { contactOptions } from "./DocumentForm.jsx";
 
 const TONE = { overdue: "red", soon: "red", week: "amber", later: "blue", cleared: "green", cancelled: "grey", bounced: "red" };
@@ -94,6 +95,7 @@ function PdcView({ id, onClose, onChanged }) {
           </dl>
           <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
             <a className="btn" href={`/api/pdcs/${p.id}/receiving.pdf`} target="_blank" rel="noreferrer">⬇ Receiving slip (PDF)</a>
+            <ShareButton url={`/api/pdcs/${p.id}/receiving.pdf`} title={`Cheque receiving ${p.number}`} text={`Cheque ${p.cheque_no} · ${p.contact_name}`} label="Share slip" />
             {p.status === "issued" && <>
               <button className="btn primary" onClick={() => confirm(`Cheque ${p.cheque_no} cleared from the bank? This records the payment of ${money(p.amount)}${p.bills.length ? " against its bills" : ""}.`) && act(() => api(`/pdcs/${p.id}/clear`, { method: "POST", body: {} }), "Cleared: payment recorded")}>Mark cleared (paid)</button>
               <button className="btn ghost" onClick={() => setEdit(true)}>Edit</button>

@@ -93,6 +93,12 @@ export async function downloadItemsPng(items, { withRates = false, title = "Item
     const blob = await new Promise((ok) => c.toBlob(ok, "image/png"));
     files.push({ blob, name: `${file}${parts.length > 1 ? `-part${pi + 1}` : ""}.png` });
   }
+  // on a phone: straight to the share sheet (WhatsApp…); elsewhere, or if sharing isn't allowed, download
+  const asFiles = files.map((f) => new File([f.blob], f.name, { type: "image/png" }));
+  if (navigator.canShare?.({ files: asFiles })) {
+    try { await navigator.share({ files: asFiles, title }); return files.length; }
+    catch (e) { if (e.name === "AbortError") return files.length; }
+  }
   for (const [k, f] of files.entries()) {
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(f.blob), download: f.name });
     setTimeout(() => { a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, k * 600);

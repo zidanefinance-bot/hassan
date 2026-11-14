@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast, SHOW_AS_OPTIONS } from "../lib.jsx";
 import { ItemName } from "../components/ItemHistory.jsx";
+import ShareButton from "../components/ShareButton.jsx";
 import AccountSelect from "../components/AccountSelect.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
 import { PdcForm } from "./Pdcs.jsx";
@@ -205,6 +206,7 @@ export default function DocumentView({ kind }) {
             )}
             {kind === "bill" && can("money") && d.status === "open" && d.balance > 0 && <button className="btn" onClick={() => setModal("pdc")}>Give PDC cheque</button>}
             <button className="btn" onClick={() => window.print()}>Print / PDF</button>
+            <ShareButton url={`/api/documents/${d.id}/pdf`} title={`${KIND[kind].label} ${d.number}`} text={`${KIND[kind].label} ${d.number} · ${d.contact?.name || ""}`} />
             {writer && !["draft", "void", "enquiry"].includes(d.status) && <button className="btn" onClick={() => setModal("email")}>Email</button>}
             {phone && <a className="btn wa-btn" href={`https://wa.me/${phone}?text=${encodeURIComponent(waText(d, company))}`} target="_blank" rel="noreferrer">WhatsApp</a>}
             {writer && ["open", "issued"].includes(d.status) && !(d.paid > 0) && (!d.verified_at || can("admin")) && ["invoice", "bill", "dc", "credit_note", "vendor_credit"].includes(kind) && (!isCredit || d.balance === undefined || d.balance === d.total) && <button className="btn ghost danger" onClick={() => confirm(`Void ${d.number}?${isDc || kind === "bill" ? " Stock will be reversed." : ""}`) && post("/status", { status: "void" }, "Voided")}>Void</button>}
