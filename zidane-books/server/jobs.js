@@ -367,14 +367,18 @@ export function jobEconomics(db, jobId) {
   const stock = stockLines(db, items, billedQty);
   const fromStock = round2(stock.reduce((a, l) => a + l.amount, 0));
   const noCost = stock.filter((l) => l.no_cost).map((l) => l.name);
+  // marked "bought" but no supplier bill on this Job covers it: its cost is missing, so the profit is too high
+  const claimBill = claimPooled(lineTotals(db, jobId, "bill", ["open"]));
+  const unbilled = items.filter((i) => i.procurement_status === "bought" && claimBill(i, i.qty) + 0.001 < i.qty).map((i) => i.item_name || i.description);
   const direct = round2(db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE job_id = ?").get(jobId).v);
   const revenue = invoiced || expected;
   const cost = round2(purchases + fromStock + direct);
   return { expected_revenue: expected, invoiced_revenue: invoiced, revenue_basis: invoiced ? "invoiced" : "expected", purchases, bought_for_stock: toStock, billed_extras: billedExtras, stock_cost: fromStock, stock_lines: stock, stock_no_cost: noCost, direct_costs: direct, total_cost: cost,
     gross_profit: round2(revenue - cost), margin_pct: revenue ? round2(((revenue - cost) / revenue) * 100) : 0,
     // profit isn't final while anything is still to buy, or nothing bought has a supplier bill yet
-    cost_pending: purchases + fromStock === 0 || noCost.length > 0 || items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)),
-    cost_pending_reason: purchases + fromStock === 0 && !noCost.length ? "no_bill" : items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)) ? "still_buying" : noCost.length ? "no_stock_cost" : null };
+    cost_pending: purchases + fromStock === 0 || noCost.length > 0 || unbilled.length > 0 || items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)),
+    cost_pending_reason: purchases + fromStock === 0 && !noCost.length ? "no_bill" : items.some((i) => ["to_buy", "partial"].includes(i.procurement_status)) ? "still_buying" : unbilled.length ? "bought_no_bill" : noCost.length ? "no_stock_cost" : null,
+    bought_no_bill: unbilled };
 }
 
 // One Job, shaped for the viewer's role (see auth.js caps)
@@ -389,12 +393,17 @@ export function jobDetail(db, id, can) {
   const docs = db.prepare(`SELECT d.id, d.kind, d.number, d.date, d.status, d.total, d.submitted_date, d.verified_at, d.signed_at, d.signed_by_name, c.name AS contact_name, ${PAID_SQL} AS paid FROM documents d JOIN contacts c ON c.id = d.contact_id
     WHERE d.job_id = ? OR EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = d.id AND l.job_id = ?) ORDER BY d.id`).all(id, id)
     .map((d) => ({ ...d, display_status: displayStatus(d, d.paid) })); // a paid bill / invoice shows "paid", not "open"
+  // the same item twice on a Job (two "Tap Handle" lines): share its delivered / invoiced / billed total between
+  // the lines instead of showing the whole total on each; the last line gets whatever is over
+  const lastOf = new Map(items.map((i) => [i.item_id ?? `d:${i.description}`, i.id]));
+  const share = (fn) => { const claim = claimPooled(fn); return (i) => round2(claim(i, lastOf.get(i.item_id ?? `d:${i.description}`) === i.id ? Infinity : i.qty)); };
+  const dQty = share(delivered), iQty = share(invoiced), bQty = share(bought);
   const out = {
     ...job,
     items: items.map((i) => ({
       id: i.id, item_id: i.item_id, name: i.item_name || i.description, unit: i.unit || "", qty: i.qty, procurement_status: i.procurement_status, stock_qty: i.stock_qty,
-      ...(can("sales.read") ? { delivered_qty: delivered(i).qty, invoiced_qty: invoiced(i).qty, ready_qty: ready(i) } : { delivered_qty: delivered(i).qty }),
-      ...(can("ops.read") ? { purchased_qty: bought(i).qty } : {}),
+      ...(can("sales.read") ? { delivered_qty: dQty(i), invoiced_qty: iQty(i), ready_qty: ready(i) } : { delivered_qty: dQty(i) }),
+      ...(can("ops.read") ? { purchased_qty: bQty(i) } : {}),
       ...(can("price.view") ? { sale_rate: i.sale_rate, tax_rate: i.tax_rate, wht_income_pct: i.wht_income_pct, wht_sales_pct: i.wht_sales_pct } : {}),
       ...(can("cost.view") ? { purchase_rate: i.purchase_rate } : {}),
     })),

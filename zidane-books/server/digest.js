@@ -1,7 +1,7 @@
 // Morning brief: one email every morning to the director with everything that is stuck, each as a plain question
 // ("DC went 9 days ago, why no invoice?"), oldest first, with a link to open it. Nothing to say → a short "all clear".
 import nodemailer from "nodemailer";
-import { getSetting, PAID_SQL, round2, setSetting, today } from "./books.js";
+import { getSetting, PAID_SQL, round2, setSetting, today, UNUSED_SQL } from "./books.js";
 import { jobList, netBought, OPS_STATUSES, procurementList, uninvoicedDcs } from "./jobs.js";
 import { DOC_PATH } from "./collab.js";
 import { dueInstallments } from "./loans.js";
@@ -102,6 +102,13 @@ export function buildBrief(db) {
   // 10c. bank loan installments coming due
   add("🏛", "Loan ki qist: bank mein paisa rakho", "Qist ki date se pehle bank balance check karo. Bank ne kaat li ho to Loans page par 'Paid' karo.",
     dueInstallments(db, t, 7).map((i) => ({ text: `${i.lender} · qist ${i.seq}`, ask: `${rs(i.amount)} · ${i.days_left < 0 ? `${ago(-i.days_left)} se due. Bank ne kaati? Paid mark karo.` : i.days_left === 0 ? "AAJ due hai!" : `${i.days_left} din mein (${dd(i.due_date)})`}`, link: `/loans?open=${i.loan_id}`, days: -i.days_left })), "red");
+
+  // 10d. payments not applied to the bills / invoices they were for (those still look unpaid)
+  const loose = db.prepare(`SELECT p.*, c.name AS contact_name, ${UNUSED_SQL} AS unused,
+      (SELECT COUNT(*) FROM documents d WHERE d.contact_id = p.contact_id AND d.kind = CASE p.direction WHEN 'out' THEN 'bill' ELSE 'invoice' END AND d.status = 'open' AND d.total - ${PAID_SQL} >= 1) AS open_docs
+    FROM payments p JOIN contacts c ON c.id = p.contact_id ORDER BY p.date`).all().filter((p) => p.unused >= 1 && p.open_docs > 0);
+  add("🔗", "Payment hui, bill/invoice par lagi nahi", "Payment kholo → Apply. Warna bill 'open' hi dikhega.",
+    loose.map((p) => ({ text: `${p.number} · ${p.contact_name}`, ask: `${rs(p.unused)} kisi bill/invoice par nahi lage, aur ${p.open_docs} open hain. Kis par lagane hain?`, link: `/payments/${p.id}`, days: days(p.date, t) })), "red");
 
   // 11. what we owe suppliers
   const pay = docs("d.kind = 'bill' AND d.status = 'open' AND d.due_date <= date(?, '+3 days')", t).filter((d) => d.balance > 0.5).sort((a, b) => a.due_date.localeCompare(b.due_date));

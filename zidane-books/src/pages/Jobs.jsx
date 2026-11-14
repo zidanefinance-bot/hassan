@@ -357,7 +357,7 @@ export function JobView() {
                   <dt className="indent">Freight & direct costs</dt><dd className="muted">− {money(j.economics.direct_costs)}</dd>
                   <dt className="grand">Gross profit</dt><dd className={`grand ${j.economics.gross_profit < 0 ? "neg" : "pos"}`}>{money(j.economics.gross_profit)} <small className="muted">({j.economics.margin_pct}%)</small></dd>
                 </dl>
-                {j.economics.cost_pending && <p className="neg small">{j.economics.cost_pending_reason === "no_bill" ? "Profit not final: no supplier bill on this Job yet." : j.economics.cost_pending_reason === "no_stock_cost" ? `Profit not final: no cost known for ${j.economics.stock_no_cost.join(", ")} from stock. Click "set cost" above.` : "Profit not final: some items are still to buy."}</p>}
+                {j.economics.cost_pending && <p className="neg small">{j.economics.cost_pending_reason === "no_bill" ? "Profit not final: no supplier bill on this Job yet." : j.economics.cost_pending_reason === "bought_no_bill" ? `Profit not final: marked bought but no supplier bill on this Job for ${j.economics.bought_no_bill.join(", ")}. Add the bill (or mark it "from stock").` : j.economics.cost_pending_reason === "no_stock_cost" ? `Profit not final: no cost known for ${j.economics.stock_no_cost.join(", ")} from stock. Click "set cost" above.` : "Profit not final: some items are still to buy."}</p>}
               </section>
             ) : (
               <section className="card"><h3>Documents</h3>{j.documents.length === 0 ? <p className="muted">None yet.</p> : <DocList docs={j.documents} />}</section>

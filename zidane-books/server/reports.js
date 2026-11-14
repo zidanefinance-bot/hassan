@@ -204,6 +204,12 @@ export function home(db, user, can, { from, to } = {}) {
     const inst = dueInstallments(db, t, 7);
     queues.unshift(q("Accounts", "loan", "Loan installments due: keep money in the bank", inst.map((i) => ({ label: `${i.lender} · Rs ${Math.round(i.amount).toLocaleString("en-PK")} · installment ${i.seq}`,
       sub: i.days_left < 0 ? `Due ${i.due_date}, PAST: paid? Mark it paid on the loan` : i.days_left === 0 ? "Due TODAY" : `Due ${i.due_date} (in ${i.days_left} day${i.days_left === 1 ? "" : "s"})`, link: `/loans?open=${i.loan_id}`, due: i.due_date })), "red"));
+    // money paid / received that isn't applied to the bills / invoices it was for: they still show "open"
+    const loose = db.prepare(`SELECT p.*, c.name AS contact_name, ${UNUSED_SQL} AS unused,
+        (SELECT COUNT(*) FROM documents d WHERE d.contact_id = p.contact_id AND d.kind = CASE p.direction WHEN 'out' THEN 'bill' ELSE 'invoice' END AND d.status = 'open' AND d.total - ${PAID_SQL} >= 1) AS open_docs
+      FROM payments p JOIN contacts c ON c.id = p.contact_id ORDER BY p.date`).all().filter((p) => p.unused >= 1 && p.open_docs > 0);
+    queues.unshift(q("Accounts", "unapplied", "Payments not applied to their bills / invoices", loose.map((p) => ({ label: `${p.number} · ${p.contact_name} · Rs ${Math.round(p.unused).toLocaleString("en-PK")} not applied`,
+      sub: `${p.contact_name} has ${p.open_docs} open ${p.direction === "out" ? "bill" : "invoice"}${p.open_docs > 1 ? "s" : ""}: open the payment → Apply`, link: `/payments/${p.id}` })), "red"));
     queues.unshift(q("Accounts", "pdc", "PDC cheques due: keep money in the bank", pdcs.map((p) => ({ label: `Cheque ${p.cheque_no} · Rs ${Math.round(p.amount).toLocaleString("en-PK")} · ${p.contact_name}`,
       sub: p.cheque_date < t ? `Dated ${p.cheque_date}, PAST: clear it or mark bounced` : p.cheque_date === t ? "Dated TODAY" : `Dated ${p.cheque_date}`, link: `/pdcs?open=${p.id}`, due: p.cheque_date })), "red"));
   }

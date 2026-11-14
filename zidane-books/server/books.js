@@ -496,7 +496,7 @@ export function displayStatus(doc, paid, on = today(), creditLeft = null) {
   if (CREDIT_KINDS[doc.kind] && doc.status === "open" && creditLeft !== null) return creditLeft <= 0.001 ? "closed" : creditLeft < doc.total ? "partial" : "open";
   if (!["invoice", "bill"].includes(doc.kind) || doc.status !== "open") return doc.status;
   const balance = round2(doc.total - paid);
-  if (balance <= 0) return "paid";
+  if (balance < 1) return "paid"; // paisa left over from rounding (21,295.01 paid as 21,295) isn't "overdue"
   if (doc.due_date && doc.due_date < on) return "overdue";
   return paid > 0 ? "partial" : "open";
 }

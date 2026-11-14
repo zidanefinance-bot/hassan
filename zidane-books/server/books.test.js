@@ -1409,3 +1409,31 @@ test("a DC for a Job: the Job's customer only, the Job's items only, no more tha
   B.saveDocument(db, 1, dc([{ item_id: a, qty: 10 }], { notes: "gate 2" }), first);
   assert.equal(db.prepare("SELECT notes FROM documents WHERE id = ?").get(first).notes, "gate 2");
 });
+
+test("audit fixes: paisa-only balance is paid, duplicate item lines share totals, bought-without-bill holds profit, loose payments listed", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  assert.equal(B.displayStatus({ kind: "bill", status: "open", total: 21295.01, due_date: "2026-01-01" }, 21295, "2026-11-14"), "paid");
+  assert.equal(B.displayStatus({ kind: "bill", status: "open", total: 21296, due_date: "2026-01-01" }, 21295, "2026-11-14"), "overdue");
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const sup = db.prepare("SELECT id FROM contacts WHERE type = 'supplier' LIMIT 1").get().id;
+  const [a, b] = db.prepare("SELECT id FROM items LIMIT 2").all().map((r) => r.id);
+  const job = J.createJob(db, 1, { customer_id: cust, items: [{ item_id: a, qty: 2, sale_rate: 100 }, { item_id: a, qty: 2, sale_rate: 100 }, { item_id: b, qty: 5, sale_rate: 10 }] });
+  const jobId = job.id ?? job;
+  B.saveDocument(db, 1, { kind: "bill", contact_id: sup, job_id: jobId, status: "open", lines: [{ item_id: a, qty: 4, rate: 50 }] });
+  const all = () => true;
+  const d = J.jobDetail(db, jobId, all);
+  assert.deepEqual(d.items.filter((i) => i.item_id === a).map((i) => i.purchased_qty), [2, 2], "4 billed shared as 2 + 2, not 4 and 4");
+  const bLine = db.prepare("SELECT id FROM job_items WHERE job_id = ? AND item_id = ?").get(jobId, b).id;
+  for (const r of db.prepare("SELECT id FROM job_items WHERE job_id = ?").all(jobId)) J.setItemProcurement(db, 1, r.id, "bought");
+  const e = J.jobEconomics(db, jobId);
+  assert.equal(e.cost_pending_reason, "bought_no_bill");
+  assert.equal(e.bought_no_bill.length, 1);
+  // a supplier payment left unapplied while the supplier has an open bill
+  const bill = B.saveDocument(db, 1, { kind: "bill", contact_id: sup, status: "open", lines: [{ item_id: b, qty: 1, rate: 700 }] });
+  B.recordPayment(db, 1, { direction: "out", contact_id: sup, amount: 700, date: "2026-11-14", mode: "bank" });
+  const q = R.home(db, { id: 1, role: "director" }, all).queues.find((x) => x.key === "unapplied");
+  assert.ok(q && q.items.length >= 1, "listed for Accounts");
+  assert.ok(bLine && bill);
+});
