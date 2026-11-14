@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, Badge, Field, fmtDate, KIND, label, Loading, Modal, money, num, PageHead, today, useAuth, useLoad, useToast, SHOW_AS_OPTIONS } from "../lib.jsx";
+import { ItemName } from "../components/ItemHistory.jsx";
 import AccountSelect from "../components/AccountSelect.jsx";
 import { AllocationTable, ApplyCreditsModal, RefundModal } from "./Payments.jsx";
 import { PdcForm } from "./Pdcs.jsx";
@@ -239,7 +240,7 @@ export default function DocumentView({ kind }) {
                 <h4 className="bag-sub">Each bag contains</h4>
                 <table className="table compact paper-lines bag-contents">
                   <thead><tr><th>Item</th><th className="r">Per bag</th>{isDc ? <th className="r">Total</th> : bag.item_rates && <><th className="r">Rate</th><th className="r">Amount / bag</th></>}</tr></thead>
-                  <tbody>{bag.contents.map((l) => <tr key={l.id}><td>{l.item_name || l.description}</td><td className="r">{num(l.per_bag)} {l.unit || ""}</td>{isDc ? <td className="r">{num(l.qty)} {l.unit || ""}</td> : bag.item_rates && <><td className="r">{money(l.rate)}</td><td className="r">{money(l.amount_per_bag)}</td></>}</tr>)}</tbody>
+                  <tbody>{bag.contents.map((l) => <tr key={l.id}><td><ItemName id={l.item_id} name={l.item_name || l.description} /></td><td className="r">{num(l.per_bag)} {l.unit || ""}</td>{isDc ? <td className="r">{num(l.qty)} {l.unit || ""}</td> : bag.item_rates && <><td className="r">{money(l.rate)}</td><td className="r">{money(l.amount_per_bag)}</td></>}</tr>)}</tbody>
                   {!isDc && <tfoot><tr><td colSpan={bag.item_rates ? 3 : 1}>{bag.item_rates ? "One bag" : "Rate per bag"}</td><td className="r">{money(bag.rate_per_bag)}</td></tr></tfoot>}
                 </table>
                 </>}
@@ -248,7 +249,7 @@ export default function DocumentView({ kind }) {
             <table className="table paper-lines">
               <thead><tr><th>#</th><th>Item</th><th className="r">Qty</th>{!isDc && <><th className="r">Rate</th><th className="r">Disc</th><th className="r">Tax</th><th className="r">Amount</th></>}</tr></thead>
               <tbody>{d.lines.map((l, i) => (
-                <tr key={l.id}><td>{i + 1}</td><td>{l.item_name || l.description}{l.job_number && <div className="small no-print"><Link to={`/jobs/${l.job_id}`}>for {l.job_number}</Link></div>}</td><td className="r">{num(l.qty)} {l.unit || ""}</td>
+                <tr key={l.id}><td>{i + 1}</td><td><ItemName id={l.item_id} name={l.item_name || l.description} />{l.job_number && <div className="small no-print"><Link to={`/jobs/${l.job_id}`}>for {l.job_number}</Link></div>}</td><td className="r">{num(l.qty)} {l.unit || ""}</td>
                   {!isDc && <><td className="r">{l.rate ? money(l.rate) : <span className="neg">pending</span>}</td><td className="r">{l.discount_pct ? `${l.discount_pct}%` : "—"}</td><td className="r">{l.tax_rate}%</td><td className="r">{money(l.amount)}</td></>}</tr>
               ))}</tbody>
             </table>

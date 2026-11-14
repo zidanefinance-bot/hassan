@@ -568,3 +568,7 @@ td.nowrap, .nowrap { white-space: nowrap; }
 .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--brand, #c62828); text-decoration: underline dotted; cursor: pointer; }
 .linkish.neg { font-weight: 600; }
 .loan-sched td { white-space: nowrap; }
+/* an item's name on a Job / DC / invoice: click for its history */
+.item-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted #9aa3b2; text-underline-offset: 3px; }
+.item-link:hover { color: var(--brand, #c62828); }
+@media print { .item-link { text-decoration: none; } }

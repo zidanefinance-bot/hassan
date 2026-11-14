@@ -23,6 +23,14 @@ export function itemTransactions(db, itemId, can) {
   });
 }
 
+// the Jobs an item was ordered on: Sales and Operations both see these; the customer's rate only with price.view
+export function itemJobs(db, itemId, can) {
+  if (!can("sales.read") && !can("ops.read")) return [];
+  return db.prepare(`SELECT j.id, j.number, date(j.created_at) AS date, j.ops_status, j.closed, j.customer_po_number, c.name AS customer_name, ji.qty, ji.sale_rate, ji.procurement_status
+    FROM job_items ji JOIN jobs j ON j.id = ji.job_id JOIN contacts c ON c.id = j.customer_id WHERE ji.item_id = ? ORDER BY j.id DESC LIMIT 200`).all(itemId)
+    .map((r) => (can("price.view") ? r : { ...r, sale_rate: undefined }));
+}
+
 // buying side from issued supplier bills, selling side from issued invoices
 export function itemRates(db, itemId, can) {
   const out = {};

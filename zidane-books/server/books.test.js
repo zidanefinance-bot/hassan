@@ -1297,3 +1297,25 @@ test("attachments: a customer's PO (selling rates) is hidden from Operations, a 
     assert.equal((await call(sales, `/attachments/${po}/file`)).status, 200);
   } finally { server.close(); }
 });
+
+test("item history popup: Jobs for Sales and Operations, each sees only their own rates and papers", async () => {
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const get = async (ck, path) => (await fetch(base + path, { headers: { cookie: ck } })).json();
+  try {
+    const item = db.prepare("SELECT ji.item_id FROM job_items ji JOIN document_lines l ON l.item_id = ji.item_id JOIN documents d ON d.id = l.document_id AND d.kind = 'bill' WHERE ji.item_id IS NOT NULL LIMIT 1").get().item_id;
+    const [dir, sales, ops] = [await login(director.email, director.password), await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk")];
+    const d = await get(dir, `/items/${item}`), s = await get(sales, `/items/${item}`), o = await get(ops, `/items/${item}`);
+    assert.ok(d.jobs.length > 0 && d.jobs[0].sale_rate !== undefined);
+    assert.equal(o.jobs.length, d.jobs.length, "Operations sees the Jobs");
+    assert.ok(o.jobs.every((j) => j.sale_rate === undefined), "… without the customer's rate");
+    assert.ok(!o.transactions.some((t) => ["quote", "invoice"].includes(t.kind)), "no quotes / invoices for Operations");
+    assert.ok(o.transactions.some((t) => t.kind === "bill"));
+    assert.ok(!s.transactions.some((t) => ["po", "bill"].includes(t.kind)), "no POs / bills for Sales");
+    assert.equal(s.rates.purchase, undefined);
+  } finally { server.close(); }
+});

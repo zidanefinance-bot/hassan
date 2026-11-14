@@ -281,6 +281,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
       ...shapeItem(req, i),
       moves: I.shapeMoves(db.prepare("SELECT m.*, d.kind AS document_kind FROM stock_moves m LEFT JOIN documents d ON d.id = m.document_id WHERE item_id = ? ORDER BY m.id DESC LIMIT 200").all(i.id), cans(req)),
       transactions: I.itemTransactions(db, i.id, cans(req)),
+      jobs: I.itemJobs(db, i.id, cans(req)),
       rates: I.itemRates(db, i.id, cans(req)),
       history: I.itemHistory(db, i.id, cans(req)),
     });

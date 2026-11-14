@@ -9,6 +9,7 @@ import { ItemForm } from "./Items.jsx";
 import Attachments from "../components/Attachments.jsx";
 import Comments from "../components/Comments.jsx";
 import Activity from "../components/Activity.jsx";
+import { ItemName } from "../components/ItemHistory.jsx";
 import Picker from "../components/Picker.jsx";
 import { contactOptions, itemOptions } from "./DocumentForm.jsx";
 import { cleanLine, guessCategory, learnedLines, missingLines, partyPreset, unitOf } from "../components/draftLines.js";
@@ -387,7 +388,7 @@ export function JobView() {
               <thead><tr><th>Item</th><th className="r">Qty</th>{can("price.view") && <th className="r">Selling rate</th>}{can("cost.view") && <th className="r">Last cost</th>}<th>Procurement</th>{can("ops.read") && <th className="r">Bought</th>}{can("sales.read") && <th className="r">Delivered</th>}{can("sales.read") && <th className="r">Invoiced</th>}</tr></thead>
               <tbody>{j.items.map((it) => (
                 <tr key={it.id}>
-                  <td><b>{it.name}</b>{it.stock_qty !== null && it.stock_qty !== undefined && can("ops.read") && <div className="muted small">In stock: {num(it.stock_qty)} {it.unit}</div>}</td>
+                  <td><b><ItemName id={it.item_id} name={it.name} /></b>{it.stock_qty !== null && it.stock_qty !== undefined && can("ops.read") && <div className="muted small">In stock: {num(it.stock_qty)} {it.unit}</div>}</td>
                   <td className="r">{num(it.qty)} {it.unit}</td>
                   {can("price.view") && <td className="r">{it.sale_rate ? money(it.sale_rate) : <span className="neg">rate pending</span>}</td>}
                   {can("cost.view") && <td className="r">{it.purchase_rate ? money(it.purchase_rate) : "—"}</td>}
