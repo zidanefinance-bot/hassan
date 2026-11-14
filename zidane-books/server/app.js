@@ -654,10 +654,18 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
 
   // ---- attachments (evidence): anyone who can see a record can attach to it; uploader or a director can remove
   const canSeeEntity = (user, entity, entityId) => entity !== "item" && C.canSeeEntity(db, user, entity, entityId);
+  // a customer's PO / quote shows selling rates (not for Operations); a supplier's bill / quotation shows costs (not for Sales)
+  const canSeeLabel = (user, label) => {
+    const l = String(label || "").toLowerCase();
+    if (/customer/.test(l) && /\b(po|order|quot|rate)/.test(l)) return can(user, "price.view");
+    if (/supplier|vendor/.test(l) && /\b(bill|invoice|quot|rate)/.test(l)) return can(user, "cost.view");
+    return true;
+  };
   api.get("/attachments", (req, res) => {
     const { entity, entity_id } = req.query;
     if (!canSeeEntity(req.user, entity, Number(entity_id))) throw httpError(403, "You don't have access to this");
-    res.json(db.prepare("SELECT a.id, a.filename, a.mime, a.size, a.label, a.created_at, a.uploaded_by, u.name AS uploaded_by_name FROM attachments a LEFT JOIN users u ON u.id = a.uploaded_by WHERE entity = ? AND entity_id = ? ORDER BY a.id").all(entity, Number(entity_id)));
+    res.json(db.prepare("SELECT a.id, a.filename, a.mime, a.size, a.label, a.created_at, a.uploaded_by, u.name AS uploaded_by_name FROM attachments a LEFT JOIN users u ON u.id = a.uploaded_by WHERE entity = ? AND entity_id = ? ORDER BY a.id").all(entity, Number(entity_id))
+      .filter((a) => canSeeLabel(req.user, a.label)));
   });
   api.post("/attachments", (req, res) => {
     const { entity, entity_id, filename, mime, data, label } = req.body || {};
@@ -676,7 +684,7 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
   });
   api.get("/attachments/:id/file", (req, res) => {
     const a = db.prepare("SELECT * FROM attachments WHERE id = ?").get(id(req));
-    if (!a || !canSeeEntity(req.user, a.entity, a.entity_id)) throw httpError(404, "Not found");
+    if (!a || !canSeeEntity(req.user, a.entity, a.entity_id) || !canSeeLabel(req.user, a.label)) throw httpError(404, "Not found");
     res.setHeader("Content-Type", a.mime);
     res.setHeader("Content-Disposition", `${req.query.download ? "attachment" : "inline"}; filename="${a.filename}"`);
     res.setHeader("X-Content-Type-Options", "nosniff");

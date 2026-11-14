@@ -421,7 +421,7 @@ export function JobView() {
                 <tbody>{j.bill_charges.map((c) => <tr key={c.document_id}><td><Link to={`/bills/${c.document_id}`}>{c.number}</Link></td><td>{c.supplier}</td><td>{c.label}</td><td className="r">{money(c.bill_charges)}</td><td className="r">{money(c.job_share)}</td></tr>)}</tbody></table>
             </section>
           )}
-          <Attachments entity="job" id={j.id} labels={["Customer PO", "Delivery photo", "Supplier quotation", "Other evidence"]} />
+          <Attachments entity="job" id={j.id} labels={[can("price.view") && "Customer PO", "Delivery photo", can("cost.view") && "Supplier quotation", "Other evidence"].filter(Boolean)} />
           <Comments entity="job" id={j.id} />
           <Activity entity="job" id={j.id} />
           {deliver && <DeliverModal job={j} onClose={() => setDeliver(false)} onDone={() => { setDeliver(false); state.reload(); }} />}

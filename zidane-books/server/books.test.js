@@ -6,6 +6,9 @@ import * as R from "./reports.js";
 import { createApp } from "./app.js";
 import { ensureAdmin, seedDemo } from "./seed.js";
 import * as J from "./jobs.js";
+import { mkdtempSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 function fresh() {
   const db = openDb(":memory:");
@@ -1265,4 +1268,32 @@ test("sign-in: 8 wrong passwords lock that email for a while, even the right pas
   } finally {
     server.close();
   }
+});
+
+test("attachments: a customer's PO (selling rates) is hidden from Operations, a supplier's quotation (costs) from Sales", async () => {
+  const db = openDb(":memory:");
+  const director = ensureAdmin(db);
+  seedDemo(db);
+  const server = createApp(db, { uploadDir: mkdtempSync(join(tmpdir(), "zb-att-")) }).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const login = async (email, password = "demo1234") => (await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) })).headers.get("set-cookie").split(";")[0];
+  const call = async (ck, path, body) => {
+    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { cookie: ck, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, body: r.headers.get("content-type")?.includes("json") ? await r.json() : null };
+  };
+  try {
+    const [dir, sales, ops] = [await login(director.email, director.password), await login("sales@zidane.com.pk"), await login("operations@zidane.com.pk")];
+    const job = db.prepare("SELECT id FROM jobs LIMIT 1").get().id;
+    const png = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
+    const po = (await call(dir, "/attachments", { entity: "job", entity_id: job, filename: "po.png", mime: "image/png", data: png, label: "Customer PO" })).body.id;
+    const q = (await call(dir, "/attachments", { entity: "job", entity_id: job, filename: "q.png", mime: "image/png", data: png, label: "Supplier quotation" })).body.id;
+    await call(dir, "/attachments", { entity: "job", entity_id: job, filename: "truck.png", mime: "image/png", data: png, label: "Delivery photo" });
+    const names = async (ck) => (await call(ck, `/attachments?entity=job&entity_id=${job}`)).body.map((a) => a.filename).sort();
+    assert.deepEqual(await names(dir), ["po.png", "q.png", "truck.png"]);
+    assert.deepEqual(await names(ops), ["q.png", "truck.png"], "Operations doesn't see the customer's PO");
+    assert.deepEqual(await names(sales), ["po.png", "truck.png"], "Sales doesn't see the supplier's quotation");
+    assert.equal((await call(ops, `/attachments/${po}/file`)).status, 404);
+    assert.equal((await call(sales, `/attachments/${q}/file`)).status, 404);
+    assert.equal((await call(sales, `/attachments/${po}/file`)).status, 200);
+  } finally { server.close(); }
 });
