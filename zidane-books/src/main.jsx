@@ -38,7 +38,7 @@ const NAV = [
   { group: "Sales", any: ["sales.read"] },
   { to: "/customers", label: "Customers", icon: "☺", any: ["sales.read"] },
   { to: "/quotes", label: "Enquiries & Quotes", icon: "✎", any: ["sales.read"] },
-  { to: "/ration-kits", label: "Ration Kits", icon: "▦", any: ["sales.read", "ops.read"] },
+  { to: "/ration-kits", label: "Ration Kits", icon: "▦", any: ["sales.read"] },
   { to: "/delivery-challans", label: "Delivery Challans", icon: "⇥", any: ["sales.read"] },
   { to: "/invoices", label: "Invoices", icon: "▤", any: ["sales.read"] },
   { to: "/credit-notes", label: "Credit Notes", icon: "↺", any: ["sales.read"] },

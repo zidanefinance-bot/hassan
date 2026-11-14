@@ -96,6 +96,8 @@ test("ration API: Operations packs and sees no selling rates; Sales makes the qu
     const kit = await (await sales("/kits", { method: "POST", body: JSON.stringify({ name: "Ramadan A", lines: [{ item_id: item, qty: 2, rate: 1500 }] }) })).json();
     assert.ok(kit.id);
     assert.equal((await ops("/kits", { method: "POST", body: JSON.stringify({ name: "x", lines: [{ item_id: item, qty: 1 }] }) })).status, 403, "only Sales prices kits");
+    assert.equal((await ops("/kits")).status, 403, "Operations doesn't see kits (they carry selling rates)");
+    assert.equal((await ops(`/kits/${kit.id}`)).status, 403);
     assert.equal((await (await sales(`/kits/${kit.id}`)).json()).cost_per_bag, undefined, "Sales doesn't see cost");
     const q = await (await sales(`/kits/${kit.id}/quote`, { method: "POST", body: JSON.stringify({ contact_id: cust, bags: 50 }) })).json();
     const job = await (await sales(`/documents/${q.id}/job`, { method: "POST", body: "{}" })).json();

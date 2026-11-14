@@ -843,8 +843,9 @@ export function createApp(db, { uploadDir = process.env.UPLOAD_DIR || join(dirna
 
   // ---- ration kits: what one bag holds and the rate of each item in it (Sales prices them; costs need cost.view)
   const kitShape = (req, k) => (can(req.user, "cost.view") ? k : { ...k, cost_per_bag: undefined, margin_per_bag: undefined, margin_pct: undefined, lines: k.lines.map(({ purchase_rate, ...l }) => l) });
-  api.get("/kits", (req, res) => { need(req.user, ["sales.read", "ops.read"]); res.json(RA.kitList(db).map((k) => kitShape(req, k))); });
-  api.get("/kits/:id", (req, res) => { need(req.user, ["sales.read", "ops.read"]); res.json(kitShape(req, RA.kitDetail(db, id(req)))); });
+  // kits carry selling rates: Sales, Accounts and the Director only, not Operations / purchasers
+  api.get("/kits", (req, res) => { need(req.user, "sales.read"); res.json(RA.kitList(db).map((k) => kitShape(req, k))); });
+  api.get("/kits/:id", (req, res) => { need(req.user, "sales.read"); res.json(kitShape(req, RA.kitDetail(db, id(req)))); });
   api.post("/kits", requirePerm("sales.write"), (req, res) => res.json({ id: RA.saveKit(db, req.body || {}) }));
   api.put("/kits/:id", requirePerm("sales.write"), (req, res) => { RA.kitDetail(db, id(req)); res.json({ id: RA.saveKit(db, req.body || {}, id(req)) }); });
   api.post("/kits/:id/quote", requirePerm("sales.write"), (req, res) => res.json({ id: RA.quoteFromKit(db, req.user.id, id(req), req.body || {}) }));
