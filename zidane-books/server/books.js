@@ -216,6 +216,39 @@ export function markSubmitted(db, id, date = today()) {
   db.prepare("UPDATE documents SET submitted_date = ?, credit_days = ?, due_date = ? WHERE id = ?").run(date, days, plusDays(date, days), id);
 }
 
+// An invoice made before (or bigger than) its deliveries: each DC issued later for the same Job joins the invoice
+// that still has quantity no DC covers, so the invoice lists every DC ("DC: DC-00069, DC-00070") and the DC
+// isn't flagged as "delivered, not invoiced". A voided / deleted DC leaves the list.
+const splitNums = (s) => String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
+export function linkDcToInvoices(db, dcId) {
+  const dc = db.prepare("SELECT * FROM documents WHERE id = ?").get(dcId);
+  if (!dc || dc.kind !== "dc" || !dc.job_id || !["issued", "signed"].includes(dc.status)) return null;
+  const invoices = db.prepare("SELECT id, number, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'open' ORDER BY date, id").all(dc.job_id);
+  if (invoices.some((i) => splitNums(i.dc_numbers).includes(dc.number))) return null; // already named
+  const dcLines = db.prepare("SELECT item_id, description, qty FROM document_lines WHERE document_id = ?").all(dcId);
+  const sumBy = (rows) => { const m = new Map(); for (const l of rows) m.set(lineKey(l), (m.get(lineKey(l)) || 0) + l.qty); return m; };
+  const want = sumBy(dcLines);
+  for (const inv of invoices) {
+    if (!inv.dc_numbers) continue; // an old invoice that names no DC already stands for all of them
+    const billed = sumBy(db.prepare("SELECT item_id, description, qty FROM document_lines WHERE document_id = ?").all(inv.id));
+    const named = splitNums(inv.dc_numbers);
+    const covered = sumBy(named.length ? db.prepare(`SELECT l.item_id, l.description, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id
+      WHERE d.job_id = ? AND d.kind = 'dc' AND d.status IN ('issued','signed') AND d.number IN (${named.map(() => "?").join(",")})`).all(dc.job_id, ...named) : []);
+    if ([...want.keys()].some((k) => (billed.get(k) || 0) - (covered.get(k) || 0) > 0.001)) {
+      db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run([...named, dc.number].join(", "), inv.id);
+      return inv.number;
+    }
+  }
+  return null;
+}
+function unlinkDc(db, dc) {
+  if (dc?.kind !== "dc" || !dc.job_id) return;
+  for (const inv of db.prepare("SELECT id, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND dc_numbers IS NOT NULL").all(dc.job_id)) {
+    const named = splitNums(inv.dc_numbers);
+    if (named.includes(dc.number) && named.length > 1) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(named.filter((n) => n !== dc.number).join(", "), inv.id);
+  }
+}
+
 export function saveDocument(db, userId, input, id = null) {
   const kind = input.kind;
   if (!KIND_STATUSES[kind]) throw httpError(400, "Unknown document kind");
@@ -285,6 +318,7 @@ export function saveDocument(db, userId, input, id = null) {
     }
     doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
     applyStock(db, doc, calc.lines);
+    if (kind === "dc") linkDcToInvoices(db, id);
     db.prepare("UPDATE documents SET credit_days = ? WHERE id = ?").run(creditDays, id);
     log(db, userId, isUpdate ? "updated" : "created", kind, id, `${doc.number} · ${calc.total}`);
     // the DCs an invoice bills, as typed on the invoice (several are fine: "DC-00012, DC-00013")
@@ -306,6 +340,7 @@ export function setStatus(db, userId, id, status, { admin = false } = {}) {
     if (status === "draft" || status === "void") db.prepare("UPDATE documents SET verified_at = NULL, verified_by = NULL WHERE id = ?").run(id);
     const lines = db.prepare("SELECT * FROM document_lines WHERE document_id = ?").all(id);
     applyStock(db, { ...doc, status }, lines);
+    if (doc.kind === "dc") { if (status === "void") unlinkDc(db, doc); else linkDcToInvoices(db, id); }
     log(db, userId, `marked ${status}`, doc.kind, id, doc.number);
   });
 }
@@ -318,6 +353,7 @@ export function deleteDocument(db, userId, id) {
   tx(db, () => {
     reverseStock(db, id);
     db.prepare("UPDATE documents SET source_id = NULL WHERE source_id = ?").run(id);
+    unlinkDc(db, doc);
     db.prepare("DELETE FROM documents WHERE id = ?").run(id);
     log(db, userId, "deleted", doc.kind, id, doc.number);
   });

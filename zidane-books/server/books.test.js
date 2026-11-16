@@ -1482,3 +1482,27 @@ test("credit days: a bill is due N days from its date; an invoice N days from th
   B.markSubmitted(db, old, "2026-11-05");
   assert.deepEqual([get(old).credit_days, get(old).due_date], [20, "2026-11-25"]);
 });
+
+test("invoice first, deliveries later: every DC issued afterwards joins the invoice, and leaves it if voided", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const [mug, pen] = db.prepare("SELECT id FROM items LIMIT 2").all().map((r) => r.id);
+  const job = J.createJob(db, 1, { customer_id: cust, items: [{ item_id: mug, qty: 1000, sale_rate: 380 }, { item_id: pen, qty: 1000, sale_rate: 135 }] });
+  const jobId = job.id ?? job;
+  const dc = (q, status = "issued") => B.saveDocument(db, 1, { kind: "dc", contact_id: cust, job_id: jobId, status, lines: [{ item_id: mug, qty: q }, { item_id: pen, qty: q }] });
+  const num = (id) => db.prepare("SELECT number FROM documents WHERE id = ?").get(id).number;
+  const d1 = dc(50);
+  const inv = B.saveDocument(db, 1, { kind: "invoice", contact_id: cust, job_id: jobId, status: "open", dc_numbers: num(d1), lines: [{ item_id: mug, qty: 1000, rate: 380 }, { item_id: pen, qty: 1000, rate: 135 }] });
+  const names = () => db.prepare("SELECT dc_numbers FROM documents WHERE id = ?").get(inv).dc_numbers;
+  const d2 = dc(500);
+  assert.equal(names(), `${num(d1)}, ${num(d2)}`);
+  const d3 = dc(100, "draft");
+  assert.equal(names(), `${num(d1)}, ${num(d2)}`, "a draft doesn't join");
+  B.setStatus(db, 1, d3, "issued");
+  assert.equal(names(), `${num(d1)}, ${num(d2)}, ${num(d3)}`, "joins when issued");
+  assert.equal(J.uninvoicedDcs(db, jobId).length, 0, "none flagged as delivered-not-invoiced");
+  B.setStatus(db, 1, d3, "void");
+  assert.equal(names(), `${num(d1)}, ${num(d2)}`);
+});
