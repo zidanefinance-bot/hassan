@@ -34,3 +34,22 @@ Share your logo and quantity, approve the mockup, and we handle sourcing, packin
 #CorporateGifting #EmployeeEngagement #CSR #Ramadan2027 #Pakistan
 
 *Colour options, print details and minimum quantities are confirmed at quotation.
+
+---
+# Reel (17s, 1080x1920): zidane-custom-branding-reel.mp4
+
+## Caption
+Bag hamara. Naam aap ka. 🎁✨
+Red, green, navy, ya aap ka apna brand colour. Bag pe aap ki company ka naam, logo aur shukriya ka message.
+Aur premium box ke andar har employee ke naam ka card. 💌
+
+Logo bhejein → mockup dekhein → Ramadan se pehle delivery ✅
+📲 WhatsApp: 0339 2639315 | ☎️ 021 111 ZIDANE
+
+#CustomRationBags #CorporateGifting #Ramadan2027 #ZidaneWholesale #BrandedPackaging #EmployeeWelfare #Karachi
+
+## Sequence
+0–2.5s "Bag hamara. Naam aap ka." · 2.5–5.5s Option 01: red sack, name types on · 5.5–8.5s Option 02: bag turns green + colour swatches
+8.5–11s Option 03: navy + logo & message · 11–14s Option 04: logo box + personal card · 14–17s CTA
+Audio: silent track. Add upbeat trending audio in-app; the colour changes at 5.5s and 8.5s land on beats.
+Cover: reel-cover.jpg
