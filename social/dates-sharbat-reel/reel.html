@@ -1,0 +1,140 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;font-weight:100 900;src:url(../custom-branding/assets/inter-latin.woff2) format("woff2")}
+:root{--red:#c22a2f;--ink:#1a1a1a;--date:#4a2214;--cream:#f4e6cf;--gold:#d9a441}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1920px;overflow:hidden;font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#st{position:relative;width:1080px;height:1920px;overflow:hidden;background:#2a120a}
+.a{position:absolute}
+h1{font-weight:900;letter-spacing:-.055em;line-height:.95}
+
+@keyframes in{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:none}}
+@keyframes outU{to{opacity:0;transform:translateY(-40px)}}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@keyframes fo{to{opacity:0}}
+@keyframes zoom1{from{transform:scale(1.12)}to{transform:scale(1)}}
+@keyframes slap{0%{opacity:0;transform:translate(60px,-260px) scale(1.7) rotate(-14deg)}55%{opacity:1;transform:translate(0,8px) scale(.97) rotate(1deg)}75%{transform:translate(0,-4px) scale(1.01)}100%{opacity:1;transform:none}}
+@keyframes shine{from{transform:translateX(-120%) skewX(-20deg)}to{transform:translateX(220%) skewX(-20deg)}}
+@keyframes wrapOn{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes bottleIn{0%{opacity:0;transform:translateY(500px)}70%{opacity:1;transform:translateY(-20px)}100%{opacity:1;transform:none}}
+@keyframes bottleSet{from{transform:none}to{transform:translate(300px,200px) scale(.66)}}
+@keyframes sceneUp{to{transform:translateY(-470px) scale(.8)}}
+@keyframes pop{0%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.1)}100%{opacity:1;transform:scale(1)}}
+@keyframes c1{0%,30%{opacity:1}35%,100%{opacity:0}}
+@keyframes c2{0%,32%{opacity:0}37%,63%{opacity:1}68%,100%{opacity:0}}
+@keyframes c3{0%,65%{opacity:0}70%,100%{opacity:1}}
+@keyframes swing{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+
+#scene{inset:0;transform-origin:50% 0;animation:sceneUp .8s 13s both cubic-bezier(.6,0,.2,1)}
+/* tub layer (real photo) */
+.tubL{inset:0;transform-origin:540px 940px;animation:zoom1 5s 0s both ease-out}
+.tubL img{position:absolute;inset:0;width:1080px;height:1920px}
+.tlabel{left:312px;top:784px;width:528px;height:318px;animation:slap .7s 1.4s both cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}
+.tlabel svg{position:absolute;inset:0;width:100%;height:100%}
+.shine{inset:0;overflow:hidden;clip-path:path("M0 10 Q264 40 528 10 L528 290 Q264 330 0 290 Z")}
+.shine i{position:absolute;top:-20%;left:0;width:30%;height:140%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);animation:shine .9s 2.3s both}
+
+/* bottle scene */
+.cream{inset:0;background:radial-gradient(80% 55% at 50% 55%,#fbf3e4,#ead6b5);opacity:0;animation:fi .5s 4.9s both,fo .6s 10s forwards}
+.bottle{left:323px;top:520px;width:434px;opacity:0;animation:bottleIn .9s 5.1s both,bottleSet .8s 10s forwards cubic-bezier(.6,0,.2,1);filter:drop-shadow(0 30px 30px rgba(0,0,0,.28))}
+.bottle>img{display:block;width:100%}
+.sleeve{left:.5%;top:44%;width:95%;height:43%;animation:wrapOn .8s 6.4s both cubic-bezier(.7,0,.2,1)}
+.sleeve .face{position:absolute;inset:0;border-radius:6px;background:#fffaf2;overflow:hidden}
+.sleeve .face:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.28),rgba(0,0,0,0) 22%,rgba(255,255,255,.25) 40%,rgba(0,0,0,0) 60%,rgba(0,0,0,.32))}
+.sleeve .top{position:absolute;left:0;right:0;top:0;height:11%;background:var(--red);color:#fff;font-size:22px;font-weight:800;letter-spacing:4px;display:flex;align-items:center;justify-content:center}
+.sleeve .bot{position:absolute;left:0;right:0;bottom:0;height:7%;background:var(--red)}
+.sleeve .lg{position:absolute;left:12%;right:12%;top:24%;height:26%;border:4px dashed #1a1a1a;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.sleeve .lg b{position:absolute;font-size:40px;font-weight:900;letter-spacing:-1.5px;color:#1a1a1a;white-space:nowrap}
+.sleeve .nm{position:absolute;left:0;right:0;top:58%;text-align:center;font-size:34px;font-weight:800;color:var(--red)}
+.sleeve .sb{position:absolute;left:0;right:0;top:72%;text-align:center;font-size:15px;font-weight:700;letter-spacing:3px;color:#8a7a6a}
+.tag{left:62%;top:8.5%;width:120px;transform-origin:20px 0;animation:pop .45s 7.3s both}
+.tag .sw{animation:swing 2.2s 7.8s ease-in-out infinite;transform-origin:20px 0}
+.tg{background:#fff6e6;border:3px solid var(--gold);border-radius:10px;padding:14px 8px;text-align:center;margin-top:30px}
+.tg:before{content:"";position:absolute;left:18px;top:0;width:3px;height:32px;background:var(--gold)}
+.tg small{display:block;font-size:13px;font-weight:800;letter-spacing:2px;color:var(--date)}
+.tg b{display:block;font-size:20px;font-weight:900;color:var(--red);margin-top:4px}
+
+.n1{animation:c1 2.8s 10.2s both}.n2{opacity:0;animation:c2 2.8s 10.2s both}.n3{opacity:0;animation:c3 2.8s 10.2s both}
+
+/* top text */
+.grad{left:0;right:0;top:0;height:640px;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0));z-index:9;animation:fo .3s 13s forwards}
+.logo{top:110px;left:72px;height:84px;z-index:30}
+.lab{top:270px;left:72px;right:72px;z-index:10;color:#fff}
+.lab small{display:inline-block;font-size:26px;font-weight:800;letter-spacing:6px;padding:12px 20px;background:var(--red)}
+.lab h1{font-size:104px;margin-top:26px;text-shadow:0 4px 30px rgba(0,0,0,.35)}
+.lab h1 span{color:#ffd9a0}
+.l1{animation:in .6s .3s both,outU .3s 4.8s forwards}
+.l2{color:var(--date);animation:in .6s 5.3s both,outU .3s 9.9s forwards}.l2 h1{text-shadow:none}.l2 h1 span{color:var(--red)}
+.l3{animation:in .6s 10.4s both,outU .3s 12.9s forwards}
+.chips{top:640px;left:60px;right:60px;display:flex;flex-wrap:wrap;justify-content:center;gap:14px;z-index:12}
+.chip{background:rgba(26,26,26,.85);color:#fff;font-size:30px;font-weight:700;padding:16px 24px;border-radius:999px}
+.ch1{animation:pop .4s 11s both,fo .3s 12.9s forwards}.ch2{animation:pop .4s 11.2s both,fo .3s 12.9s forwards}
+.ch3{animation:pop .4s 11.4s both,fo .3s 12.9s forwards}.ch4{animation:pop .4s 11.6s both,fo .3s 12.9s forwards}
+
+/* CTA */
+.ctabg{left:0;right:0;bottom:0;height:1000px;background:linear-gradient(180deg,rgba(42,18,10,0),#2a120a 32%);opacity:0;animation:fi .6s 13s both;z-index:15}
+.cta{z-index:20}
+.c1{top:1160px;left:72px;right:72px;text-align:center;animation:in .6s 13.5s both}
+.c1 h1{font-size:104px;color:#fff}.c1 h1 span{color:#ffd9a0}
+.c2{top:1430px;left:110px;right:110px;background:var(--red);color:#fff;font-size:46px;font-weight:800;padding:34px;text-align:center;border-radius:4px;animation:pop .5s 14s both}
+.c3{top:1590px;left:72px;right:72px;text-align:center;color:rgba(255,255,255,.8);font-size:32px;font-weight:600;line-height:1.6;animation:fi .5s 14.4s both}
+.c3 b{color:#fff}
+</style></head><body>
+<div id="st">
+ <div class="a" id="scene">
+  <div class="a tubL">
+    <img src="assets/tub-scene.jpg">
+    <div class="a tlabel">
+      <svg viewBox="0 0 528 318" preserveAspectRatio="none">
+        <defs>
+          <clipPath id="lc"><path d="M0 10 Q264 40 528 10 L528 290 Q264 330 0 290 Z"/></clipPath>
+          <linearGradient id="sh" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".22"/><stop offset=".25" stop-color="#000" stop-opacity="0"/><stop offset=".75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
+        </defs>
+        <g clip-path="url(#lc)">
+          <rect width="528" height="318" fill="#fffaf2"/>
+          <path d="M0 10 Q264 40 528 10 L528 62 Q264 92 0 62 Z" fill="#c22a2f"/>
+          <text x="264" y="58" text-anchor="middle" font-family="Inter" font-size="22" font-weight="800" fill="#fff" letter-spacing="5">PREMIUM KHAJOOR</text>
+          <rect x="124" y="104" width="280" height="96" rx="14" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-dasharray="12 8"/>
+          <text class="n1" x="264" y="166" text-anchor="middle" font-family="Inter" font-size="44" font-weight="900" fill="#1a1a1a" letter-spacing="-1.5">YOUR LOGO</text>
+          <text class="n2" x="264" y="166" text-anchor="middle" font-family="Inter" font-size="40" font-weight="900" fill="#1a1a1a" letter-spacing="-1.5">YOUR BRAND</text>
+          <text class="n3" x="264" y="164" text-anchor="middle" font-family="Inter" font-size="34" font-weight="900" fill="#1a1a1a" letter-spacing="-1">YOUR COMPANY</text>
+          <text x="264" y="244" text-anchor="middle" font-family="Inter" font-size="20" font-weight="800" fill="#c22a2f" letter-spacing="4">RAMADAN MUBARAK</text>
+          <path d="M0 280 Q264 320 528 280 L528 318 L0 318 Z" fill="#c22a2f"/>
+          <rect width="528" height="318" fill="url(#sh)"/>
+        </g>
+      </svg>
+      <div class="a shine"><i></i></div>
+    </div>
+  </div>
+
+  <div class="a cream"></div>
+  <div class="a bottle">
+    <img src="assets/bottle-cutout.png">
+    <div class="a sleeve"><div class="face">
+      <div class="top">IFTAR SPECIAL</div>
+      <div class="lg"><b class="n1">YOUR LOGO</b><b class="n2">YOUR BRAND</b><b class="n3" style="font-size:32px">YOUR COMPANY</b></div>
+      <div class="nm">Sharbat</div><div class="sb">RAMADAN MUBARAK</div>
+      <div class="bot"></div>
+    </div></div>
+    <div class="a tag"><div class="sw"><div class="tg"><small>WITH LOVE</small><b>☾ Iftar</b></div></div></div>
+  </div>
+ </div>
+
+  <div class="a grad"></div>
+  <img class="a logo" src="../custom-branding/assets/zidane-wordmark-white.png" style="animation:fo .3s 4.9s forwards">
+  <img class="a logo" src="../custom-branding/assets/zidane-wordmark.png" style="opacity:0;animation:fi .3s 4.9s both,fo .3s 10s forwards">
+  <img class="a logo" src="../custom-branding/assets/zidane-wordmark-white.png" style="opacity:0;animation:fi .3s 10s both">
+
+  <div class="a lab l1"><small>01 · KHAJOOR TUB</small><h1>Tub pe<br><span>aap ka label.</span></h1></div>
+  <div class="a lab l2"><small style="color:#fff">02 · SHARBAT BOTTLE</small><h1>Bottle pe<br><span>aap ka logo.</span></h1></div>
+  <div class="a lab l3"><small>03 · IFTAR GIFT SET</small><h1>Employees,<br><span>clients, sab ke liye.</span></h1></div>
+
+  <div class="a chips"><span class="chip ch1">👥 Employees</span><span class="chip ch2">🤝 Clients</span><span class="chip ch3">🎁 Corporate giveaways</span><span class="chip ch4">🌙 Iftar drives</span></div>
+
+  <div class="a ctabg"></div>
+  <div class="a cta c1"><h1>Iftar gift,<br><span>aap ke naam se.</span></h1></div>
+  <div class="a cta c2">WhatsApp · 0339 2639315</div>
+  <div class="a cta c3">UAN <b>021 111 ZIDANE</b> · zidane.com.pk</div>
+</div>
+</body></html>
