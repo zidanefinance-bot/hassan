@@ -1,0 +1,218 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;font-weight:100 900;src:url(assets/inter-latin.woff2) format("woff2")}
+:root{--red:#c22a2f;--red-dark:#9c2024;--ink:#1a1a1a;--off:#f7f4ee;--line:#e7e2d8;
+  /* seasonal accents for Ramadan */
+  --night:#1f0d0f;--gold:#e9b65b;--gold-soft:#f6dca6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#777;font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.s{width:1080px;height:1350px;position:relative;overflow:hidden;margin:0 auto 40px}
+.s>*{position:absolute}
+.logo{top:56px;left:64px;height:76px;z-index:3}
+.pg{top:80px;right:64px;font-size:20px;font-weight:700;letter-spacing:4px;opacity:.5;z-index:3}
+h1{font-weight:900;letter-spacing:-.055em;line-height:.95}
+.eye{display:flex;align-items:center;gap:18px;font-size:20px;font-weight:700;letter-spacing:5px;text-transform:uppercase}
+.eye:before{content:"";width:56px;height:2px;background:currentColor}
+.gold{color:var(--gold)} .r{color:var(--red)} .mute{color:#8a8a8a}
+.pattern{inset:0;opacity:.08}
+.swipe{bottom:60px;right:64px;font-size:22px;font-weight:700;letter-spacing:4px;text-transform:uppercase;display:flex;gap:14px;align-items:center;z-index:3}
+.swipe b{font-size:34px}
+
+/* night slides */
+.night{background:radial-gradient(120% 80% at 70% 15%,#5a1519 0%,var(--night) 55%,#120708 100%);color:var(--off)}
+.lantern{z-index:2}
+
+/* 1 cover */
+.s1 .moon{top:150px;right:110px;z-index:1}
+.s1 .eye{top:250px;left:64px;color:var(--gold)}
+.s1 h1{top:300px;left:64px;font-size:128px;z-index:2}
+.s1 .sub{top:580px;left:64px;width:560px;font-size:34px;line-height:1.35;color:rgba(247,244,238,.75);z-index:2}
+.s1 .glow{left:50%;bottom:-120px;width:1100px;height:700px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(233,182,91,.45),rgba(233,182,91,0));z-index:1}
+.s1 .bag{left:50%;bottom:30px;width:900px;transform:translateX(-50%);z-index:2;filter:drop-shadow(0 30px 40px rgba(0,0,0,.6))}
+
+/* 2 timeline */
+.s2{background:var(--off);color:var(--ink)}
+.s2 .eye{top:200px;left:64px;color:var(--red)}
+.s2 h1{top:240px;left:64px;font-size:90px}
+.tl{top:575px;left:64px;right:64px}
+.step{display:grid;grid-template-columns:130px 1fr;align-items:center;height:165px;position:relative}
+.step:not(:last-child):after{content:"";position:absolute;left:54px;top:118px;height:94px;border-left:3px dashed #c9bfae}
+.step svg{width:110px;height:110px}
+.step small{display:block;font-size:20px;font-weight:800;letter-spacing:4px;color:var(--red)}
+.step b{display:block;font-size:40px;font-weight:800;letter-spacing:-.02em;margin-top:6px}
+.step span{display:block;font-size:24px;color:#777;margin-top:4px}
+
+/* 3 three things */
+.s3{background:var(--ink);color:#fff}
+.s3 .eye{top:200px;left:64px;color:var(--gold)}
+.s3 h1{top:250px;left:64px;font-size:110px}
+.three{top:560px;left:64px;right:64px;display:grid;gap:24px}
+.three>div{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:20px;padding:30px 36px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.03)}
+.three .num{font-size:120px;font-weight:900;letter-spacing:-.06em;line-height:.8;color:var(--red)}
+.three b{display:block;font-size:46px;font-weight:800;letter-spacing:-.02em}
+.three span{display:block;font-size:26px;color:rgba(255,255,255,.6);margin-top:8px}
+.s3 .foot{bottom:64px;left:64px;font-size:26px;color:rgba(255,255,255,.55)}
+.s3 .foot b{color:#fff}
+
+/* 4 packages */
+.s4{background:#fff;color:var(--ink)}
+.s4 .eye{top:200px;left:64px;color:var(--red)}
+.s4 h1{top:250px;left:64px;font-size:100px}
+.pk{top:540px;left:64px;right:64px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.pk>div{border:2px solid var(--line);padding:30px 32px 34px;position:relative;background:var(--off)}
+.pk>div:nth-child(4){background:var(--ink);color:#fff;border-color:var(--ink)}
+.pk small{font-size:18px;font-weight:800;letter-spacing:4px;color:var(--red)}
+.pk em{display:block;font-style:normal;font-size:20px;color:#888;margin-top:30px}
+.pk b{display:block;font-size:76px;font-weight:900;letter-spacing:-.05em;line-height:1}
+.pk b i{font-style:normal;font-size:26px;font-weight:700;letter-spacing:0;margin-right:8px;vertical-align:super}
+.pk span{display:block;font-size:20px;color:#888;margin-top:6px}
+.pk .arr{position:absolute;top:26px;right:30px;font-size:30px;color:var(--red)}
+.s4 .note{top:1110px;left:64px;right:64px;display:flex;gap:20px;align-items:flex-start;font-size:22px;line-height:1.45;color:#666;border-left:4px solid var(--gold);padding-left:20px}
+.s4 .note b{color:var(--ink)}
+
+/* 5 branding */
+.s5{background:var(--red);color:#fff}
+.s5 .eye{top:200px;left:64px;color:rgba(255,255,255,.75)}
+.s5 h1{top:250px;left:64px;font-size:120px}
+.s5 h1 span{color:var(--gold-soft)}
+.s5 .stage{left:0;right:0;top:560px;height:560px;background:radial-gradient(closest-side,rgba(255,255,255,.28),rgba(255,255,255,0))}
+.s5 .bag{left:50%;top:540px;width:820px;transform:translateX(-50%);filter:drop-shadow(0 30px 40px rgba(0,0,0,.35))}
+.opts{bottom:64px;left:64px;right:64px;display:grid;grid-template-columns:repeat(3,1fr);border:2px solid rgba(255,255,255,.4)}
+.opts div{padding:22px 24px;font-size:24px;font-weight:700;line-height:1.25;border-right:2px solid rgba(255,255,255,.4)}
+.opts div:last-child{border:0;background:#fff;color:var(--red)}
+.opts small{display:block;font-size:16px;letter-spacing:3px;font-weight:800;opacity:.7;margin-bottom:6px}
+
+/* 6 CTA */
+.s6 .eye{top:250px;left:64px;color:var(--gold)}
+.s6 h1{top:300px;left:64px;font-size:132px;z-index:2}
+.s6 .sub{top:620px;left:64px;width:640px;font-size:32px;line-height:1.4;color:rgba(247,244,238,.75)}
+.s6 .ctas{top:790px;left:64px;width:640px;display:grid;gap:16px}
+.btn{display:flex;align-items:center;justify-content:space-between;padding:28px 36px;font-size:30px;font-weight:700;border-radius:3px}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{border:2px solid rgba(247,244,238,.5)}
+.s6 .info{top:1040px;left:64px;right:64px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px}
+.s6 .info small{display:block;font-size:16px;font-weight:700;letter-spacing:3px;color:rgba(247,244,238,.45);margin-bottom:6px}
+.s6 .info div{font-size:23px;font-weight:600;border-left:4px solid var(--gold);padding-left:16px}
+.s6 .bottom{bottom:56px;left:64px;right:64px;text-align:center;font-size:22px;letter-spacing:3px;color:rgba(247,244,238,.45);text-transform:uppercase}
+</style></head><body>
+
+<!-- reusable SVG defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <pattern id="girih" width="120" height="120" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M60 10 L74 46 L110 60 L74 74 L60 110 L46 74 L10 60 L46 46 Z"/>
+        <rect x="32" y="32" width="56" height="56" transform="rotate(45 60 60)"/>
+        <rect x="32" y="32" width="56" height="56"/>
+        <circle cx="0" cy="0" r="14"/><circle cx="120" cy="0" r="14"/><circle cx="0" cy="120" r="14"/><circle cx="120" cy="120" r="14"/>
+      </g>
+    </pattern>
+    <symbol id="lantern" viewBox="0 0 120 300">
+      <line x1="60" y1="0" x2="60" y2="80" stroke="#e9b65b" stroke-width="3"/>
+      <path d="M60 80 l14 18 h-28z" fill="#e9b65b"/>
+      <path d="M40 100 h40 l14 30 v80 l-14 30 h-40 l-14 -30 v-80z" fill="rgba(233,182,91,.18)" stroke="#e9b65b" stroke-width="4"/>
+      <path d="M44 132 h32 v76 h-32z" fill="#f6dca6" opacity=".85"/>
+      <path d="M60 140 c10 12 10 28 0 40 c-10 -12 -10 -28 0 -40z" fill="#c22a2f"/>
+      <path d="M40 240 h40 l-8 16 h-24z" fill="#e9b65b"/>
+      <line x1="60" y1="256" x2="60" y2="290" stroke="#e9b65b" stroke-width="3"/>
+      <circle cx="60" cy="292" r="6" fill="#e9b65b"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- 1 COVER -->
+<section class="s s1 night" id="slide1">
+  <svg class="pattern" style="color:#e9b65b"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+  <img class="logo" src="assets/zidane-wordmark-white.png"><div class="pg">01 / 06</div>
+  <svg class="lantern" style="top:0;right:300px;width:90px;height:230px"><use href="#lantern"/></svg>
+  <svg class="lantern" style="top:0;right:180px;width:120px;height:330px"><use href="#lantern"/></svg>
+  <svg class="moon" width="160" height="160" viewBox="0 0 100 100" style="top:120px;right:50px"><path d="M62 8 A44 44 0 1 0 92 70 A36 36 0 1 1 62 8z" fill="#f6dca6"/></svg>
+  <div class="eye">Ramadan ration programs</div>
+  <h1>Ramadan 2027<br><span class="gold">Feb mein hai.</span></h1>
+  <div class="sub">Ration bags ki planning<br><b style="color:#fff">aaj se shuru karein.</b></div>
+  <div class="glow"></div>
+  <img class="bag" src="assets/ration-bag-cutout.png">
+</section>
+
+<!-- 2 TIMELINE (moon phases) -->
+<section class="s s2" id="slide2">
+  <svg class="pattern" style="color:#c22a2f;opacity:.05"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="pg">02 / 06</div>
+  <div class="eye">The smart Ramadan timeline</div>
+  <h1>Aakhri hafte ki<br>bhaag-daud?<br><span class="r">Is saal nahi.</span></h1>
+  <div class="tl">
+    <div class="step"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff" stroke="#c22a2f" stroke-width="4"/><path d="M50 10 a40 40 0 0 1 0 80 a14 40 0 0 0 0-80z" fill="#c22a2f"/></svg>
+      <div><small>NOV – DEC</small><b>Budget & headcount final</b><span>Kitne bags, per bag kitna budget</span></div></div>
+    <div class="step"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff" stroke="#c22a2f" stroke-width="4"/><path d="M50 10 a40 40 0 0 1 0 80z" fill="#c22a2f"/></svg>
+      <div><small>DECEMBER</small><b>Item list & bag design approve</b><span>Contents, brands, pack sizes, branding</span></div></div>
+    <div class="step"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff" stroke="#c22a2f" stroke-width="4"/><path d="M50 10 a40 40 0 0 1 0 80 a20 40 0 0 1 0-80z" fill="#c22a2f"/></svg>
+      <div><small>JANUARY</small><b>Sourcing & packing</b><span>Rates lock, packing on schedule</span></div></div>
+    <div class="step"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#c22a2f" stroke="#c22a2f" stroke-width="4"/><path d="M50 26 l6 16 h17 l-14 10 5 16 -14-10 -14 10 5-16 -14-10 h17z" fill="#f6dca6"/></svg>
+      <div><small>FEBRUARY</small><b>Distribution — pehle roze se pehle</b><span>Single drop ya multiple locations</span></div></div>
+  </div>
+  <div class="swipe" style="color:var(--red)">Swipe <b>→</b></div>
+</section>
+
+<!-- 3 THREE THINGS -->
+<section class="s s3" id="slide3">
+  <img class="logo" src="assets/zidane-wordmark-white.png"><div class="pg">03 / 06</div>
+  <div class="eye">Specification ki zaroorat nahi</div>
+  <h1>Shuru karne ke liye<br><span class="r">bas 3 cheezein.</span></h1>
+  <div class="three">
+    <div><div class="num">01</div><div><b>Budget</b><span>Per bag ya poore program ka total</span></div></div>
+    <div><div class="num">02</div><div><b>Headcount</b><span>Employees, families ya beneficiaries</span></div></div>
+    <div><div class="num">03</div><div><b>Item list</b><span>Aap ki list — ya hum suggest karein</span></div></div>
+  </div>
+  <div class="foot">Baqi — sourcing, packing, delivery — <b>Zidane sambhal lega.</b></div>
+</section>
+
+<!-- 4 PACKAGES -->
+<section class="s s4" id="slide4">
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="pg">04 / 06</div>
+  <div class="eye">Reference packages</div>
+  <h1>Har budget ke liye<br><span class="r">ek bag.</span></h1>
+  <div class="pk">
+    <div><small>PACKAGE 01</small><span class="arr">↗</span><em>Starting from</em><b><i>PKR</i>2,149</b><span>per reference bag</span></div>
+    <div><small>PACKAGE 02</small><span class="arr">↗</span><em>Starting from</em><b><i>PKR</i>3,149</b><span>per reference bag</span></div>
+    <div><small>PACKAGE 03</small><span class="arr">↗</span><em>Starting from</em><b><i>PKR</i>5,249</b><span>per reference bag</span></div>
+    <div><small style="color:var(--gold)">PACKAGE 04</small><span class="arr" style="color:var(--gold)">↗</span><em>Starting from</em><b><i>PKR</i>7,249</b><span>per reference bag</span></div>
+  </div>
+  <div class="note"><div>Ye pichle reference prices hain. <b>Ramadan 2027 ka rate final list aur quantity pe quotation mein confirm hoga.</b> Fixed budget hai? Bag hum budget ke hisaab se bana denge.</div></div>
+</section>
+
+<!-- 5 BRANDING -->
+<section class="s s5" id="slide5">
+  <svg class="pattern" style="color:#fff;opacity:.07"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+  <img class="logo" src="assets/zidane-wordmark-white.png"><div class="pg">05 / 06</div>
+  <div class="eye">Packaging & branding</div>
+  <h1>Aap ka bag,<br><span>aap ki pehchaan.</span></h1>
+  <div class="stage"></div>
+  <img class="bag" src="assets/ration-bag-cutout.png">
+  <div class="opts">
+    <div><small>OPTION 01</small>Plain packing</div>
+    <div><small>OPTION 02</small>Zidane-branded</div>
+    <div><small>OPTION 03</small>Aap ki organization ka logo</div>
+  </div>
+</section>
+
+<!-- 6 CTA -->
+<section class="s s6 night" id="slide6">
+  <svg class="pattern" style="color:#e9b65b"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+  <img class="logo" src="assets/zidane-wordmark-white.png">
+  <svg class="lantern" style="top:0;right:120px;width:150px;height:420px"><use href="#lantern"/></svg>
+  <svg class="lantern" style="top:0;right:290px;width:90px;height:250px"><use href="#lantern"/></svg>
+  <div class="eye">Plan Ramadan 2027</div>
+  <h1>Dena hai?<br><span class="gold">Waqt pe dein.</span></h1>
+  <div class="sub">Budget, headcount ya item list bhejein — quote hum structure kar denge.</div>
+  <div class="ctas">
+    <span class="btn red">WhatsApp · 0339 2639315 <span>→</span></span>
+    <span class="btn ghost">zidane.com.pk/ramadan-ration-bags</span>
+  </div>
+  <div class="info">
+    <div><small>UAN</small>021 111 ZIDANE</div>
+    <div><small>EMAIL</small>sales@zidane.com.pk</div>
+    <div><small>BASE</small>Korangi, Karachi</div>
+  </div>
+  <div class="bottom">Corporate · Employee · NGO · Welfare · Community</div>
+</section>
+</body></html>
