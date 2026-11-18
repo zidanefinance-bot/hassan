@@ -1,0 +1,173 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;font-weight:100 900;src:url(assets/inter-latin.woff2) format("woff2")}
+:root{--red:#c22a2f;--red-dark:#9c2024;--ink:#1a1a1a;--off:#f7f4ee;--line:#e7e2d8;--green:#1e6b3c;--navy:#1f3a6e}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#777;font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.s{width:1080px;height:1350px;position:relative;overflow:hidden;margin:0 auto 40px}
+.s>*{position:absolute}
+.logo{top:56px;left:64px;height:76px;z-index:5}
+.pg{top:80px;right:64px;font-size:20px;font-weight:700;letter-spacing:4px;opacity:.5}
+h1{font-weight:900;letter-spacing:-.055em;line-height:.95}
+.r{color:var(--red)}
+.eye{display:flex;align-items:center;gap:18px;font-size:20px;font-weight:700;letter-spacing:5px;text-transform:uppercase}
+.eye:before{content:"";width:56px;height:2px;background:currentColor}
+.opt{font-size:22px;font-weight:800;letter-spacing:4px;padding:12px 20px;border:2px solid currentColor}
+
+/* bag component: print area mapped to the sack front (source 1280x853, print zone x380-860, y400-600) */
+.bag{position:absolute;container-type:inline-size}
+.bag>img{display:block;width:100%;filter:drop-shadow(0 30px 30px rgba(0,0,0,.22))}
+.print{position:absolute;left:29.7%;top:46.9%;width:37.5%;height:23.4%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;opacity:.94;filter:blur(.3px)}
+.print .nm{font-weight:900;letter-spacing:-.04em;line-height:.9;font-size:6.6cqw}
+.print .tg{font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:1.55cqw;margin-top:1.1cqw;opacity:.95}
+.print .lg{border:.35cqw dashed rgba(255,255,255,.9);border-radius:1.2cqw;padding:.8cqw 2.2cqw;font-weight:900;font-size:3.6cqw;letter-spacing:-.03em}
+.print .ar{font-size:3.4cqw;font-weight:600;letter-spacing:0;line-height:1;margin-bottom:.6cqw;font-family:serif}
+
+.spec{display:grid;gap:0;border-top:2px solid var(--line)}
+.spec>div{display:grid;grid-template-columns:260px 1fr;padding:20px 0;border-bottom:2px solid var(--line);font-size:26px}
+.spec small{font-size:18px;font-weight:800;letter-spacing:3px;color:#999;padding-top:5px}
+.spec b{font-weight:700}
+
+/* 1 cover */
+.s1{background:var(--off);color:var(--ink)}
+.s1 .eye{top:200px;left:64px;color:var(--red)}
+.s1 h1{top:250px;left:64px;font-size:150px}
+.s1 .sub{top:580px;left:64px;width:700px;font-size:30px;line-height:1.4;color:#666}
+.s1 .b1{width:640px;left:-110px;top:690px;transform:rotate(-5deg)}
+.s1 .b2{width:640px;right:-110px;top:690px;transform:rotate(5deg)}
+.s1 .b3{width:700px;left:190px;top:850px;z-index:2}
+.s1 .tag{bottom:60px;right:64px;z-index:3;font-size:22px;font-weight:700;letter-spacing:4px;color:var(--red)}
+
+/* option slides */
+.os{background:#fff;color:var(--ink)}
+.os .eye{top:190px;left:64px}
+.os h1{top:240px;left:64px;right:64px;font-size:100px}
+.os .bagX{width:1000px;left:40px;top:500px}
+.os .spec{left:64px;right:64px;bottom:64px}
+.os .opt{top:76px;right:64px}
+.s2 .eye,.s2 .opt{color:var(--red)}
+.s3{background:#eef3ef}.s3 .eye,.s3 .opt{color:var(--green)}.s3 h1 .c{color:var(--green)}
+.s4{background:#eef1f7}.s4 .eye,.s4 .opt{color:var(--navy)}.s4 h1 .c{color:var(--navy)}
+.sw{display:flex;gap:14px;align-items:center;font-size:20px;font-weight:700;color:#777}
+.sw i{width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line)}
+
+/* 5 box + card */
+.s5{background:var(--off);color:var(--ink)}
+.s5 .eye{top:190px;left:64px;color:var(--red)}
+.s5 .opt{top:76px;right:64px;color:var(--red)}
+.s5 h1{top:240px;left:64px;right:64px;font-size:100px}
+.s5 .box{left:-10px;top:500px;width:690px;filter:drop-shadow(0 30px 30px rgba(0,0,0,.18))}
+.card{right:64px;top:600px;width:420px;background:#fff;padding:38px 34px;box-shadow:0 24px 50px rgba(0,0,0,.16);transform:rotate(4deg);border-top:10px solid var(--red)}
+.card .moon{width:46px;height:46px}
+.card small{display:block;font-size:16px;letter-spacing:4px;font-weight:800;color:var(--red);margin-top:14px}
+.card p{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:12px}
+.card em{display:block;font-style:italic;font-size:22px;color:#666;margin-top:16px;line-height:1.4}
+.card .from{margin-top:22px;padding-top:16px;border-top:2px dashed var(--line);font-size:20px;font-weight:700;color:#999}
+.card .from b{color:var(--ink)}
+.s5 .spec{left:64px;right:64px;bottom:64px}
+
+/* 6 CTA */
+.s6{background:var(--ink);color:#fff}
+.s6 .eye{top:240px;left:64px;color:rgba(255,255,255,.6)}
+.s6 h1{top:290px;left:64px;right:64px;font-size:120px}
+.s6 .steps{top:600px;left:64px;right:64px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.s6 .steps div{border:2px solid rgba(255,255,255,.18);padding:26px 24px;min-height:200px}
+.s6 .steps i{font-style:normal;font-size:20px;font-weight:800;color:var(--red);letter-spacing:3px}
+.s6 .steps b{display:block;font-size:32px;font-weight:800;letter-spacing:-.02em;margin-top:14px;line-height:1.15}
+.s6 .steps span{display:block;font-size:20px;color:rgba(255,255,255,.55);margin-top:8px}
+.s6 .btn{top:880px;left:64px;right:64px;background:var(--red);padding:30px 36px;font-size:36px;font-weight:800;display:flex;justify-content:space-between;border-radius:3px}
+.s6 .info{top:1040px;left:64px;right:64px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px}
+.s6 .info small{display:block;font-size:16px;letter-spacing:3px;font-weight:700;color:rgba(255,255,255,.45);margin-bottom:6px}
+.s6 .info div{font-size:23px;font-weight:600;border-left:4px solid var(--red);padding-left:16px}
+.s6 .mini{right:-40px;bottom:-40px;width:520px;opacity:.95}
+</style></head><body>
+
+<!-- 1 COVER -->
+<section class="s s1" id="slide1">
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="pg">01 / 06</div>
+  <div class="eye">Custom branding options</div>
+  <h1>Bag hamara.<br><span class="r">Naam aap ka.</span></h1>
+  <div class="sub">Ration bags aur boxes — aap ki company, NGO ya brand ki pehchaan ke saath.</div>
+  <div class="bag b1"><img src="assets/bag-green.png"><div class="print"><div class="nm">YOUR NGO</div><div class="tg">Ramadan Program</div></div></div>
+  <div class="bag b2"><img src="assets/bag-navy.png"><div class="print"><div class="lg">YOUR LOGO</div><div class="tg">Employee Welfare</div></div></div>
+  <div class="bag b3"><img src="assets/bag-blank.png"><div class="print"><div class="nm">YOUR<br>COMPANY</div><div class="tg">Ramadan Mubarak</div></div></div>
+</section>
+
+<!-- 2 OPTION 01: OG red sack + name -->
+<section class="s os s2" id="slide2">
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="opt">OPTION 01</div>
+  <div class="eye">Hamara OG red sack</div>
+  <h1>Wohi laal bag,<br><span class="r">ab aap ke naam se.</span></h1>
+  <div class="bag bagX"><img src="assets/bag-blank.png"><div class="print"><div class="ar">رمضان مبارک</div><div class="nm">YOUR COMPANY</div><div class="tg">From our family to yours</div></div></div>
+  <div class="spec">
+    <div><small>PRINT</small><b>Company / NGO ka naam + chhota message</b></div>
+    <div><small>BEST FOR</small><b>Corporate, factories, quick Ramadan drives</b></div>
+  </div>
+</section>
+
+<!-- 3 OPTION 02: brand colour -->
+<section class="s os s3" id="slide3">
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="opt">OPTION 02</div>
+  <div class="eye">Aap ka brand colour</div>
+  <h1>Bag bhi aap ke<br><span class="c">brand colour mein.</span></h1>
+  <div class="bag bagX"><img src="assets/bag-green.png"><div class="print"><div class="nm">YOUR<br>FOUNDATION</div><div class="tg">Ramadan Ration Program 2027</div></div></div>
+  <div class="spec">
+    <div><small>COLOURS</small><div class="sw"><i style="background:#c22a2f"></i><i style="background:#1e6b3c"></i><i style="background:#1f3a6e"></i><span>+ aap ka brand colour*</span></div></div>
+    <div><small>BEST FOR</small><b>NGOs, trusts, CSR campaigns</b></div>
+  </div>
+</section>
+
+<!-- 4 OPTION 03: logo + message -->
+<section class="s os s4" id="slide4">
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="opt">OPTION 03</div>
+  <div class="eye">Logo + message</div>
+  <h1>Logo bhi.<br><span class="c">Shukriya bhi.</span></h1>
+  <div class="bag bagX"><img src="assets/bag-navy.png"><div class="print"><div class="lg">YOUR LOGO</div><div class="tg">Thank you for a great year · Team 2027</div></div></div>
+  <div class="spec">
+    <div><small>PRINT</small><b>Aap ka logo + employees ke liye message</b></div>
+    <div><small>BEST FOR</small><b>HR welfare, employee appreciation</b></div>
+  </div>
+</section>
+
+<!-- 5 OPTION 04: box + personal card -->
+<section class="s s5" id="slide5">
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="opt">OPTION 04</div>
+  <div class="eye">Premium Ramadan box</div>
+  <h1>Box pe logo.<br><span class="r">Andar personal card.</span></h1>
+  <img class="box" src="assets/box-yourlogo-cutout.png">
+  <div class="card">
+    <svg class="moon" viewBox="0 0 100 100"><path d="M62 8 A44 44 0 1 0 92 70 A36 36 0 1 1 62 8z" fill="#c22a2f"/></svg>
+    <small>RAMADAN MUBARAK</small>
+    <p>Ahmed bhai &amp; family,</p>
+    <em>Is mubarak mahine mein aap ki mehnat ka shukriya. Allah aap ke ghar barkat de.</em>
+    <div class="from">— With love, <b>Team Your Company</b></div>
+  </div>
+  <div class="spec">
+    <div><small>INCLUDES</small><b>Logo box + har employee ke naam ka card</b></div>
+    <div><small>BEST FOR</small><b>Corporate gifting, clients, management</b></div>
+  </div>
+</section>
+
+<!-- 6 CTA -->
+<section class="s s6" id="slide6">
+  <img class="logo" src="assets/zidane-wordmark-white.png">
+  <div class="eye">How it works</div>
+  <h1>Logo bhejein.<br><span class="r">Mockup dekhein.</span></h1>
+  <div class="steps">
+    <div><i>01</i><b>Logo + quantity bhejein</b><span>WhatsApp pe</span></div>
+    <div><i>02</i><b>Bag ya box ka mockup approve</b><span>Print se pehle</span></div>
+    <div><i>03</i><b>Packing & delivery</b><span>Pehle roze se pehle</span></div>
+  </div>
+  <div class="btn"><span>WhatsApp · 0339 2639315</span><span>→</span></div>
+  <div class="info">
+    <div><small>UAN</small>021 111 ZIDANE</div>
+    <div><small>EMAIL</small>sales@zidane.com.pk</div>
+    <div><small>WEB</small>zidane.com.pk</div>
+  </div>
+  <img src="assets/bag-green.png" style="width:420px;left:20px;top:1175px">
+  <img src="assets/bag-navy.png" style="width:420px;right:20px;top:1175px">
+  <img src="assets/bag-blank.png" style="width:480px;left:300px;top:1160px">
+  <div style="top:1112px;left:64px;right:64px;font-size:17px;color:rgba(255,255,255,.45);z-index:2">*Colour, print details aur minimum quantity quotation pe confirm hongi.</div>
+</section>
+</body></html>
