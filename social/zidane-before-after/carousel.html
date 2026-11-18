@@ -1,174 +1,193 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800;900&family=Caveat:wght@700&display=swap" rel="stylesheet">
 <style>
-:root{--red:#DA1B2E;--dark:#141414;--cream:#FFF6EC;--ink:#1d1d1d}
+/* Brand tokens pulled from zidane.com.pk */
+@font-face{font-family:Inter;font-weight:100 900;src:url(assets/inter-latin.woff2) format("woff2")}
+:root{--red:#c22a2f;--red-dark:#9c2024;--ink:#1a1a1a;--off:#f7f4ee;--line:#e7e2d8;--wa:#25D366}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#888;font-family:Inter,sans-serif}
+body{background:#777;font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 .s{width:1080px;height:1350px;position:relative;overflow:hidden;margin:0 auto 40px}
-.brand{position:absolute;top:56px;left:64px;display:flex;align-items:center;gap:14px;font-weight:900;letter-spacing:2px;font-size:26px}
-.brand .z{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-family:Anton;font-size:38px}
-.pg{position:absolute;top:66px;right:64px;font-weight:800;font-size:24px;opacity:.7}
-.swipe{position:absolute;bottom:64px;right:64px;font-weight:800;font-size:30px;display:flex;gap:12px;align-items:center}
-.foot{position:absolute;bottom:64px;left:64px;font-weight:600;font-size:24px;opacity:.75}
-h1{font-family:Anton;font-weight:400;line-height:.95;text-transform:uppercase}
-.hand{font-family:Caveat;font-weight:700}
+.logo{position:absolute;top:56px;left:64px;height:76px}
+.pg{position:absolute;top:80px;right:64px;font-size:20px;font-weight:700;letter-spacing:4px;opacity:.5}
+h1{font-weight:900;letter-spacing:-.055em;line-height:.95}
+.r{color:var(--red)} .g{color:#8a8a8a} .dim{color:rgba(255,255,255,.45)}
+.eye{display:flex;align-items:center;gap:18px;font-size:20px;font-weight:700;letter-spacing:5px;text-transform:uppercase}
+.eye:before{content:"";width:56px;height:2px;background:currentColor}
+.chips{display:flex;flex-wrap:wrap;gap:12px}
+.chip{border:2px solid currentColor;padding:12px 18px;font-size:18px;font-weight:700;letter-spacing:3px;text-transform:uppercase;opacity:.75}
+.swipe{position:absolute;bottom:60px;right:64px;font-size:22px;font-weight:700;letter-spacing:4px;text-transform:uppercase;display:flex;gap:14px;align-items:center}
+.swipe b{font-size:34px;color:var(--red)}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:26px 36px;font-size:30px;font-weight:700;border-radius:3px}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{border:2px solid currentColor}
 
-/* 1 hook */
-.s1{background:var(--dark);color:#fff}
-.s1 .brand .z{background:var(--red);color:#fff}
-.cal{position:absolute;top:200px;left:50%;transform:translateX(-50%) rotate(-6deg);width:420px;background:#fff;border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden;text-align:center;color:var(--ink)}
-.cal .top{background:var(--red);color:#fff;font-weight:900;font-size:40px;padding:22px;letter-spacing:6px}
-.cal .d{font-family:Anton;font-size:260px;line-height:1.1}
-.cal .t{font-weight:800;font-size:28px;padding-bottom:28px;color:#777}
-.s1 h1{position:absolute;left:64px;right:64px;top:790px;font-size:118px;text-align:center}
-.s1 h1 span{color:var(--red)}
-.s1 p{position:absolute;left:100px;right:100px;top:1060px;text-align:center;font-size:34px;line-height:1.4;color:#cfcfcf}
-.s1 p b{color:#fff}
+/* 1 — hook (mirrors site hero) */
+.s1{background:var(--ink);color:#fff}
+.s1 .photo{position:absolute;top:0;left:0;right:0;height:640px;background:url(assets/hero-poster.jpg) center 35%/cover}
+.s1 .photo:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(26,26,26,.45) 0%,rgba(26,26,26,0) 30%,rgba(26,26,26,.15) 70%,rgba(26,26,26,.9) 100%)}
+.s1 .bar{position:absolute;top:640px;left:64px;right:64px;height:6px;background:var(--red)}
+.s1 .logo{z-index:2}
+.s1 .eye{position:absolute;top:690px;left:64px;color:rgba(255,255,255,.6)}
+.s1 h1{position:absolute;top:740px;left:64px;right:64px;font-size:132px}
+.s1 h2{position:absolute;top:1030px;left:64px;right:64px;font-weight:600;font-size:52px;letter-spacing:-.03em;line-height:1.1;color:#9a9a9a}
+.s1 .badge{position:absolute;top:470px;left:64px;z-index:2;background:var(--red);padding:14px 22px;font-size:22px;font-weight:800;letter-spacing:4px}
 
-/* 2 before */
-.s2{background:#e9e4dc;color:var(--ink)}
-.s2 .brand .z{background:var(--ink);color:#fff}
-.s2 .tag{position:absolute;top:170px;left:64px;background:var(--ink);color:#fff;font-weight:900;font-size:30px;letter-spacing:5px;padding:12px 26px}
-.s2 h1{position:absolute;top:240px;left:64px;font-size:130px;color:#555}
-.s2 h1 s{text-decoration-color:var(--red);text-decoration-thickness:12px}
-.note{position:absolute;background:#fff59d;padding:30px 34px;width:450px;box-shadow:0 12px 30px rgba(0,0,0,.18);font-size:33px;line-height:1.25;font-weight:600}
-.note .x{color:var(--red);font-weight:900;font-size:42px;display:block;margin-bottom:6px}
-.n1{top:560px;left:64px;transform:rotate(-4deg)}
-.n2{top:590px;right:64px;transform:rotate(5deg);background:#ffd3d3}
-.n3{top:880px;left:90px;transform:rotate(3deg);background:#d7ecff}
-.n4{top:910px;right:80px;transform:rotate(-5deg)}
-.pin{position:absolute;top:-14px;left:50%;width:28px;height:28px;border-radius:50%;background:var(--red);box-shadow:0 3px 6px rgba(0,0,0,.3)}
-.s2 .foot{opacity:.6}
+/* 2 — before (buying-brief card) */
+.s2{background:var(--off);color:var(--ink)}
+.s2 .eye{position:absolute;top:200px;left:64px;color:var(--red)}
+.s2 h1{position:absolute;top:250px;left:64px;right:64px;font-size:112px}
+.card{position:absolute;top:530px;left:64px;right:64px;background:#fff;border:2px solid var(--line)}
+.item{display:grid;grid-template-columns:70px 1fr;padding:30px 40px;border-bottom:2px solid var(--line)}
+.item:last-child{border:0}
+.item .n{font-size:22px;color:#aaa;font-weight:600;padding-top:8px}
+.item q{display:block;font-size:40px;font-weight:800;letter-spacing:-.02em;quotes:"“" "”"}
+.item span{display:block;margin-top:8px;font-size:24px;color:var(--red);font-weight:600}
+.item span:before{content:"✕  ";font-weight:900}
 
-/* 3 turn - whatsapp */
-.s3{background:#0b141a;color:#fff}
-.s3 .brand .z{background:var(--red)}
-.s3 h1{position:absolute;top:180px;left:64px;right:64px;font-size:100px}
-.s3 h1 span{color:#25D366}
-.phone{position:absolute;top:410px;left:110px;right:110px;bottom:130px;background:#efeae2;border-radius:48px;border:14px solid #222;overflow:hidden;color:var(--ink)}
-.phone .bar{background:#075E54;color:#fff;padding:26px 30px;display:flex;align-items:center;gap:20px}
-.phone .av{width:70px;height:70px;border-radius:50%;background:var(--red);display:grid;place-items:center;font-family:Anton;font-size:40px}
-.phone .nm{font-weight:800;font-size:30px}.phone .st{font-size:22px;opacity:.8}
-.bub{margin:20px 28px;padding:20px 26px;border-radius:18px;font-size:28px;line-height:1.35;max-width:82%;box-shadow:0 1px 2px rgba(0,0,0,.15);position:relative}
-.bub small{display:block;text-align:right;font-size:20px;color:#888;margin-top:8px}
+/* 3 — the turn (messy list → clean quote) */
+.s3{background:var(--ink);color:#fff}
+.s3 .eye{position:absolute;top:200px;left:64px;color:rgba(255,255,255,.6)}
+.s3 h1{position:absolute;top:250px;left:64px;right:64px;font-size:96px}
+.chat{position:absolute;top:540px;left:64px;right:64px;bottom:140px;background:#efeae2;color:var(--ink);overflow:hidden;border-top:6px solid var(--red)}
+.chat .top{background:#fff;padding:20px 28px;display:flex;align-items:center;gap:18px;border-bottom:2px solid var(--line)}
+.chat .top img{height:44px}
+.chat .top .st{font-size:20px;color:#25a35a;font-weight:600;margin-left:auto}
+.bub{margin:18px 28px;padding:18px 24px;border-radius:14px;font-size:26px;line-height:1.35;max-width:80%;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.bub small{display:block;text-align:right;font-size:17px;color:#999;margin-top:4px}
 .in{background:#fff}.out{background:#d9fdd3;margin-left:auto}
-.out small{color:#53bdeb}
+.note{font-style:italic;font-weight:500;background:#fffbe6;border:1px solid #eee2b0;padding:14px 18px;font-size:24px;line-height:1.35;transform:rotate(-1.5deg);margin-bottom:6px;color:#444}
+.quote{border:1px solid var(--line);background:#fafafa;border-radius:8px;margin-top:8px}
+.quote div{display:flex;justify-content:space-between;padding:8px 14px;font-size:21px;border-bottom:1px solid var(--line)}
+.quote div:last-child{border:0}
+.quote em{font-style:normal;color:#888}
+.s3 .chips{position:absolute;bottom:60px;left:64px;color:#fff}
+.s3 .chip{font-size:15px;padding:10px 14px}
 
-/* 4 after */
-.s4{background:var(--red);color:#fff}
-.s4 .brand .z{background:#fff;color:var(--red)}
-.s4 .tag{position:absolute;top:170px;left:64px;background:#fff;color:var(--red);font-weight:900;font-size:30px;letter-spacing:5px;padding:12px 26px}
-.s4 h1{position:absolute;top:240px;left:64px;font-size:130px}
-.list{position:absolute;top:540px;left:64px;right:64px;display:grid;gap:26px}
-.row{background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.35);border-radius:24px;padding:28px 32px;display:flex;gap:26px;align-items:center}
-.ck{flex:none;width:68px;height:68px;border-radius:50%;background:#fff;color:var(--red);display:grid;place-items:center;font-size:40px;font-weight:900}
-.row b{display:block;font-size:38px;font-weight:900}
-.row span{font-size:27px;opacity:.9}
+/* 4 — after (real ops photo, flagship style) */
+.s4{background:var(--ink) url(assets/packing-poster.jpg) center/cover;color:#fff}
+.s4:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(26,26,26,.6) 0%,rgba(26,26,26,.82) 40%,rgba(26,26,26,.97) 70%)}
+.s4>*{position:absolute;z-index:1}
+.s4 .flag{top:200px;left:64px;background:var(--red);padding:14px 22px;font-size:22px;font-weight:800;letter-spacing:4px}
+.s4 h1{top:270px;left:64px;right:64px;font-size:104px}
+.rows{top:640px;left:64px;right:64px;border-top:2px solid rgba(255,255,255,.2)}
+.rows>div{display:grid;grid-template-columns:70px 1fr;padding:26px 0;border-bottom:2px solid rgba(255,255,255,.2)}
+.rows .n{font-size:22px;color:var(--red);font-weight:800;padding-top:8px}
+.rows b{display:block;font-size:40px;font-weight:800;letter-spacing:-.02em}
+.rows span{display:block;font-size:24px;color:rgba(255,255,255,.65);margin-top:6px}
 
-/* 5 who */
-.s5{background:var(--cream);color:var(--ink)}
-.s5 .brand .z{background:var(--red);color:#fff}
-.s5 h1{position:absolute;top:170px;left:64px;right:64px;font-size:84px}
-.s5 h1 span{color:var(--red)}
-.grid{position:absolute;top:470px;left:64px;right:64px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.cell{background:#fff;border-radius:26px;padding:24px 28px;box-shadow:0 8px 24px rgba(0,0,0,.06);border-bottom:8px solid var(--red)}
-.cell .e{font-size:52px}.cell b{display:block;font-size:36px;font-weight:900;margin-top:10px}
-.cell span{font-size:25px;color:#666}
-.s5 .q{position:absolute;bottom:60px;left:64px;right:64px;text-align:center;font-size:58px;color:var(--red)}
+/* 5 — who */
+.s5{background:#fff;color:var(--ink)}
+.s5 .eye{position:absolute;top:200px;left:64px;color:var(--red)}
+.s5 h1{position:absolute;top:250px;left:64px;right:64px;font-size:100px}
+.grid{position:absolute;top:540px;left:64px;right:64px;display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--line);border-left:2px solid var(--line)}
+.grid div{padding:30px 32px;border-right:2px solid var(--line);border-bottom:2px solid var(--line)}
+.grid i{font-style:normal;font-size:20px;color:var(--red);font-weight:800;letter-spacing:2px}
+.grid b{display:block;font-size:36px;font-weight:800;letter-spacing:-.02em;margin-top:10px}
+.grid span{display:block;font-size:22px;color:#777;margin-top:6px}
+.ticker{position:absolute;bottom:0;left:0;right:0;height:110px;background:var(--ink);color:rgba(255,255,255,.6);display:flex;align-items:center;gap:26px;white-space:nowrap;padding-left:40px;font-size:20px;font-weight:700;letter-spacing:4px}
+.ticker .d{width:8px;height:8px;border-radius:50%;background:var(--red);flex:none}
 
-/* 6 cta */
-.s6{background:var(--dark);color:#fff}
-.s6 .ring{position:absolute;width:900px;height:900px;border-radius:50%;border:120px solid var(--red);right:-420px;top:-380px;opacity:.9}
-.s6 .brand .z{background:var(--red)}
-.s6 h1{position:absolute;top:220px;left:64px;right:64px;font-size:132px}
-.s6 h1 span{color:var(--red)}
-.s6 .sub{position:absolute;top:560px;left:64px;right:120px;font-size:38px;line-height:1.35;color:#d0d0d0}
-.s6 .sub b{color:#fff}
-.btn{position:absolute;top:740px;left:64px;right:64px;background:#25D366;color:#0b141a;border-radius:24px;padding:34px 40px;font-size:46px;font-weight:900;display:flex;justify-content:space-between;align-items:center}
-.contacts{position:absolute;top:930px;left:64px;right:64px;display:grid;grid-template-columns:1fr 1fr;gap:18px 30px;font-size:30px}
-.contacts div{border-left:6px solid var(--red);padding-left:18px}
-.contacts small{display:block;font-size:20px;letter-spacing:3px;color:#999;font-weight:800}
-.s6 .motto{position:absolute;bottom:56px;left:64px;right:64px;text-align:center;font-size:24px;color:#999;font-style:italic}
+/* 6 — CTA */
+.s6{background:var(--off);color:var(--ink)}
+.s6 .side{position:absolute;top:0;right:0;width:330px;height:100%;background:url(assets/ration-program-poster.jpg) center/cover;border-left:6px solid var(--red)}
+.s6 .logo{height:110px}
+.s6 .eye{position:absolute;top:260px;left:64px;color:var(--red)}
+.s6 h1{position:absolute;top:310px;left:64px;width:640px;font-size:84px}
+.s6 .sub{position:absolute;top:610px;left:64px;width:600px;font-size:28px;line-height:1.45;color:#555}
+.s6 .ctas{position:absolute;top:760px;left:64px;width:640px;display:grid;gap:16px}
+.s6 .info{position:absolute;top:1010px;left:64px;width:640px;display:grid;grid-template-columns:1fr 1fr;gap:22px 28px}
+.s6 .info small{display:block;font-size:16px;font-weight:700;letter-spacing:3px;color:#999;margin-bottom:4px}
+.s6 .info div{font-size:23px;font-weight:600;border-left:4px solid var(--red);padding-left:16px}
 </style></head><body>
 
 <!-- 1 -->
 <section class="s s1" id="slide1">
-  <div class="brand"><div class="z">Z</div>ZIDANE WHOLESALE</div><div class="pg">1/6</div>
-  <div class="cal"><div class="top">MAHINA SHURU</div><div class="d">1</div><div class="t">Stock check: 0 kg 😰</div></div>
-  <h1>Har mahine ki <span>1 tareekh</span>…</h1>
-  <p>Procurement manager ka sab se bara darr:<br><b>kitchen ka stock khatam, supplier ka phone band.</b></p>
-  <div class="swipe">Swipe karein →</div>
+  <div class="photo"></div>
+  <img class="logo" src="assets/zidane-wordmark-white.png">
+  <div class="pg" style="color:#fff">01 / 06</div>
+  <div class="badge">PROCUREMENT DIARIES</div>
+  <div class="bar"></div>
+  <div class="eye">B2B grocery supply · Karachi</div>
+  <h1>Har mahine ki<br><span class="r">1 tareekh.</span></h1>
+  <h2>Stock khatam.<br>Supplier ka phone band.</h2>
+  <div class="swipe" style="color:#fff">Swipe <b>→</b></div>
 </section>
 
 <!-- 2 -->
 <section class="s s2" id="slide2">
-  <div class="brand"><div class="z">Z</div>ZIDANE WHOLESALE</div><div class="pg">2/6</div>
-  <div class="tag">BEFORE ZIDANE</div>
-  <h1><s>Sab theek</s><br>hai?</h1>
-  <div class="note n1"><i class="pin"></i><span class="x">✕</span>"Bhai kal pakka aa jayega" — 3 din guzar gaye</div>
-  <div class="note n2"><i class="pin"></i><span class="x">✕</span>Har order pe naya rate</div>
-  <div class="note n3"><i class="pin"></i><span class="x">✕</span>Cheeni 50 kg mangwai… aayi 45 kg</div>
-  <div class="note n4"><i class="pin"></i><span class="x">✕</span>5 suppliers, 5 bills, 5 headaches</div>
-  <div class="swipe">Phir kya hua? →</div>
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="pg">02 / 06</div>
+  <div class="eye">Before Zidane</div>
+  <h1>Har supplier,<br><span class="r">wohi bahane.</span></h1>
+  <div class="card">
+    <div class="item"><div class="n">01</div><div><q>Bhai kal pakka aa jayega.</q><span>3 din baad bhi nahi aaya</span></div></div>
+    <div class="item"><div class="n">02</div><div><q>Rate thora barh gaya hai.</q><span>Har order pe naya rate</span></div></div>
+    <div class="item"><div class="n">03</div><div><q>Weight poora hai sir.</q><span>50 kg mangwai, 45 kg aayi</span></div></div>
+    <div class="item"><div class="n">04</div><div><q>Baqi items kahin aur se le lein.</q><span>5 suppliers, 5 bills, 5 headaches</span></div></div>
+  </div>
+  <div class="swipe">Phir? <b>→</b></div>
 </section>
 
 <!-- 3 -->
 <section class="s s3" id="slide3">
-  <div class="brand"><div class="z">Z</div>ZIDANE WHOLESALE</div><div class="pg">3/6</div>
-  <h1>Phir aaya ek<br><span>WhatsApp</span> message…</h1>
-  <div class="phone">
-    <div class="bar"><div class="av">Z</div><div><div class="nm">Zidane Wholesale</div><div class="st">online</div></div></div>
-    <div class="bub in">Assalam o Alaikum Sir 👋 Zidane Wholesale se baat kar rahe hain.<small>10:02 AM</small></div>
-    <div class="bub in">Aap ki <b>monthly requirement</b> bata dein — baqi hum sambhal lenge. 🤝<small>10:02 AM</small></div>
-    <div class="bub out">Rice 500kg, Atta, Cheeni, Oil, Daal… sab chahiye 😅<small>10:05 AM ✓✓</small></div>
-    <div class="bub in">Done Sir ✅ Quote 24 ghante mein, delivery schedule pe.<small>10:06 AM</small></div>
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="pg" style="color:#fff">03 / 06</div>
+  <div class="eye">Phir ek WhatsApp bheja</div>
+  <h1>List messy thi.<br><span class="r">Quote nahi.</span></h1>
+  <div class="chat">
+    <div class="top"><img src="assets/zidane-wordmark.png"><span class="st">● online</span></div>
+    <div class="bub out"><div class="note">atta 10 bori, chawal 250kg,<br>cheeni, oil 5L x 20, daal?? chai…</div>Ye hai is mahine ki list 😅<small>10:05 AM ✓✓</small></div>
+    <div class="bub in">Sir list mil gayi ✅ Structured quote:
+      <div class="quote"><div>Atta · 10 kg bags <em>500 kg</em></div><div>Rice · institutional <em>250 kg</em></div><div>Cooking oil · 5 L <em>20 tins</em></div><div>Sugar · Daal · Tea <em>as required</em></div></div>
+      <small>10:11 AM</small></div>
   </div>
-  <div class="swipe">→</div>
+  <div class="chips"><span class="chip">Excel / CSV</span><span class="chip">WhatsApp list</span><span class="chip">Handwritten photo</span></div>
+  <div class="swipe" style="color:#fff"><b>→</b></div>
 </section>
 
 <!-- 4 -->
 <section class="s s4" id="slide4">
-  <div class="brand"><div class="z">Z</div>ZIDANE WHOLESALE</div><div class="pg">4/6</div>
-  <div class="tag">AFTER ZIDANE</div>
-  <h1>Ab tension<br>off. ✓</h1>
-  <div class="list">
-    <div class="row"><div class="ck">✓</div><div><b>Scheduled Delivery</b><span>On time, every time — koi "kal pakka" nahi</span></div></div>
-    <div class="row"><div class="ck">✓</div><div><b>Fixed, Transparent Pricing</b><span>Koi hidden charges nahi</span></div></div>
-    <div class="row"><div class="ck">✓</div><div><b>One Supplier, Poori List</b><span>Rice · Atta · Cheeni · Oil · Daal · Masala · Tea · Dairy</span></div></div>
-    <div class="row"><div class="ck">✓</div><div><b>Dedicated Account Manager</b><span>Seedha WhatsApp pe, 24/7</span></div></div>
+  <img class="logo" src="assets/zidane-wordmark-white.png"><div class="pg">04 / 06</div>
+  <div class="flag">AFTER ZIDANE</div>
+  <h1>Ab supply chalti hai<br><span class="dim">schedule pe.</span></h1>
+  <div class="rows">
+    <div><div class="n">01</div><div><b>Scheduled delivery</b><span>On time — koi "kal pakka" nahi</span></div></div>
+    <div><div class="n">02</div><div><b>Transparent pricing</b><span>Quote clear, koi hidden charges nahi</span></div></div>
+    <div><div class="n">03</div><div><b>Ek supplier, poori list</b><span>Atta · Rice · Sugar · Oil & Ghee · Daal · Spices · Tea · Dairy</span></div></div>
+    <div><div class="n">04</div><div><b>Ration bags, aap ki branding</b><span>Corporate, NGO, Ramadan & monthly programs</span></div></div>
   </div>
-  <div class="swipe">→</div>
+  <div class="swipe"><b>→</b></div>
 </section>
 
 <!-- 5 -->
 <section class="s s5" id="slide5">
-  <div class="brand"><div class="z">Z</div>ZIDANE WHOLESALE</div><div class="pg">5/6</div>
-  <h1>Kis ke liye?<br><span>Har us kitchen ke liye</span><br>jo ruk nahi sakta.</h1>
+  <img class="logo" src="assets/zidane-wordmark.png"><div class="pg">05 / 06</div>
+  <div class="eye">Industries we serve</div>
+  <h1>Har us kitchen ke liye<br><span class="r">jo ruk nahi sakta.</span></h1>
   <div class="grid">
-    <div class="cell"><div class="e">🏭</div><b>Factories</b><span>Staff canteens & mess</span></div>
-    <div class="cell"><div class="e">🏥</div><b>Hospitals</b><span>Patient & staff kitchens</span></div>
-    <div class="cell"><div class="e">🎓</div><b>Schools & Hostels</b><span>Daily meals, bulk scale</span></div>
-    <div class="cell"><div class="e">🤲</div><b>NGOs & Welfare</b><span>Ration & Ramadan packs</span></div>
-    <div class="cell"><div class="e">🍽️</div><b>Restaurants</b><span>Central kitchens & caterers</span></div>
-    <div class="cell"><div class="e">🏢</div><b>Corporate Offices</b><span>Pantries & welfare packs</span></div>
+    <div><i>01</i><b>Factories</b><span>Staff canteens & mess</span></div>
+    <div><i>02</i><b>Hospitals</b><span>Patient & staff kitchens</span></div>
+    <div><i>03</i><b>Schools & hostels</b><span>Daily meals at scale</span></div>
+    <div><i>04</i><b>NGOs & welfare</b><span>Ration & Ramadan programs</span></div>
+    <div><i>05</i><b>Restaurants</b><span>Central kitchens & caterers</span></div>
+    <div><i>06</i><b>Corporate offices</b><span>Pantries & employee packs</span></div>
   </div>
-  <div class="q hand">Aap ka kitchen chalta rahe — hum supply chalate rahein.</div>
+  <div class="ticker"><span>RICE</span><i class="d"></i><span>PULSES / DAAL</span><i class="d"></i><span>COOKING OIL & GHEE</span><i class="d"></i><span>SPICES</span><i class="d"></i><span>TEA & COFFEE</span><i class="d"></i><span>MILK & DAIRY</span><i class="d"></i><span>SUGAR</span></div>
 </section>
 
 <!-- 6 -->
 <section class="s s6" id="slide6">
-  <div class="ring"></div>
-  <div class="brand"><div class="z">Z</div>ZIDANE WHOLESALE</div>
-  <h1>Apni monthly<br>list <span>bhejein.</span></h1>
-  <div class="sub"><b>24 ghante mein custom quote</b> — free consultation, flexible terms, no minimum on first inquiry.</div>
-  <div class="btn"><span>WhatsApp: 0339-2639315</span><span>→</span></div>
-  <div class="contacts">
-    <div><small>UAN</small>021-111-943263</div>
-    <div><small>EMAIL</small>sales@zidane.com.pk</div>
-    <div><small>WEBSITE</small>www.zidane.com.pk</div>
-    <div><small>INSTAGRAM</small>@zidane.wholesale</div>
+  <div class="side"></div>
+  <img class="logo" src="assets/zidane-wordmark.png">
+  <div class="eye">Send the requirement</div>
+  <h1>Apni list bhejein.<br><span class="r">Quote hum banayenge.</span></h1>
+  <div class="sub">Excel, PDF, WhatsApp list ya handwritten photo — jo bhi ho, chalega.</div>
+  <div class="ctas">
+    <span class="btn red">Request a Quote →</span>
+    <span class="btn ghost">WhatsApp · 0339 2639315</span>
   </div>
-  <div class="motto">"We don't just supply products — we deliver reliability."</div>
+  <div class="info">
+    <div><small>UAN</small>021 111 ZIDANE</div>
+    <div><small>EMAIL</small>sales@zidane.com.pk</div>
+    <div><small>WEBSITE</small>zidane.com.pk</div>
+    <div><small>LOCATION</small>Korangi, Karachi</div>
+  </div>
 </section>
 </body></html>
