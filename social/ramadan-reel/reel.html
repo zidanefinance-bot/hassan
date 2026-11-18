@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;font-weight:100 900;src:url(assets/inter-latin.woff2) format("woff2")}
+:root{--red:#c22a2f;--ink:#1a1a1a;--off:#f7f4ee;--gold:#e9b65b;--gold-soft:#f6dca6;--night:#1f0d0f}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1920px;overflow:hidden;font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:radial-gradient(120% 70% at 60% 30%,#5a1519 0%,var(--night) 55%,#120708 100%)}
+#stage>*,.red>*,.cta>*{position:absolute}
+h1{font-weight:900;letter-spacing:-.055em;line-height:.95;color:var(--off)}
+.gold{color:var(--gold)}
+.eye{display:flex;align-items:center;gap:18px;font-size:26px;font-weight:700;letter-spacing:6px;text-transform:uppercase;color:var(--gold)}
+.eye:before{content:"";position:static;width:60px;height:2px;background:currentColor}
+.A{animation-fill-mode:both;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+
+/* keyframes */
+@keyframes up{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:none}}
+@keyframes out{to{opacity:0;transform:translateY(-40px)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes drop{0%{transform:translateY(-500px)}70%{transform:translateY(20px)}85%{transform:translateY(-8px)}100%{transform:none}}
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes boxIn{0%{opacity:0;transform:translate(-50%,500px) scale(.6) rotate(-6deg)}70%{opacity:1;transform:translate(-50%,-20px) scale(1.04) rotate(1deg)}100%{opacity:1;transform:translate(-50%,0) scale(1) rotate(0)}}
+@keyframes boxFloat{0%,100%{margin-top:0}50%{margin-top:-18px}}
+@keyframes boxToCta{to{transform:translate(-50%,-590px) scale(.62)}}
+@keyframes glow{0%,100%{opacity:.75;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.08)}}
+@keyframes pop{0%{opacity:0;transform:scale(.3)}70%{opacity:1;transform:scale(1.12)}100%{opacity:1;transform:scale(1)}}
+@keyframes wipe{from{clip-path:circle(0% at 50% 62%)}to{clip-path:circle(150% at 50% 62%)}}
+@keyframes stamp{0%{opacity:0;transform:translate(-50%,-50%) scale(2.2) rotate(-14deg)}60%{opacity:1;transform:translate(-50%,-50%) scale(.92) rotate(-8deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-8deg)}}
+@keyframes twinkle{0%,100%{opacity:.2}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* timeline (s): 0-3 intro · 3-7.5 box reveal · 7.5-11 branding · 11-15 CTA */
+.pattern{inset:0;opacity:.07;color:var(--gold)}
+.star{width:8px;height:8px;border-radius:50%;background:var(--gold-soft);animation:twinkle 1.6s ease-in-out infinite}
+.moon{top:190px;right:90px;width:150px;height:150px;animation:fadeIn 1s .2s both}
+.lan{top:0;transform-origin:top center}
+.lan1{right:300px;width:90px;height:260px;animation:drop .9s .1s both,sway 2.4s 1s ease-in-out infinite}
+.lan2{right:170px;width:120px;height:360px;animation:drop 1s .25s both,sway 2.8s 1.2s ease-in-out infinite}
+.lan3{left:90px;width:80px;height:220px;animation:drop .9s .4s both,sway 2.2s 1.3s ease-in-out infinite}
+.logoTop{top:120px;left:72px;height:86px;animation:fadeIn .6s .1s both}
+
+.t1{top:600px;left:72px;right:72px;animation:up .8s .3s both,out .5s 2.7s forwards}
+.t1 h1{position:static;font-size:150px}
+.t1 .eye{position:static;margin-bottom:30px}
+.t1b{top:1040px;left:72px;right:72px;font-size:52px;font-weight:600;letter-spacing:-.02em;line-height:1.2;color:rgba(247,244,238,.75);animation:up .7s 1.1s both,out .5s 2.75s forwards}
+.t1b b{color:#fff}
+
+.glowc{left:50%;top:880px;width:1300px;height:1000px;background:radial-gradient(closest-side,rgba(233,182,91,.5),rgba(233,182,91,0));transform:translateX(-50%);animation:fadeIn .8s 3s both,glow 2.5s 3.8s ease-in-out infinite}
+.boxwrap{left:50%;top:820px;width:980px;height:980px;animation:boxIn 1.2s 3.05s both,boxToCta .9s 11s forwards;transform:translateX(-50%)}
+.boxwrap img{position:static;width:100%;animation:boxFloat 3s 4.3s ease-in-out infinite}
+
+.t2{top:300px;left:72px;right:72px;animation:up .7s 3.3s both,out .4s 7.4s forwards}
+.t2 .eye{position:static;margin-bottom:26px}
+.t2 h1{position:static;font-size:118px}
+.chip{background:var(--off);color:var(--ink);font-size:34px;font-weight:800;padding:16px 26px;border-radius:999px;box-shadow:0 12px 30px rgba(0,0,0,.35);letter-spacing:-.01em}
+.chip i{font-style:normal;margin-right:10px}
+.c1{top:700px;left:70px;animation:pop .5s 4.4s both,fadeOut .3s 7.4s forwards}
+.c2{top:760px;right:80px;animation:pop .5s 4.7s both,fadeOut .3s 7.4s forwards}
+.c3{top:1640px;left:90px;animation:pop .5s 5.0s both,fadeOut .3s 7.4s forwards}
+.c4{top:1580px;right:70px;animation:pop .5s 5.3s both,fadeOut .3s 7.4s forwards}
+.c5{top:1720px;left:50%;margin-left:-110px;animation:pop .5s 5.6s both,fadeOut .3s 7.4s forwards}
+
+/* scene 3: red wipe */
+.red{inset:0;background:var(--red);animation:wipe .9s 7.5s both cubic-bezier(.7,0,.2,1)}
+.red .pattern{color:#fff;opacity:.08}
+.t3{top:300px;left:72px;right:72px;animation:up .7s 8s both,out .4s 10.9s forwards}
+.t3 .eye{position:static;margin-bottom:26px;color:rgba(255,255,255,.8)}
+.t3 h1{position:static;font-size:124px}
+.t3 h1 span{color:var(--gold-soft)}
+.stampy{left:701px;top:1469px;z-index:5;background:#fff;color:var(--red);font-weight:900;font-size:34px;letter-spacing:2px;padding:18px 26px;border:5px solid var(--red);outline:4px solid #fff;text-align:center;line-height:1.1;animation:stamp .5s 8.9s both,fadeOut .3s 10.9s forwards}
+.stampy small{display:block;font-size:20px;letter-spacing:4px;font-weight:800}
+.who{top:770px;left:72px;right:72px;display:flex;justify-content:center;gap:16px;animation:up .6s 9.4s both,fadeOut .3s 10.9s forwards}
+.who span{position:static;border:2px solid rgba(255,255,255,.7);color:#fff;font-size:28px;font-weight:700;letter-spacing:3px;padding:14px 22px;text-transform:uppercase}
+
+/* scene 4: CTA */
+.cta{inset:0;background:radial-gradient(120% 70% at 60% 30%,#5a1519 0%,var(--night) 55%,#120708 100%);animation:fadeIn .6s 11s both}
+.cta .pattern{opacity:.07}
+.ctaLogo{top:190px;left:280px;width:520px;animation:up .6s 11.4s both}
+.t4{top:1130px;left:72px;right:72px;text-align:center;animation:up .7s 11.9s both}
+.t4 h1{position:static;font-size:112px}
+.btn{left:110px;right:110px;top:1420px;background:var(--red);color:#fff;font-size:44px;font-weight:800;padding:34px;text-align:center;border-radius:4px;animation:pop .5s 12.6s both}
+.info{top:1580px;left:72px;right:72px;text-align:center;font-size:32px;font-weight:600;color:rgba(247,244,238,.8);line-height:1.6;animation:fadeIn .6s 13s both}
+.info b{color:var(--gold)}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <pattern id="girih" width="140" height="140" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M70 12 L86 54 L128 70 L86 86 L70 128 L54 86 L12 70 L54 54 Z"/>
+        <rect x="37" y="37" width="66" height="66" transform="rotate(45 70 70)"/><rect x="37" y="37" width="66" height="66"/>
+        <circle cx="0" cy="0" r="16"/><circle cx="140" cy="0" r="16"/><circle cx="0" cy="140" r="16"/><circle cx="140" cy="140" r="16"/>
+      </g>
+    </pattern>
+    <symbol id="lantern" viewBox="0 0 120 300">
+      <line x1="60" y1="0" x2="60" y2="80" stroke="#e9b65b" stroke-width="3"/>
+      <path d="M60 80 l14 18 h-28z" fill="#e9b65b"/>
+      <path d="M40 100 h40 l14 30 v80 l-14 30 h-40 l-14 -30 v-80z" fill="rgba(233,182,91,.18)" stroke="#e9b65b" stroke-width="4"/>
+      <path d="M44 132 h32 v76 h-32z" fill="#f6dca6" opacity=".85"/>
+      <path d="M60 140 c10 12 10 28 0 40 c-10 -12 -10 -28 0 -40z" fill="#c22a2f"/>
+      <path d="M40 240 h40 l-8 16 h-24z" fill="#e9b65b"/>
+      <line x1="60" y1="256" x2="60" y2="290" stroke="#e9b65b" stroke-width="3"/><circle cx="60" cy="292" r="6" fill="#e9b65b"/>
+    </symbol>
+    <symbol id="moon" viewBox="0 0 100 100"><path d="M62 8 A44 44 0 1 0 92 70 A36 36 0 1 1 62 8z" fill="#f6dca6"/></symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+  <svg class="pattern" width="1080" height="1920"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+  <i class="star" style="top:420px;left:640px;animation-delay:.2s"></i>
+  <i class="star" style="top:300px;left:480px;animation-delay:.9s"></i>
+  <i class="star" style="top:560px;left:980px;animation-delay:.5s"></i>
+  <i class="star" style="top:250px;left:240px;animation-delay:1.3s"></i>
+  <svg class="moon"><use href="#moon"/></svg>
+  <svg class="lan lan1"><use href="#lantern"/></svg>
+  <svg class="lan lan2"><use href="#lantern"/></svg>
+  <svg class="lan lan3"><use href="#lantern"/></svg>
+  <img class="logoTop" src="assets/zidane-wordmark-white.png">
+
+  <!-- scene 1 -->
+  <div class="t1"><div class="eye">Ramadan 2027</div><h1>Is baar<br>dena hai…</h1></div>
+  <div class="t1b">…to <b>dil se,</b><br>aur <b>waqt pe.</b></div>
+
+  <!-- scene 2 -->
+  <div class="glowc"></div>
+  <div class="t2"><div class="eye">Introducing</div><h1>Zidane<br><span class="gold">Ramadan Box.</span></h1></div>
+  <div class="chip c1"><i>🌾</i>Atta & Rice</div>
+  <div class="chip c2"><i>🫒</i>Cooking Oil</div>
+  <div class="chip c3"><i>🫘</i>Daal & Sewaiyan</div>
+  <div class="chip c4"><i>🌴</i>Khajoor</div>
+  <div class="chip c5"><i>🍵</i>Tea & Spices</div>
+
+  <!-- scene 3 -->
+  <div class="red">
+    <svg class="pattern" width="1080" height="1920"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+    <div class="t3"><div class="eye">Custom branding</div><h1>Aap ka logo.<br><span>Aap ki pehchaan.</span></h1></div>
+    <div class="who"><span>Corporate</span><span>Employees</span><span>NGOs</span></div>
+  </div>
+
+  <!-- scene 4 -->
+  <div class="cta">
+    <svg class="pattern" width="1080" height="1920"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+    <img class="ctaLogo" src="assets/zidane-wordmark-white.png">
+    <div class="t4"><h1>Plan Ramadan<br><span class="gold">2027 today.</span></h1></div>
+    <div class="btn">WhatsApp · 0339 2639315</div>
+    <div class="info">UAN <b>021 111 ZIDANE</b><br>zidane.com.pk/ramadan-ration-bags</div>
+  </div>
+
+  <div class="boxwrap"><img src="assets/zidane-box-cutout.png"></div>
+  <div class="stampy"><small>YOUR</small>LOGO<small>HERE</small></div>
+</div>
+</body></html>
