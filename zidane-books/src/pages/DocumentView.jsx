@@ -103,7 +103,7 @@ function waText(d, company) {
   const lines = bag
     ? `${bag.kit_name}: ${num(bag.bags)} bags${isDc ? "" : ` × ${money(bag.rate_per_bag)} = ${money(bag.amount)}`}${bag.show_contents ? `\nEach bag contains:\n${bag.contents.map((l) => `• ${l.item_name || l.description} × ${num(l.per_bag)}${isDc || !bag.item_rates ? ` ${l.unit || ""}` : ` @ ${money(l.rate)}`}`).join("\n")}` : ""}`
     : d.lines.map((l) => `• ${l.item_name || l.description} × ${num(l.qty)}${isDc ? ` ${l.unit || ""}` : ` = ${money(l.amount)}`}`).join("\n");
-  const head = `Assalam o Alaikum ${d.contact.name},\n\n${KIND[d.kind].label} ${d.number} from ${company.name}\nDate: ${fmtDate(d.date)}${d.due_date ? `\nDue: ${fmtDate(d.due_date)}` : ""}${d.job?.customer_po_number ? `\nYour PO: ${d.job.customer_po_number}` : ""}${d.linked_numbers?.length ? `\n${d.kind === "dc" ? "Invoice" : "DC"}: ${d.linked_numbers.join(", ")}` : ""}`;
+  const head = `Assalam o Alaikum ${d.contact.name},\n\n${KIND[d.kind].label} ${d.number} from ${company.name}\nDate: ${fmtDate(d.date)}${d.due_date ? `\nDue: ${fmtDate(d.due_date)}` : ""}${d.job?.customer_po_number ? `\nCustomer PO: ${d.job.customer_po_number}` : ""}${d.linked_numbers?.length ? `\n${d.kind === "dc" ? "Invoice" : "DC"}: ${d.linked_numbers.join(", ")}` : ""}`;
   const credited = (d.payments || []).filter((p) => p.source === "credit").reduce((t, p) => t + p.amount, 0);
   const cashPaid = Math.round(((d.paid || 0) - credited) * 100) / 100;
   const tail = isDc ? "" : `\n\nTotal: ${money(d.total)}${d.paid ? `${credited ? `\nLess ${d.kind === "bill" ? "vendor credit" : "credit note"}: ${money(credited)}` : ""}${cashPaid > 0.004 ? `\nPaid: ${money(cashPaid)}` : ""}\nBalance: ${money(d.balance)}` : ""}`;
