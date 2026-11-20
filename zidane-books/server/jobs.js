@@ -2,7 +2,7 @@
 // Sales creates the Job from customer demand; Operations fulfils it (procurement, purchases, supplier bills,
 // direct costs, fulfilment status); Sales then raises the customer DC and invoice from it.
 import { tx } from "./db.js";
-import { displayStatus, getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
+import { dcShortfall, displayStatus, getSetting, httpError, log, nextNumber, PAID_SQL, round2, saveDocument, today } from "./books.js";
 import { DOC_READ } from "./collab.js";
 import * as RA from "./ration.js";
 import { jobWht, setLineWht, syncInvoiceWht } from "./wht.js";
@@ -571,10 +571,9 @@ export function checkInvoiceQty(db, doc, lines) {
 // a DC that went out can't be voided or deleted if the Job has already invoiced those goods
 export function checkDcRemoval(db, doc) {
   if (!doc.job_id || !["issued", "signed"].includes(doc.status)) return;
-  const { items, key, sumOther } = jobLineLimits(db, doc, []);
-  const delivered = sumOther("dc", ["issued", "signed"]);
-  const billed = sumOther("invoice", ["open", "draft"]);
-  if (items.some((it) => (billed[key(it)] || 0) > (delivered[key(it)] || 0) + 0.001)) throw httpError(400, "Goods on this delivery challan are already invoiced. Void the invoice (or make a credit note) first.");
+  // removing it may not leave invoiced goods undelivered (an invoice made ahead of the deliveries is fine)
+  const short = dcShortfall(db, doc, []);
+  if (short) throw httpError(400, `${short} on this delivery challan is already invoiced. Void the invoice (or make a credit note) first.`);
 }
 
 // "Material arrived" does DC + invoice together: make sure both will work before the DC goes out
@@ -654,7 +653,7 @@ const noteDcs = (db, invoiceId, jobId) => { const dcs = unbilledDcs(db, jobId); 
 export function uninvoicedDcs(db, jobId, statuses = ["issued", "signed"]) {
   const invoices = db.prepare("SELECT id, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status IN ('open','draft')").all(jobId);
   const named = new Set(invoices.flatMap((i) => splitNumbers(i.dc_numbers)));
-  const legacy = Math.max(0, ...invoices.filter((i) => !i.dc_numbers).map((i) => i.id));
+  const legacy = Math.max(0, ...invoices.filter((i) => i.dc_numbers == null).map((i) => i.id));
   return db.prepare(`SELECT id, number, date, status FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN (${statuses.map(() => "?").join(",")}) ORDER BY date, id`).all(jobId, ...statuses)
     .filter((d) => !named.has(d.number) && d.id > legacy);
 }
@@ -662,11 +661,11 @@ export function uninvoicedDcs(db, jobId, statuses = ["issued", "signed"]) {
 // "DC: …" on an invoice and "Invoice: …" on a DC. Invoices made before this was kept show all the Job's sent DCs.
 export function linkedNumbers(db, d) {
   if (!d.job_id || !["invoice", "dc"].includes(d.kind)) return [];
-  if (d.kind === "invoice") return d.dc_numbers ? splitNumbers(d.dc_numbers)
+  if (d.kind === "invoice") return d.dc_numbers != null ? splitNumbers(d.dc_numbers)
     : db.prepare("SELECT number FROM documents WHERE job_id = ? AND kind = 'dc' AND status IN ('issued','signed') ORDER BY id").all(d.job_id).map((x) => x.number);
   const invoices = db.prepare("SELECT number, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status = 'open' ORDER BY id").all(d.job_id);
   const mine = invoices.filter((i) => splitNumbers(i.dc_numbers).includes(d.number));
-  return (mine.length ? mine : invoices.filter((i) => !i.dc_numbers)).map((i) => i.number);
+  return (mine.length ? mine : invoices.filter((i) => i.dc_numbers == null)).map((i) => i.number);
 }
 
 export function invoiceFromJob(db, userId, jobId, { bags, show_as } = {}) {

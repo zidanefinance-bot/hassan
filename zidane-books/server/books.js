@@ -150,8 +150,24 @@ const sameLines = (a, b) => {
 function dcInvoices(db, dc) {
   if (!dc.job_id) return [];
   return db.prepare("SELECT id, number, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND status IN ('open','draft')").all(dc.job_id)
-    .filter((i) => (i.dc_numbers ? i.dc_numbers.split(",").map((x) => x.trim()).includes(dc.number) : i.id > dc.id)).map((i) => i.number);
+    .filter((i) => (i.dc_numbers != null ? i.dc_numbers.split(",").map((x) => x.trim()).includes(dc.number) : i.id > dc.id)).map((i) => i.number);
 }
+// the first item a DC change / removal would leave invoiced but not delivered (null if none)
+export function dcShortfall(db, dc, newLines = []) {
+  const sum = (rows) => { const m = new Map(); for (const l of rows) m.set(lineKey(l), (m.get(lineKey(l)) || 0) + (Number(l.qty) || 0)); return m; };
+  const other = sum(db.prepare("SELECT l.item_id, l.description, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = ? AND d.kind = 'dc' AND d.status IN ('issued','signed') AND d.id != ?").all(dc.job_id, dc.id));
+  const billed = sum(db.prepare("SELECT l.item_id, l.description, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id WHERE d.job_id = ? AND d.kind = 'invoice' AND d.status IN ('open','draft')").all(dc.job_id));
+  const before = sum(db.prepare("SELECT item_id, description, qty FROM document_lines WHERE document_id = ?").all(dc.id)), after = sum(newLines.filter((l) => l.item_id || l.description));
+  for (const [k, b] of billed) {
+    const was = (other.get(k) || 0) + (before.get(k) || 0), now = (other.get(k) || 0) + (after.get(k) || 0);
+    if (b > now + 0.001 && b <= was + 0.001) {
+      const l = [...db.prepare("SELECT l.item_id, l.description, COALESCE(i.name, l.description) AS name FROM document_lines l LEFT JOIN items i ON i.id = l.item_id WHERE l.document_id = ?").all(dc.id)].find((x) => lineKey(x) === k);
+      return l?.name || "An item";
+    }
+  }
+  return null;
+}
+
 function checkJobDocument(db, kind, input, existing, jobId) {
   const job = jobId ? db.prepare("SELECT id, number, customer_id, bags FROM jobs WHERE id = ?").get(jobId) : null;
   if (job && ["quote", "invoice", "dc", "credit_note"].includes(kind) && Number(input.contact_id) !== job.customer_id) {
@@ -164,8 +180,12 @@ function checkJobDocument(db, kind, input, existing, jobId) {
     if (existing.job_id && Number(jobId || 0) !== existing.job_id) throw httpError(400, "A delivery challan can't move to another Job");
     const before = db.prepare("SELECT item_id, description, qty FROM document_lines WHERE document_id = ?").all(existing.id);
     const changed = Number(input.contact_id) !== existing.contact_id || !sameLines(before, input.lines);
-    const inv = changed && existing.status !== "draft" ? dcInvoices(db, existing) : [];
-    if (inv.length) throw httpError(400, `${existing.number} is already invoiced (${inv.join(", ")}), so its customer and items can't change. Fix it with a credit note, or change the invoice first.`);
+    // invoiced goods must stay delivered: a change may not take an item below what invoices bill, unless it already
+    // was below (an invoice made before the deliveries: then this DC isn't what backs it)
+    if (changed && existing.status !== "draft" && existing.job_id) {
+      const short = dcShortfall(db, existing, input.lines);
+      if (short) throw httpError(400, `${short} is already invoiced (${dcInvoices(db, existing).join(", ") || "on this Job"}) and would no longer be delivered. Change the invoice (or make a credit note) first.`);
+    }
     if (changed && existing.bags > 0) throw httpError(400, `${existing.number} is counted in bags. To change it, delete it and make the DC again from the Job.`);
     if (!changed) return;
   }
@@ -229,7 +249,7 @@ export function linkDcToInvoices(db, dcId) {
   const sumBy = (rows) => { const m = new Map(); for (const l of rows) m.set(lineKey(l), (m.get(lineKey(l)) || 0) + l.qty); return m; };
   const want = sumBy(dcLines);
   for (const inv of invoices) {
-    if (!inv.dc_numbers) continue; // an old invoice that names no DC already stands for all of them
+    if (inv.dc_numbers == null) continue; // an old invoice that names no DC already stands for all of them
     const billed = sumBy(db.prepare("SELECT item_id, description, qty FROM document_lines WHERE document_id = ?").all(inv.id));
     const named = splitNums(inv.dc_numbers);
     const covered = sumBy(named.length ? db.prepare(`SELECT l.item_id, l.description, l.qty FROM document_lines l JOIN documents d ON d.id = l.document_id
@@ -245,7 +265,7 @@ function unlinkDc(db, dc) {
   if (dc?.kind !== "dc" || !dc.job_id) return;
   for (const inv of db.prepare("SELECT id, dc_numbers FROM documents WHERE job_id = ? AND kind = 'invoice' AND dc_numbers IS NOT NULL").all(dc.job_id)) {
     const named = splitNums(inv.dc_numbers);
-    if (named.includes(dc.number) && named.length > 1) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(named.filter((n) => n !== dc.number).join(", "), inv.id);
+    if (named.includes(dc.number)) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(named.filter((n) => n !== dc.number).join(", "), inv.id); // "" = names no DC (null = an old invoice, all of them)
   }
 }
 
@@ -322,7 +342,7 @@ export function saveDocument(db, userId, input, id = null) {
     db.prepare("UPDATE documents SET credit_days = ? WHERE id = ?").run(creditDays, id);
     log(db, userId, isUpdate ? "updated" : "created", kind, id, `${doc.number} · ${calc.total}`);
     // the DCs an invoice bills, as typed on the invoice (several are fine: "DC-00012, DC-00013")
-    if (kind === "invoice" && input.dc_numbers !== undefined) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(String(input.dc_numbers || "").split(/[,\n]+/).map((x) => x.trim()).filter(Boolean).join(", ") || null, id);
+    if (kind === "invoice" && input.dc_numbers !== undefined) db.prepare("UPDATE documents SET dc_numbers = ? WHERE id = ?").run(String(input.dc_numbers || "").split(/[,\n]+/).map((x) => x.trim()).filter(Boolean).join(", ") || (existing?.dc_numbers != null ? "" : null), id);
     return id;
   });
 }

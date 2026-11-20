@@ -1506,3 +1506,35 @@ test("invoice first, deliveries later: every DC issued afterwards joins the invo
   B.setStatus(db, 1, d3, "void");
   assert.equal(names(), `${num(d1)}, ${num(d2)}`);
 });
+
+test("invoice ahead of deliveries: its DCs can still be fixed or deleted; a DC that backs an invoice can't be cut", () => {
+  const db = openDb(":memory:");
+  ensureAdmin(db);
+  seedDemo(db);
+  const cust = db.prepare("SELECT id FROM contacts WHERE type = 'customer' LIMIT 1").get().id;
+  const mug = db.prepare("SELECT id FROM items LIMIT 1").get().id;
+  const one = (id) => db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
+  const job = J.createJob(db, 1, { customer_id: cust, items: [{ item_id: mug, qty: 1000, sale_rate: 380 }] });
+  const jobId = job.id ?? job;
+  const dc = (q, id) => B.saveDocument(db, 1, { kind: "dc", contact_id: cust, job_id: jobId, status: "issued", lines: [{ item_id: mug, qty: q }] }, id);
+  const d1 = dc(50);
+  const inv = B.saveDocument(db, 1, { kind: "invoice", contact_id: cust, job_id: jobId, status: "open", dc_numbers: one(d1).number, lines: [{ item_id: mug, qty: 1000, rate: 380 }] });
+  const d2 = dc(500);
+  assert.equal(one(inv).dc_numbers, `${one(d1).number}, ${one(d2).number}`);
+  // invoice 1000, delivered 550: fixing a DC's qty or deleting one is fine
+  dc(450, d2);
+  J.checkDcRemoval(db, one(d1));
+  B.deleteDocument(db, 1, d1);
+  assert.equal(one(inv).dc_numbers, one(d2).number, "the deleted DC left the invoice");
+  J.checkDcRemoval(db, one(d2));
+  B.deleteDocument(db, 1, d2);
+  assert.equal(one(inv).dc_numbers, "", "no DC left: names none (not 'all')");
+  assert.deepEqual(J.linkedNumbers(db, one(inv)), []);
+  // the usual order: DC 100, then the invoice for it → that DC backs it and can't be cut or removed
+  const job2 = J.createJob(db, 1, { customer_id: cust, items: [{ item_id: mug, qty: 100, sale_rate: 380 }] });
+  const j2 = job2.id ?? job2;
+  const d3 = B.saveDocument(db, 1, { kind: "dc", contact_id: cust, job_id: j2, status: "issued", lines: [{ item_id: mug, qty: 100 }] });
+  B.saveDocument(db, 1, { kind: "invoice", contact_id: cust, job_id: j2, status: "open", dc_numbers: one(d3).number, lines: [{ item_id: mug, qty: 100, rate: 380 }] });
+  assert.throws(() => B.saveDocument(db, 1, { kind: "dc", contact_id: cust, job_id: j2, status: "issued", lines: [{ item_id: mug, qty: 80 }] }, d3), /already invoiced/);
+  assert.throws(() => J.checkDcRemoval(db, one(d3)), /already invoiced/);
+});
