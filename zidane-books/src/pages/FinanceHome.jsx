@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, Field, fmtDate, Loading, money, PageHead, useLoad, useToast } from "../lib.jsx";
+import Reveal from "../components/Reveal.jsx";
+import Ayah from "../components/Ayah.jsx";
 
 const short = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const nz = (v) => (v === null || v === undefined || v === "" ? "" : v);
@@ -85,6 +87,7 @@ export default function FinanceHome({ user, onFullView }) {
         <Link className="btn" to="/reports?tab=pnl">Reports</Link>
         <button className="btn ghost" onClick={onFullView}>Full view</button>
       </PageHead>
+      <Ayah />
       <Loading state={state}>{(d) => {
         const w = d.weeks[picked] || d.weeks[0];
         const h = d.health;
@@ -120,8 +123,8 @@ export default function FinanceHome({ user, onFullView }) {
               <section className="card">
                 <h3>Business health</h3>
                 <dl className="kv">
-                  <dt>Gross margin</dt><dd>{h.month.gross_margin}% <span className="muted small">last month {h.last_month.gross_margin}%</span></dd>
-                  <dt>Net profit (month)</dt><dd className={h.month.net_profit < 0 ? "neg" : ""}>{money(h.month.net_profit)} <span className="muted small">last month {money(h.last_month.net_profit)}</span></dd>
+                  <dt>Gross margin</dt><dd><Reveal>{h.month.gross_margin}% <span className="muted small">last month {h.last_month.gross_margin}%</span></Reveal></dd>
+                  <dt>Net profit (month)</dt><dd className={h.month.net_profit < 0 ? "neg" : ""}><Reveal>{money(h.month.net_profit)} <span className="muted small">last month {money(h.last_month.net_profit)}</span></Reveal></dd>
                   <dt>Customers pay in</dt><dd>{h.dso === null ? "—" : `${h.dso} days`} <span className="muted small">on average</span></dd>
                   <dt>We pay suppliers in</dt><dd>{h.dpo === null ? "—" : `${h.dpo} days`}</dd>
                   <dt>Money tied up</dt><dd>{money(h.tied_up)} <span className="muted small">with customers + in stock</span></dd>

@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { addDays, api, fmtDate, Loading, money, PageHead, today, useAuth, useLoad } from "../lib.jsx";
+import Reveal from "../components/Reveal.jsx";
+import Ayah from "../components/Ayah.jsx";
 import FinanceHome from "./FinanceHome.jsx";
 
 // period picker presets: [label, from, to]
@@ -115,6 +117,7 @@ export default function Dashboard() {
 function FullHome({ onFinanceView }) {
   const { user, can } = useAuth();
   const [period, setPeriod] = useState("month");
+  const [itemProfit, setItemProfit] = useState(false); // per-item profit: hidden until tapped
   const [from, to] = PERIODS[period][1]();
   const state = useLoad(`/reports/home?from=${from}&to=${to}`);
   return (
@@ -127,6 +130,7 @@ function FullHome({ onFinanceView }) {
         {onFinanceView && <button className="btn ghost" onClick={onFinanceView}>Finance view</button>}
         {can("reports.finance") && <select value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Period">{Object.entries(PERIODS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>}
       </PageHead>
+      <Ayah />
       <Loading state={state}>{(d) => {
         const active = d.queues.filter((q) => q.count > 0);
         const depts = [...new Set(active.map((q) => q.dept))];
@@ -147,8 +151,8 @@ function FullHome({ onFinanceView }) {
               {k.orders_in_hand && <Stat label="Orders in hand (not invoiced yet)" value={money(k.orders_in_hand.to_invoice)} to="/jobs" sub={<span className="muted">{k.orders_in_hand.jobs} open Job{k.orders_in_hand.jobs === 1 ? "" : "s"} · total value {money(k.orders_in_hand.value)}</span>} />}
               {k.open_quotes !== undefined && <Stat label="Open enquiries & quotes" value={money(k.open_quotes)} to="/quotes" />}
               {k.active_jobs !== undefined && <Stat label="Active Jobs" value={k.active_jobs} to="/jobs" sub={<span className={k.blocked_jobs ? "neg" : "muted"}>{k.blocked_jobs} past due date</span>} />}
-              {k.period && <Stat label={`Net profit · ${PERIODS[period][0].toLowerCase()}`} value={money(k.period.net_profit)} tone={k.period.net_profit < 0 ? "neg" : "pos"} to={`/reports?tab=pnl&from=${from}&to=${to}`}
-                sub={<><span className="muted">Sales {money(k.period.revenue)} · GM {k.period.gross_margin}%</span><Delta now={k.period.net_profit} before={k.previous?.net_profit} /></>} />}
+              {k.period && <Stat label={`Net profit · ${PERIODS[period][0].toLowerCase()}`} value={<Reveal>{money(k.period.net_profit)}<span className="reveal-sub"><span className="muted">Sales {money(k.period.revenue)} · GM {k.period.gross_margin}%</span><Delta now={k.period.net_profit} before={k.previous?.net_profit} /></span></Reveal>} tone={k.period.net_profit < 0 ? "neg" : "pos"} to={`/reports?tab=pnl&from=${from}&to=${to}`}
+                />}
               {k.stock_value !== undefined && <Stat label="Stock value" value={money(k.stock_value)} to="/reports?tab=inventory" sub={k.low_stock ? <Link className="neg" to="/items?low=1">{k.low_stock} item(s) low</Link> : null} />}
             </div>
             {k.target && (
@@ -197,8 +201,8 @@ function FullHome({ onFinanceView }) {
               {k.top_items && (
                 <section className="card">
                   <div className="card-head"><h3>Top items · {PERIODS[period][0].toLowerCase()}</h3><Link className="btn sm ghost" to={`/reports?tab=sales-by-item&from=${from}&to=${to}`}>All</Link></div>
-                  {k.top_items.length === 0 ? <p className="muted small">No invoices in this period.</p> : <table className="table compact"><thead><tr><th /><th>Item</th><th className="r">Sales</th>{k.top_items[0].profit !== undefined && <th className="r">Profit</th>}</tr></thead>
-                    <tbody>{k.top_items.map((it, i) => <tr key={it.id}><td className="muted">{i + 1}</td><td><Link to={`/items/${it.id}`}>{it.name}</Link></td><td className="r">{money(it.sales)}</td>{it.profit !== undefined && <td className={`r ${it.profit < 0 ? "neg" : "pos"}`}>{money(it.profit)}</td>}</tr>)}</tbody></table>}
+                  {k.top_items.length === 0 ? <p className="muted small">No invoices in this period.</p> : <table className="table compact"><thead><tr><th /><th>Item</th><th className="r">Sales</th>{k.top_items[0].profit !== undefined && <th className="r"><button type="button" className="reveal-btn" onClick={() => setItemProfit((v) => !v)}><span>👁 Profit</span></button></th>}</tr></thead>
+                    <tbody>{k.top_items.map((it, i) => <tr key={it.id}><td className="muted">{i + 1}</td><td><Link to={`/items/${it.id}`}>{it.name}</Link></td><td className="r">{money(it.sales)}</td>{it.profit !== undefined && <td className={`r ${it.profit < 0 ? "neg" : "pos"}`}>{itemProfit ? money(it.profit) : <span className="muted">••••</span>}</td>}</tr>)}</tbody></table>}
                 </section>
               )}
               {k.budgets && (
