@@ -36,7 +36,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:
 .links a{position:relative}
 .links a::after{content:"";position:absolute;left:0;bottom:-4px;height:2px;width:0;background:var(--acid);transition:width .3s}
 .links a:hover::after{width:100%}
-@media (max-width:760px){.links{display:none}}
+.burger{display:none;background:none;border:2px solid var(--ink);color:var(--ink);border-radius:999px;padding:8px 16px;font:700 12px "Space Mono",monospace;text-transform:uppercase}
+@media (max-width:760px){.links{display:none}.burger{display:block}
+ nav.open{mix-blend-mode:normal;background:var(--bg);flex-wrap:wrap;bottom:0;align-items:flex-start;align-content:flex-start}
+ nav.open .links{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:22px;margin-top:40px;font:400 34px Anton,sans-serif}
+ nav.open .navcta{font-size:18px;padding:12px 22px}}
 
 /* logo */
 .logo{display:inline-flex;align-items:center;gap:10px}
@@ -251,6 +255,10 @@ a.card:focus-visible,.btn:focus-visible,.pn a:focus-visible{outline:3px solid va
 .flinks a{color:#cfcbc3}.flinks a:hover{color:var(--acid)}
 @media (max-width:900px){.dgrid,.two,.fcols{grid-template-columns:1fr}.dart{max-width:360px}}
 
+.navcta{background:var(--acid);color:#000;padding:8px 16px;border-radius:999px}
+.navcta::after{display:none}
+.links{align-items:center}
+.spec a:hover{text-decoration:underline}
 /* whatsapp */
 .wa{position:fixed;right:22px;bottom:22px;z-index:60;width:62px;height:62px;border-radius:50%;background:#25d366;display:grid;place-items:center;box-shadow:0 10px 30px rgba(37,211,102,.4);animation:pulse 2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,.6)}70%{box-shadow:0 0 0 18px rgba(37,211,102,0)}100%{box-shadow:0 0 0 0 rgba(37,211,102,0)}}
@@ -269,13 +277,15 @@ a.card:focus-visible,.btn:focus-visible,.pn a:focus-visible{outline:3px solid va
     <span class="logo-tag">ASH—MAN</span>
     <small>Corporation<br>Trims &amp; Labels</small>
   </a>
-  <div class="links">
+  <div class="links" id="navlinks">
     <a href="#products">Products</a>
+    <a href="#about">About</a>
+    <a href="#sustainability">Sustainability</a>
     <a href="#studio">Studio</a>
-    <a href="#process">Process</a>
-    <a href="#industries">Industries</a>
-    <a href="#quote">Get Quote</a>
+    <a href="#contact">Contact</a>
+    <a href="#quote" class="navcta">Request a quote</a>
   </div>
+  <button class="burger" id="burger" type="button" aria-expanded="false" aria-controls="navlinks">Menu</button>
 </nav>
 
 <main id="home">
@@ -400,7 +410,7 @@ a.card:focus-visible,.btn:focus-visible,.pn a:focus-visible{outline:3px solid va
 <main id="detail" hidden></main>
 
 <footer>
-  <div class="fcols"><div><b>Products</b><div class="flinks" id="footProducts"></div></div><div><b>Company</b><div class="flinks"><a href="#process">How it works</a><a href="#industries">Industries</a><a href="#studio">Label Studio</a><a href="#quote">Get a quote</a></div></div></div>
+  <div class="fcols"><div><b>Products</b><div class="flinks" id="footProducts"></div></div><div><b>Company</b><div class="flinks"><a href="#about">About us</a><a href="#sustainability">Sustainability</a><a href="#process">How it works</a><a href="#industries">Industries</a><a href="#studio">Label Studio</a><a href="#contact">Contact</a><a href="#quote">Request a quote</a></div></div></div>
   <div class="big">Ash—<span>Man</span></div>
   <div class="foot">
     <span>© <span id="yr"></span> ASH-MAN Corporation</span>
@@ -550,6 +560,42 @@ document.getElementById("grid").innerHTML = products.map((p,i)=>`
 document.getElementById("footProducts").innerHTML = products.map(p=>`<a href="#${p.s}">${p.t}</a>`).join("");
 document.querySelectorAll("#p").forEach(sel=>sel.innerHTML=products.map(p=>`<option>${p.t}</option>`).join("")+"<option>Other</option>");
 
+
+// ===== COMPANY INFO — edit here =====
+const COMPANY={phone:"+92 000 0000000",email:"info@ashman.com",address:"Address to be added, Pakistan",hours:"Mon–Sat, 9:00–18:00 PKT"};
+// Add real certifications only, e.g. {n:"OEKO-TEX® Standard 100",d:"..."} — the section stays hidden while empty.
+const CERTS=[];
+const ECO={"woven-labels":"Recycled polyester (rPET) yarn, organic cotton and TENCEL™ base options.","printed-labels":"Organic cotton tape, recycled satin and water-based inks.","hang-tags":"Recycled board, kraft, cotton, hemp, sugarcane and seed paper.","care-labels":"Recycled polyester satin and taffeta.","heat-transfers":"Water-based and PVC-free transfer inks.","patches":"Recycled polyester thread and backing.","leather-patches":"Recycled leather, recycled jacron and water-based PU.","metal-trims":"Nickel-free plating and lower-chemical finishes.","rfid-smart-tags":"Paper-face RFID tags in place of plastic.","stickers-barcodes":"Recycled and FSC-type paper face stocks.","trims-accessories":"Recycled polyester elastics, cords and tapes.","packaging":"Recycled polybags, kraft mailers and plastic-free packing."};
+const pageWrap=(eb,title,inner)=>`<div class="dhero"><div class="crumb"><a href="#top">Home</a> / <span>${eb}</span></div><div class="eyebrow">${eb}</div><h1 class="dtitle" style="color:var(--ink)">${title}</h1></div>${inner}<div style="height:120px"></div>`;
+const PAGES={
+ about:()=>pageWrap("About us",`Small detail.<br><span class="acid">Big brand.</span>`,`
+  <section class="dsec two"><div><p class="dintro" style="margin-top:0">ASH-MAN Corporation designs and produces garment trims, labels and packaging for fashion brands, manufacturers and export houses. We make the details that finish a garment: the label at the neck, the tag on the shelf and the box it ships in.</p>
+   <p class="dintro">Brands work with us as a single partner for their whole trim package. Send a logo, a tech pack or a sample to match, and we return production-ready artwork, approved samples and bulk orders delivered on schedule.</p></div>
+   <div class="vgrid" style="margin-top:0;grid-template-columns:1fr">
+    <div class="vcard" style="--c:var(--acid)"><h4>Mission</h4><p>Give every brand, large or small, labels and trims that look premium, meet buyer compliance and arrive on time.</p></div>
+    <div class="vcard" style="--c:var(--pink)"><h4>Vision</h4><p>To be the most creative and reliable trims partner for apparel brands in Pakistan and worldwide.</p></div>
+    <div class="vcard" style="--c:var(--orange)"><h4>Values</h4><p>Precision in every thread, honest timelines and design that helps a brand stand out.</p></div></div></section>
+  <section class="dsec"><div class="eyebrow">What we offer</div><h2 class="dh2">Why brands choose us</h2>
+   <div class="vgrid">${[["One-stop trim package","Labels, tags, patches, hardware and packaging from one supplier and one point of contact."],["Fast sampling","Digital proofs within a day and physical samples within days, so your development calendar keeps moving."],["On-time bulk delivery","Production planned around your shipment dates, packed by style and size."],["Exact color matching","Pantone-matched yarns and inks, approved on physical samples before bulk."],["Buyer compliance","Care, content and barcode labels built to buyer manuals and EU, US and UK rules."],["Free design support","Our studio turns a rough idea into production-ready artwork."]].map(([n,d])=>`<div class="vcard"><h4>${n}</h4><p>${d}</p></div>`).join("")}</div></section>
+  <section class="dsec"><div class="eyebrow">Explore</div><div class="cta"><a href="#products" class="btn btn-acid hover">See our products →</a><a href="#sustainability" class="btn btn-ghost hover">Sustainability</a></div></section>`),
+ sustainability:()=>pageWrap("Sustainability",`Better trims.<br><span class="acid">Lighter</span> footprint.`,`
+  <section class="dsec"><p class="dintro" style="margin-top:0;max-width:760px">Developing lower-impact alternatives for our materials and processes is a priority. Every product line has an eco option, and our team helps brands choose materials that fit their sustainability goals and budget.</p></section>
+  <section class="dsec"><div class="eyebrow">Eco materials</div><h2 class="dh2">Materials we offer</h2>
+   <div class="vgrid">${[["Recycled polyester (rPET)","Yarn made from post-consumer plastic bottles, for woven labels, tapes and elastics."],["Organic cotton & TENCEL™","Natural and cellulose-based tapes for printed and woven labels."],["Hemp","Strong, low-water fibre for labels and hang-tag papers."],["Recycled & FSC-type papers","Board and paper from recycled or responsibly managed sources."],["Seed & sugarcane paper","Plantable seed paper and bagasse-based board for hang tags."],["Recycled leather & jacron","Lower-impact alternatives for denim and accessory patches."],["Water-based PU & inks","Fewer solvents in printing, transfers and PU leather."],["Recycled polybags","Polybags with recycled content and plastic-free packing options."]].map(([n,d])=>`<div class="vcard" style="--c:var(--acid)"><h4>${n}</h4><p>${d}</p></div>`).join("")}</div></section>
+  <section class="dsec"><div class="eyebrow">Eco option by product</div><h2 class="dh2">Every line, a greener choice</h2>
+   <table class="spec">${products.map(p=>`<tr><th><a href="#${p.s}" style="color:${p.c}">${p.t}</a></th><td>${ECO[p.s]||""}</td></tr>`).join("")}</table></section>
+  ${CERTS.length?`<section class="dsec"><div class="eyebrow">Certifications</div><h2 class="dh2">Certified production</h2><div class="vgrid">${CERTS.map(c=>`<div class="vcard"><h4>${c.n}</h4><p>${c.d}</p></div>`).join("")}</div></section>`:""}
+  <section class="dsec"><div class="cta"><a href="#quote" class="btn btn-acid hover">Request an eco quote →</a></div></section>`),
+ contact:()=>pageWrap("Contact",`Let's talk<br><span class="pink">trims.</span>`,`
+  <section class="dsec two"><div>
+   <table class="spec"><tr><th>WhatsApp</th><td><a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">${COMPANY.phone}</a></td></tr><tr><th>Phone</th><td>${COMPANY.phone}</td></tr><tr><th>Email</th><td>${COMPANY.email}</td></tr><tr><th>Address</th><td>${COMPANY.address}</td></tr><tr><th>Hours</th><td>${COMPANY.hours}</td></tr></table>
+   <div class="cta"><a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener" class="btn btn-acid hover">Chat on WhatsApp →</a><a href="#quote" class="btn btn-ghost hover">Request a quote</a></div></div>
+   <div class="vgrid" style="margin-top:0;grid-template-columns:1fr">
+    <div class="vcard" style="--c:var(--acid)"><h4>New brands</h4><p>Send your logo and the products you need. We suggest materials, sizes and quantities to fit your launch budget.</p></div>
+    <div class="vcard" style="--c:var(--pink)"><h4>Manufacturers & exporters</h4><p>Send the buyer's trim card or tech pack. We develop to the buyer manual and plan around your shipment date.</p></div>
+    <div class="vcard" style="--c:var(--orange)"><h4>Sample matching</h4><p>Have a label you want to match or improve? Send a photo or the physical sample.</p></div></div></section>`)
+};
+
 // ===== Detail page + router =====
 const homeEl=document.getElementById("home"), detEl=document.getElementById("detail");
 function renderDetail(p){
@@ -574,8 +620,11 @@ function renderDetail(p){
     <div><div class="eyebrow">Specifications</div><h2 class="dh2">Specs</h2>
       <table class="spec">${p.sp.map(([k,v])=>`<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</table></div>
     <div><div class="eyebrow">Finishes &amp; add-ons</div><div class="tags">${p.f.map(x=>`<span>${x}</span>`).join("")}</div>
-      <div class="eyebrow" style="margin-top:40px">Best for</div><div class="tags alt">${p.u.map(x=>`<span>${x}</span>`).join("")}</div></div>
+      <div class="eyebrow" style="margin-top:40px">Best for</div><div class="tags alt">${p.u.map(x=>`<span>${x}</span>`).join("")}</div>
+      ${ECO[p.s]?`<div class="eyebrow" style="margin-top:40px">Eco option</div><p class="dintro" style="margin-top:0;font-size:16px">${ECO[p.s]} <a href="#sustainability" style="color:var(--c)">More on sustainability →</a></p>`:""}</div>
   </section>
+  <section class="dsec"><div class="eyebrow">How we work</div><h2 class="dh2">From brief to delivery</h2>
+    <div class="process" style="margin-top:40px">${[["Brief","Send artwork, quantities and requirements, or a sample to match."],["Artwork & sample","We prepare technical artwork and produce a sample for approval."],["Production","Bulk production with quality checks at every stage."],["Delivery","Packed by style and size, shipped on your schedule."]].map(([n,d])=>`<div class="step"><h4>${n}</h4><p>${d}</p></div>`).join("")}</div></section>
   <section class="dsec"><div class="eyebrow">FAQ</div><h2 class="dh2">Questions</h2>
     <div class="faq">${p.faq.concat([["How do I get a sample?",`Send your artwork. The digital proof is free and the physical sample is ready in ${p.lead.includes("Sample")?p.lead.split("·")[0].replace("Sample","").trim():"a few days"}.`],["What are the payment terms?","Advance after sample approval, balance on delivery. LC and TT are available for export clients."]]).map(([q,a])=>`<details><summary>${q}</summary><p>${a}</p></details>`).join("")}</div></section>
   <section class="dsec"><div class="eyebrow">Also explore</div>
@@ -589,6 +638,7 @@ function route(){
   const h=decodeURIComponent(location.hash.slice(1));
   const p=bySlug[h];
   if(p){homeEl.hidden=true;detEl.hidden=false;renderDetail(p);document.title=p.t+" · ASH-MAN";scrollTo(0,0);return;}
+  if(PAGES[h]){homeEl.hidden=true;detEl.hidden=false;detEl.style.setProperty("--c","var(--acid)");detEl.innerHTML=PAGES[h]();document.title=h[0].toUpperCase()+h.slice(1)+" · ASH-MAN";scrollTo(0,0);return;}
   detEl.hidden=true;homeEl.hidden=false;document.title="ASH-MAN Corporation";
   const t=h&&h!=="top"&&document.getElementById(h);
   if(t)setTimeout(()=>t.scrollIntoView({behavior:"smooth"}),30);else if(h==="top")scrollTo({top:0,behavior:"smooth"});
@@ -674,6 +724,9 @@ document.getElementById("qform").addEventListener("submit",e=>{e.preventDefault(
 });
 document.getElementById("yr").textContent=new Date().getFullYear();
 addEventListener("hashchange",route);route();
+const nav=document.querySelector("nav"),bg=document.getElementById("burger");
+bg.onclick=()=>{const o=nav.classList.toggle("open");bg.textContent=o?"Close":"Menu";bg.setAttribute("aria-expanded",o);};
+document.getElementById("navlinks").addEventListener("click",e=>{if(e.target.closest("a")){nav.classList.remove("open");bg.textContent="Menu";bg.setAttribute("aria-expanded","false");}});
 </script>
 </body>
 </html>
