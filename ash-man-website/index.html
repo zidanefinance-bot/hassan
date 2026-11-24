@@ -40,7 +40,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:
 @media (max-width:760px){.links{display:none}.burger{display:block}
  nav.open{mix-blend-mode:normal;background:var(--bg);flex-wrap:wrap;bottom:0;align-items:flex-start;align-content:flex-start}
  nav.open .links{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:22px;margin-top:40px;font:400 34px Anton,sans-serif}
- nav.open .navcta{font-size:18px;padding:12px 22px}}
+ nav.open .navcta{font-size:18px;padding:12px 22px}
+ nav.open .burger{order:1}nav.open .links{order:2}}
 
 /* logo */
 .logo{display:inline-flex;align-items:center;gap:10px}
