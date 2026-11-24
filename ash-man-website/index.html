@@ -201,6 +201,56 @@ footer{padding:60px 4vw 30px;border-top:1px solid var(--line)}
 .foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px;margin-top:40px;font-family:"Space Mono",monospace;font-size:13px;color:var(--mute);text-transform:uppercase}
 .foot a:hover{color:var(--acid)}
 
+
+/* product links & detail */
+.card .more{display:inline-block;margin-top:16px;font:700 12px "Space Mono",monospace;text-transform:uppercase;color:var(--c,var(--acid))}
+a.card:focus-visible,.btn:focus-visible,.pn a:focus-visible{outline:3px solid var(--acid);outline-offset:4px}
+#detail{animation:fadein .5s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.dhero{padding:130px 4vw 60px;border-bottom:1px solid var(--line)}
+.crumb{font:12px "Space Mono",monospace;text-transform:uppercase;color:var(--mute);margin-bottom:40px}
+.crumb a:hover{color:var(--c)} .crumb span{color:var(--ink)}
+.dgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:50px;align-items:center}
+.dgrid>div{min-width:0}
+.dtitle{font-family:Anton,sans-serif;font-size:clamp(56px,10vw,150px);line-height:.88;text-transform:uppercase;color:var(--c);text-wrap:balance}
+.dintro{font-size:clamp(17px,1.6vw,20px);color:#cfcbc3;max-width:600px;margin-top:24px}
+.dmeta{display:flex;gap:40px;flex-wrap:wrap;margin-top:30px}
+.dmeta span{display:block;font:11px "Space Mono",monospace;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.dmeta b{font-size:18px}
+.dart{aspect-ratio:1;max-width:100%;border-radius:28px;background:radial-gradient(circle at 50% 40%,#25252b,#101013);border:1px solid var(--line);display:grid;place-items:center;position:relative;overflow:hidden}
+.dart::after{content:"";position:absolute;width:60%;height:60%;border-radius:50%;background:var(--c);filter:blur(90px);opacity:.3}
+.dart svg{width:62%;position:relative;z-index:1;animation:bob 6s ease-in-out infinite}
+.dsec{padding:90px 4vw 0}
+.dh2{font-family:Anton,sans-serif;font-size:clamp(40px,6vw,80px);text-transform:uppercase;line-height:.95}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:14px;margin-top:40px}
+.vcard{border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--bg2);transition:border-color .3s,transform .3s}
+.vcard:hover{border-color:var(--c);transform:translateY(-4px)}
+.vcard h4{font-size:20px;text-transform:uppercase;margin-bottom:8px;color:var(--c)}
+.vcard p{color:#aaa6a0;font-size:15px}
+.two{display:grid;grid-template-columns:1.3fr 1fr;gap:60px}
+.two>div{min-width:0}
+.spec{width:100%;border-collapse:collapse;margin-top:30px}
+.spec th,.spec td{text-align:left;padding:16px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.spec th{font:12px "Space Mono",monospace;text-transform:uppercase;color:var(--mute);width:38%;padding-right:16px;font-weight:400}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tags span{border:1.5px solid var(--c);color:var(--c);border-radius:999px;padding:8px 16px;font:13px "Space Mono",monospace;text-transform:uppercase}
+.tags.alt span{border-color:var(--line);color:var(--ink)}
+.faq{margin-top:30px;max-width:900px}
+.faq details{border-bottom:1px solid var(--line);padding:22px 0}
+.faq summary{font-size:20px;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:20px;cursor:none}
+.faq summary::after{content:"+";color:var(--c);font-size:28px;line-height:1;transition:transform .3s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{color:#aaa6a0;margin-top:12px;max-width:700px}
+.rel{margin-top:30px}
+.rel .card{min-height:260px}
+.pn{display:flex;justify-content:space-between;gap:20px;margin:50px 0 120px;font-family:Anton,sans-serif;font-size:clamp(22px,3vw,40px);text-transform:uppercase}
+.pn a:hover{color:var(--c)}
+.fcols{display:grid;grid-template-columns:2fr 1fr;gap:40px;margin-bottom:60px}
+.fcols b{font:12px "Space Mono",monospace;text-transform:uppercase;color:var(--acid);display:block;margin-bottom:16px}
+.flinks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 20px}
+.flinks a{color:#cfcbc3}.flinks a:hover{color:var(--acid)}
+@media (max-width:900px){.dgrid,.two,.fcols{grid-template-columns:1fr}.dart{max-width:360px}}
+
 /* whatsapp */
 .wa{position:fixed;right:22px;bottom:22px;z-index:60;width:62px;height:62px;border-radius:50%;background:#25d366;display:grid;place-items:center;box-shadow:0 10px 30px rgba(37,211,102,.4);animation:pulse 2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,.6)}70%{box-shadow:0 0 0 18px rgba(37,211,102,0)}100%{box-shadow:0 0 0 0 rgba(37,211,102,0)}}
@@ -215,19 +265,21 @@ footer{padding:60px 4vw 30px;border-top:1px solid var(--line)}
 <div class="cursor"></div><div class="cursor-dot"></div>
 
 <nav>
-  <a href="#" class="logo" aria-label="ASH-MAN Corporation home">
+  <a href="#top" class="logo" aria-label="ASH-MAN Corporation home">
     <span class="logo-tag">ASH—MAN</span>
     <small>Corporation<br>Trims &amp; Labels</small>
   </a>
   <div class="links">
     <a href="#products">Products</a>
+    <a href="#studio">Studio</a>
     <a href="#process">Process</a>
     <a href="#industries">Industries</a>
     <a href="#quote">Get Quote</a>
   </div>
 </nav>
 
-<header class="hero">
+<main id="home">
+<header class="hero" id="top">
   <h1>
     <span class="row"><span>We Label</span></span>
     <span class="row"><span class="outline">The</span> <span class="acid">Whole</span></span>
@@ -337,14 +389,18 @@ footer{padding:60px 4vw 30px;border-top:1px solid var(--line)}
     <div><label for="n">Name</label><input id="n" required placeholder="Your name"></div>
     <div><label for="b">Brand / Company</label><input id="b" placeholder="Brand name"></div>
     <div><label for="p">Product</label>
-      <select id="p"><option>Woven Labels</option><option>Printed Labels</option><option>Hang Tags</option><option>Care Labels</option><option>Heat Transfers</option><option>Patches</option><option>Stickers &amp; Barcodes</option><option>Packaging</option><option>Other Trims</option></select></div>
+      <select id="p"></select></div>
     <div><label for="q">Quantity</label><input id="q" placeholder="e.g. 10,000 pcs"></div>
     <div class="full"><label for="m">Details</label><textarea id="m" placeholder="Size, colors, material, deadline..."></textarea></div>
     <button type="submit" class="hover">Send on WhatsApp →</button>
   </form>
 </div>
 
+</main>
+<main id="detail" hidden></main>
+
 <footer>
+  <div class="fcols"><div><b>Products</b><div class="flinks" id="footProducts"></div></div><div><b>Company</b><div class="flinks"><a href="#process">How it works</a><a href="#industries">Industries</a><a href="#studio">Label Studio</a><a href="#quote">Get a quote</a></div></div></div>
   <div class="big">Ash—<span>Man</span></div>
   <div class="foot">
     <span>© <span id="yr"></span> ASH-MAN Corporation</span>
@@ -362,23 +418,183 @@ footer{padding:60px 4vw 30px;border-top:1px solid var(--line)}
 // ===== EDIT THIS: WhatsApp number (country code, no + or spaces) =====
 const WHATSAPP = "920000000000";
 
+// ===== PRODUCT CATALOG — edit text, specs, MOQ & lead times here =====
 const products = [
-  {t:"Woven Labels", d:"Damask, satin & taffeta — sharp detail, rich texture.", c:"#c8ff00", i:'<rect x="8" y="26" width="68" height="32" rx="3" fill="#c8ff00"/><rect x="13" y="31" width="58" height="22" fill="none" stroke="#000" stroke-dasharray="3 3"/><path d="M22 42h40" stroke="#000" stroke-width="4"/>'},
-  {t:"Printed Labels", d:"Satin, cotton & nylon tapes — offset, screen & digital.", c:"#ff2e88", i:'<path d="M14 18h56v48H14z" fill="#ff2e88"/><path d="M22 30h40M22 40h30M22 50h36" stroke="#000" stroke-width="3"/>'},
-  {t:"Hang Tags", d:"Thick board, foil, emboss, die-cut — swing tags that sell.", c:"#ff6a1a", i:'<path d="M26 10h32l8 12v52H18V22z" fill="#ff6a1a"/><circle cx="42" cy="22" r="5" fill="#0b0b0d"/><path d="M42 17C42 6 60 4 64 10" stroke="#f4f1ea" stroke-width="2" fill="none"/>'},
-  {t:"Care Labels", d:"Wash care, size & composition — buyer compliant.", c:"#f4f1ea", i:'<rect x="28" y="6" width="28" height="72" fill="#f4f1ea"/><path d="M34 20h16M34 30h16M34 40h10M34 50h16M34 60h12" stroke="#000" stroke-width="2.5"/>'},
-  {t:"Heat Transfers", d:"Tagless neck prints, silicone, reflective & 3D HD.", c:"#2b6bff", i:'<rect x="10" y="20" width="64" height="44" rx="8" fill="#2b6bff"/><path d="M24 50l10-18 8 12 6-8 12 14z" fill="#f4f1ea"/>'},
-  {t:"Patches & Badges", d:"Embroidered, PVC rubber, chenille, leather & woven.", c:"#c8ff00", i:'<circle cx="42" cy="42" r="32" fill="#2b6bff" stroke="#c8ff00" stroke-width="6"/><path d="M42 24l5 12 13 1-10 8 3 13-11-7-11 7 3-13-10-8 13-1z" fill="#c8ff00"/>'},
-  {t:"Stickers & Barcodes", d:"Price tickets, RFID, barcode & polybag stickers.", c:"#ff2e88", i:'<rect x="10" y="18" width="64" height="48" rx="6" fill="#f4f1ea"/><path d="M18 28v28M23 28v28M30 28v28M34 28v28M40 28v28M47 28v28M51 28v28M58 28v28M62 28v28M66 28v28" stroke="#000" stroke-width="2.5"/>'},
-  {t:"Trims & Accessories", d:"Zipper pullers, drawcords, elastic tapes, buttons & more.", c:"#ff6a1a", i:'<path d="M42 8v40" stroke="#f4f1ea" stroke-width="6" stroke-dasharray="4 3"/><rect x="32" y="46" width="20" height="30" rx="10" fill="#ff6a1a"/><circle cx="42" cy="64" r="4" fill="#0b0b0d"/>'},
-  {t:"Packaging", d:"Branded boxes, polybags, tissue & tape — full unboxing.", c:"#2b6bff", i:'<path d="M12 28l30-14 30 14v32L42 74 12 60z" fill="#2b6bff"/><path d="M12 28l30 14 30-14M42 42v32" stroke="#0b0b0d" stroke-width="3" fill="none"/>'}
+ {s:"woven-labels",t:"Woven Labels",d:"Damask, satin & taffeta — sharp detail, rich texture.",c:"#c8ff00",
+  i:'<rect x="8" y="26" width="68" height="32" rx="3" fill="#c8ff00"/><rect x="13" y="31" width="58" height="22" fill="none" stroke="#000" stroke-dasharray="3 3"/><path d="M22 42h40" stroke="#000" stroke-width="4"/>',
+  intro:"The label your customer touches first. Woven on high-density jacquard looms, our labels hold tiny text, fine logos and up to 8 colors without bleeding — soft on skin, built to survive hundreds of washes.",
+  v:[["HD Damask","Highest thread density for crisp micro-text and detailed logos. Soft, premium finish."],["Satin Woven","Glossy, smooth face — luxury feel for lingerie, couture and bridal."],["Taffeta","Economical, lightweight and strong. Great for basics and high volume."],["Cotton Woven","Natural matte look for organic and heritage brands."],["3D / Embossed Weave","Raised logo effect that stands out on neck and pocket labels."],["Woven Size Tabs","S/M/L/XL tabs and loop tabs matched to your main label."]],
+  sp:[["Base yarn","Polyester, recycled polyester, cotton"],["Colors","Up to 8 per label, Pantone matched"],["Width","10 mm – 100 mm"],["Fold types","End fold, center fold, mitre fold, loop, straight cut"],["Edges","Ultrasonic cut, heat cut, woven selvedge"],["Backing","Iron-on, sticker, non-woven"],["Wash fastness","40–60 °C domestic & industrial"]],
+  f:["Laser cut","Ultrasonic cut","Iron-on backing","Hot-melt","Metallic yarn","Glow-in-dark yarn"],
+  u:["Neck labels","Brand labels","Size tabs","Pocket flags","Hem tags","Home textile"],
+  moq:"1,000 pcs / design",lead:"Sample 3–5 days · Bulk 10–14 days",
+  faq:[["Kitni chhoti text weave ho sakti hai?","HD damask pe 5–6 pt text clearly weave hota hai. Sample pehle approve karwate hain."],["Kya colors exact match honge?","Haan — Pantone TPX/TCX reference do, hum yarn ko match karte hain aur sample bhejte hain."]]},
+
+ {s:"printed-labels",t:"Printed Labels",d:"Satin, cotton & nylon tapes — offset, screen & digital.",c:"#ff2e88",
+  i:'<path d="M14 18h56v48H14z" fill="#ff2e88"/><path d="M22 30h40M22 40h30M22 50h36" stroke="#000" stroke-width="3"/>',
+  intro:"Smooth, scratch-free printed labels for when comfort and detail both matter. Ideal for photographic artwork, gradients and long compliance text.",
+  v:[["Satin Printed","Silky tape with glossy finish. Most popular for main and care labels."],["Cotton Tape","Natural, breathable — perfect for organic and kidswear."],["Nylon Taffeta","Strong and wash-durable, used for care & content labels."],["Tyvek / Polyester","Tear-resistant labels for outerwear and technical wear."],["Heat-Seal Printed","No-stitch labels applied with a heat press."]],
+  sp:[["Printing","Flexo, offset, screen, thermal transfer, digital"],["Colors","Full color (CMYK) + spot colors"],["Width","10 mm – 100 mm, roll or cut"],["Ink","Wash-fast, eco-solvent & water-based options"],["Cut & fold","Straight, center fold, end fold, booklet"]],
+  f:["Gloss","Matte","Double-sided print","Barcode & variable data","Booklet labels"],
+  u:["Main labels","Care labels","Promo labels","Kids & baby wear","Activewear"],
+  moq:"1,000 pcs / design",lead:"Sample 2–3 days · Bulk 7–10 days",
+  faq:[["Woven ya printed — kaunsa lena chahiye?","Premium feel aur durability ke liye woven; detailed artwork aur skin comfort ke liye printed satin."]]},
+
+ {s:"hang-tags",t:"Hang Tags",d:"Thick board, foil, emboss, die-cut — swing tags that sell.",c:"#ff6a1a",
+  i:'<path d="M26 10h32l8 12v52H18V22z" fill="#ff6a1a"/><circle cx="42" cy="22" r="5" fill="#0b0b0d"/><path d="M42 17C42 6 60 4 64 10" stroke="#f4f1ea" stroke-width="2" fill="none"/>',
+  intro:"Your brand's mini billboard on the shop floor. From 300 gsm basics to 1,200 gsm laminated luxury tags with foil, spot UV and custom die shapes.",
+  v:[["Paper / Board Tags","Art card, kraft, textured & recycled boards, 300–1200 gsm."],["Luxury Laminated","Multi-layer board with colored core edges."],["Smart Hang Tags","QR / NFC enabled tags linking to your story, sizing or authenticity check."],["Leather & PU Tags","Debossed leather tags for denim & premium wear."],["Plastic / PVC Tags","Waterproof tags for swimwear & outdoor."],["Seal & String Sets","Matching strings, seals, pins & safety pins."]],
+  sp:[["Board","Art card, kraft, FSC-type recycled, cotton paper, black core"],["Thickness","300 – 1200 gsm"],["Print","Offset CMYK + Pantone, digital for short runs"],["Shapes","Any custom die-cut"],["Strings","Cotton, waxed, elastic, metal-bead chain, plastic seal"]],
+  f:["Hot foil (gold/silver/holo)","Spot UV","Emboss / deboss","Soft-touch lamination","Edge painting","Eyelets"],
+  u:["Price tags","Brand story tags","Collection launches","Denim tags","Gift sets"],
+  moq:"1,000 pcs / design",lead:"Sample 3–4 days · Bulk 7–12 days",
+  faq:[["Kya QR wala tag bana sakte ho?","Haan — har tag pe same ya unique (serialized) QR / NFC chip daal sakte hain."]]},
+
+ {s:"care-labels",t:"Care Labels",d:"Wash care, size & composition — buyer compliant.",c:"#f4f1ea",
+  i:'<rect x="28" y="6" width="28" height="72" fill="#f4f1ea"/><path d="M34 20h16M34 30h16M34 40h10M34 50h16M34 60h12" stroke="#000" stroke-width="2.5"/>',
+  intro:"Compliance done right. Multi-language care, content and country-of-origin labels printed to EU, US, UK and buyer-specific standards — legible after 50+ washes.",
+  v:[["Satin Care Labels","Soft, high-legibility print for most apparel."],["Nylon / Taffeta","Durable for workwear and heavy washes."],["Booklet Labels","Multi-page labels for many languages."],["Composition Labels","Fibre %, RN/CA numbers, size & PO data."],["Variable Data","Running PO, style, size & barcode per piece."]],
+  sp:[["Standards","ISO 3758 care symbols, EU/US/UK requirements"],["Languages","Multi-language, booklet up to 12 panels"],["Data","Static or variable (size, PO, style, barcode)"],["Ink","Thermal transfer resin, wash-fast"]],
+  f:["Booklet fold","Center fold","Cut & stacked","Roll form"],
+  u:["Export orders","Retail brands","Uniforms","Home textile"],
+  moq:"2,000 pcs / design",lead:"Bulk 5–7 days",
+  faq:[["Buyer ka care-label manual follow karte ho?","Haan — buyer manual bhejo, hum format, symbols aur languages exactly follow karte hain."]]},
+
+ {s:"heat-transfers",t:"Heat Transfers",d:"Tagless neck prints, silicone, reflective & 3D HD.",c:"#2b6bff",
+  i:'<rect x="10" y="20" width="64" height="44" rx="8" fill="#2b6bff"/><path d="M24 50l10-18 8 12 6-8 12 14z" fill="#f4f1ea"/>',
+  intro:"Logos that become part of the fabric. Tagless neck labels, silicone 3D logos, reflective safety prints and full-color transfers — no stitching, no itch.",
+  v:[["Tagless Neck Prints","Itch-free size & brand info, stretch-friendly."],["Silicone / 3D HD","Raised, rubbery logos for sportswear."],["Reflective","Safety & night-visibility prints."],["Full-Color Digital","Photo-quality artwork, gradients."],["Glitter / Metallic / Puff","Statement effects for fashion & kidswear."]],
+  sp:[["Fabrics","Cotton, polyester, nylon, blends, Lycra"],["Application","Heat press 130–165 °C, 8–15 sec"],["Stretch","Up to 200% on stretch inks"],["Wash","40–60 °C, no cracking"]],
+  f:["Matte","Gloss","Silicone","Reflective","Glitter","Puff","Glow"],
+  u:["Sportswear","T-shirts","Activewear","Kidswear","Uniforms"],
+  moq:"500 pcs / design",lead:"Sample 3–5 days · Bulk 7–10 days",
+  faq:[["Heat press ki settings bhi doge?","Haan — har order ke saath fabric-wise temperature, time aur pressure chart milta hai."]]},
+
+ {s:"patches",t:"Patches & Badges",d:"Embroidered, PVC rubber, chenille & woven.",c:"#c8ff00",
+  i:'<circle cx="42" cy="42" r="32" fill="#2b6bff" stroke="#c8ff00" stroke-width="6"/><path d="M42 24l5 12 13 1-10 8 3 13-11-7-11 7 3-13-10-8 13-1z" fill="#c8ff00"/>',
+  intro:"Badges with attitude. Embroidered, PVC, chenille and woven patches in any shape — sew-on, iron-on or velcro.",
+  v:[["Embroidered","Classic thread patches, up to 12 colors."],["PVC / Rubber","3D, waterproof — perfect for outerwear & bags."],["Chenille","Fluffy varsity-style patches."],["Woven Patches","Fine detail, flat finish."],["Sublimated","Full-color photographic patches."]],
+  sp:[["Size","20 mm – 300 mm"],["Borders","Merrow, hot cut, laser cut"],["Backing","Sew-on, iron-on, velcro, adhesive"],["Thread","Polyester, rayon, metallic"]],
+  f:["Merrow border","Laser cut","Metallic thread","3D puff embroidery","Glow thread"],
+  u:["Streetwear","Caps","Jackets","Uniforms","Bags"],
+  moq:"300 pcs / design",lead:"Sample 4–6 days · Bulk 10–14 days",
+  faq:[["Kaunsa patch caps pe best hai?","Caps ke liye PVC ya 3D embroidered — dono shape hold karte hain."]]},
+
+ {s:"leather-patches",t:"Leather Patches",d:"Genuine, PU & jacron — debossed denim branding.",c:"#ff6a1a",
+  i:'<rect x="12" y="22" width="60" height="40" rx="6" fill="#8a4b2a"/><rect x="17" y="27" width="50" height="30" rx="3" fill="none" stroke="#e8c39e" stroke-dasharray="3 3"/><path d="M28 42h28" stroke="#3a1d0e" stroke-width="5"/>',
+  intro:"The signature of great denim. Genuine leather, PU and jacron patches with deep deboss, burn-print or colored print — built to age beautifully.",
+  v:[["Genuine Leather","Cow & buffalo leather, natural aging."],["PU / Vegan Leather","Consistent color, animal-free."],["Jacron / Paper Leather","Washable kraft-look patches for denim."],["Laser Engraved","Fine detail burned into leather."],["Print + Deboss","Colored foil or ink over debossed logo."]],
+  sp:[["Thickness","0.8 – 2.0 mm"],["Methods","Deboss, emboss, laser, foil, screen print"],["Finish","Stone-wash & enzyme-wash tested"],["Attachment","Sew-on, rivet"]],
+  f:["Deboss","Laser burn","Hot foil","Edge painting","Distressed"],
+  u:["Jeans waistband","Jackets","Caps","Bags"],
+  moq:"500 pcs / design",lead:"Sample 4–5 days · Bulk 10–15 days",
+  faq:[["Denim wash mein kharab to nahi hoga?","Jacron aur treated leather stone/enzyme wash ke liye test hote hain."]]},
+
+ {s:"metal-trims",t:"Metal Trims & Buttons",d:"Jeans buttons, rivets, eyelets, logo plates.",c:"#d4af37",
+  i:'<circle cx="42" cy="42" r="28" fill="#d4af37"/><circle cx="42" cy="42" r="20" fill="none" stroke="#8a6d10" stroke-width="3"/><circle cx="42" cy="42" r="6" fill="#8a6d10"/>',
+  intro:"Hardware that carries your logo. Custom jeans buttons, rivets, snaps, eyelets, aglets and metal logo plates — die-cast or stamped, in any plating.",
+  v:[["Jeans Buttons","Shank buttons with custom logo, 14–27 mm."],["Rivets","Copper & brass rivets with branded caps."],["Snap Buttons","Ring & prong snaps for kidswear and jackets."],["Eyelets & Grommets","For drawcords, bags and shoes."],["Logo Plates & Charms","Die-cast zinc plates and hang charms."],["Aglets & Cord Ends","Metal tips for drawcords & laces."]],
+  sp:[["Material","Brass, copper, zinc alloy, stainless steel"],["Plating","Nickel-free, antique brass, gunmetal, gold, matte black"],["Logo","Emboss, deboss, laser, enamel fill"],["Testing","Pull & salt-spray test on request"]],
+  f:["Nickel-free","Antique","Gunmetal","Gold","Enamel fill","Laser logo"],
+  u:["Denim","Jackets","Bags","Kidswear","Workwear"],
+  moq:"5,000 pcs / design",lead:"Sample 7–10 days · Bulk 20–25 days",
+  faq:[["Nickel-free chahiye export ke liye?","Haan — EU export ke liye nickel-free plating standard deti hain."]]},
+
+ {s:"rfid-smart-tags",t:"RFID & Smart Tags",d:"RFID labels, QR & NFC tags for retail tech.",c:"#2b6bff",
+  i:'<rect x="14" y="14" width="56" height="56" rx="6" fill="#f4f1ea"/><path d="M26 26h32v32H26z" fill="none" stroke="#2b6bff" stroke-width="3"/><path d="M32 32h20v20H32z" fill="none" stroke="#2b6bff" stroke-width="3"/><circle cx="42" cy="42" r="3" fill="#2b6bff"/>',
+  intro:"Labels that talk to your systems. UHF RFID price tickets and care labels for inventory, plus QR and NFC tags for authenticity and customer engagement.",
+  v:[["RFID Hang Tags","UHF inlays inside printed tags for stock counting."],["RFID Care Labels","Woven or printed labels with embedded inlay."],["RFID Stickers","Adhesive tags for packaging & cartons."],["NFC Tags","Tap-to-verify authenticity, product story."],["Serialized QR","Unique code per piece for tracking."]],
+  sp:[["Frequency","UHF 860–960 MHz, NFC 13.56 MHz"],["Encoding","EPC encoding & verification"],["Data","Variable data printing + encoding"],["Formats","Tags, labels, stickers"]],
+  f:["Encoded","Printed + encoded","Tamper-evident","Washable inlay"],
+  u:["Retail inventory","Anti-counterfeit","E-commerce","Loss prevention"],
+  moq:"5,000 pcs",lead:"Bulk 10–15 days",
+  faq:[["Kya tags pehle se encode ho kar aayenge?","Haan — aap ki EPC list ke mutabiq encode aur verify kar ke deliver karte hain."]]},
+
+ {s:"stickers-barcodes",t:"Stickers & Barcodes",d:"Price tickets, size stickers, carton & polybag labels.",c:"#ff2e88",
+  i:'<rect x="10" y="18" width="64" height="48" rx="6" fill="#f4f1ea"/><path d="M18 28v28M23 28v28M30 28v28M34 28v28M40 28v28M47 28v28M51 28v28M58 28v28M62 28v28M66 28v28" stroke="#000" stroke-width="2.5"/>',
+  intro:"The small labels that keep your supply chain moving. Barcode price tickets, size strips, polybag and carton stickers — printed and verified to buyer specs.",
+  v:[["Price Tickets","Barcode tickets with variable pricing."],["Size Strips","Adhesive size stickers for denim & hosiery."],["Polybag Stickers","Warning, size and barcode stickers."],["Carton Labels","Shipping marks, SSCC & carton barcodes."],["Brand Stickers","Die-cut logo stickers for packaging."]],
+  sp:[["Barcodes","EAN-13, UPC-A, Code 128, QR, SSCC"],["Material","Paper, PP, PE, thermal"],["Adhesive","Permanent, removable, freezer"],["Verification","Barcode grading on request"]],
+  f:["Gloss","Matte","Holographic","Die-cut","Roll / sheet"],
+  u:["Retail","Export cartons","E-commerce","Polybags"],
+  moq:"2,000 pcs",lead:"Bulk 3–5 days",
+  faq:[["Barcode scan na hua to?","Har batch ko scan-verify kar ke bhejte hain."]]},
+
+ {s:"trims-accessories",t:"Trims & Accessories",d:"Zipper pullers, drawcords, elastic tapes & more.",c:"#ff6a1a",
+  i:'<path d="M42 8v40" stroke="#f4f1ea" stroke-width="6" stroke-dasharray="4 3"/><rect x="32" y="46" width="20" height="30" rx="10" fill="#ff6a1a"/><circle cx="42" cy="64" r="4" fill="#0b0b0d"/>',
+  intro:"Every finishing detail in one place. Branded zipper pullers, jacquard elastics, drawcords, twill tapes and toggles — matched to your colors.",
+  v:[["Zipper Pullers","Rubber, metal & cord pullers with logo."],["Jacquard Elastic","Logo-woven waistband elastic."],["Drawcords","Flat & round cords with branded tips."],["Twill & Herringbone Tapes","Neck tapes, hanger loops."],["Toggles & Stoppers","Cord locks for outerwear."]],
+  sp:[["Elastic width","10 – 80 mm"],["Cord","Polyester, cotton, nylon"],["Pullers","PVC, silicone, zinc alloy"],["Color","Pantone dyed"]],
+  f:["Logo jacquard","Silicone print","Reflective","Recycled yarn"],
+  u:["Underwear waistbands","Hoodies","Joggers","Jackets"],
+  moq:"1,000 pcs / meters",lead:"Sample 5–7 days · Bulk 12–18 days",
+  faq:[["Elastic pe logo weave hota hai?","Haan — jacquard elastic pe logo direct weave hota hai, print nahi."]]},
+
+ {s:"packaging",t:"Packaging",d:"Branded boxes, polybags, tissue & tape — full unboxing.",c:"#2b6bff",
+  i:'<path d="M12 28l30-14 30 14v32L42 74 12 60z" fill="#2b6bff"/><path d="M12 28l30 14 30-14M42 42v32" stroke="#0b0b0d" stroke-width="3" fill="none"/>',
+  intro:"Make the unboxing part of the brand. Rigid boxes, mailers, printed polybags, tissue paper and branded tape — retail-ready and e-commerce tough.",
+  v:[["Rigid Boxes","Magnetic & lid-base gift boxes."],["Mailer Boxes","Printed corrugated e-commerce boxes."],["Polybags","Printed, zip-lock & recycled polybags with warnings."],["Tissue Paper","Logo-printed wrapping tissue."],["Branded Tape & Stickers","Seal the box in your colors."],["Shopping Bags","Paper bags with rope handles."]],
+  sp:[["Materials","Kraft, art card, corrugated, LDPE, recycled PE"],["Print","Offset, flexo, screen"],["Finishes","Foil, emboss, lamination, spot UV"]],
+  f:["Matte lamination","Foil","Spot UV","Recycled material","Window cut"],
+  u:["E-commerce","Retail","Gift sets","Export packing"],
+  moq:"500 pcs / design",lead:"Sample 5–7 days · Bulk 12–20 days",
+  faq:[["Chhoti quantity mein packaging milegi?","Mailers aur polybags 500 pcs se shuru ho jate hain."]]}
 ];
+const bySlug = Object.fromEntries(products.map(p=>[p.s,p]));
 document.getElementById("grid").innerHTML = products.map((p,i)=>`
-  <div class="card reveal hover" style="--c:${p.c}">
+  <a href="#${p.s}" class="card reveal hover" style="--c:${p.c}">
     <div class="num">${String(i+1).padStart(2,"0")} / ${String(products.length).padStart(2,"0")}</div>
-    <svg class="ico" viewBox="0 0 84 84">${p.i}</svg>
-    <div><h3>${p.t}</h3><p>${p.d}</p></div>
-  </div>`).join("");
+    <svg class="ico" viewBox="0 0 84 84" aria-hidden="true">${p.i}</svg>
+    <div><h3>${p.t}</h3><p>${p.d}</p><span class="more">View details →</span></div>
+  </a>`).join("");
+document.getElementById("footProducts").innerHTML = products.map(p=>`<a href="#${p.s}">${p.t}</a>`).join("");
+document.querySelectorAll("#p").forEach(sel=>sel.innerHTML=products.map(p=>`<option>${p.t}</option>`).join("")+"<option>Other</option>");
+
+// ===== Detail page + router =====
+const homeEl=document.getElementById("home"), detEl=document.getElementById("detail");
+function renderDetail(p){
+  const idx=products.indexOf(p), prev=products[(idx-1+products.length)%products.length], next=products[(idx+1)%products.length];
+  const rel=[next,products[(idx+2)%products.length],products[(idx+3)%products.length]];
+  detEl.style.setProperty("--c",p.c);
+  detEl.innerHTML=`
+  <div class="dhero">
+    <div class="crumb"><a href="#top">Home</a> / <a href="#products">Products</a> / <span>${p.t}</span></div>
+    <div class="dgrid">
+      <div><div class="eyebrow">${String(idx+1).padStart(2,"0")} — Product</div>
+        <h1 class="dtitle">${p.t}</h1><p class="dintro">${p.intro}</p>
+        <div class="dmeta"><div><span>Typical MOQ</span><b>${p.moq}</b></div><div><span>Lead time</span><b>${p.lead}</b></div></div>
+        <div class="cta"><a href="#quote" class="btn btn-acid hover" data-quote="${p.t}">Quote ${p.t} →</a><a href="#" class="btn btn-ghost hover" data-wa="${p.t}">WhatsApp us</a></div>
+      </div>
+      <div class="dart"><svg viewBox="0 0 84 84" aria-hidden="true">${p.i}</svg></div>
+    </div>
+  </div>
+  <section class="dsec"><div class="eyebrow">Types we make</div><h2 class="dh2">Options</h2>
+    <div class="vgrid">${p.v.map(([n,d])=>`<div class="vcard"><h4>${n}</h4><p>${d}</p></div>`).join("")}</div></section>
+  <section class="dsec two">
+    <div><div class="eyebrow">Specifications</div><h2 class="dh2">Specs</h2>
+      <table class="spec">${p.sp.map(([k,v])=>`<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</table></div>
+    <div><div class="eyebrow">Finishes &amp; add-ons</div><div class="tags">${p.f.map(x=>`<span>${x}</span>`).join("")}</div>
+      <div class="eyebrow" style="margin-top:40px">Best for</div><div class="tags alt">${p.u.map(x=>`<span>${x}</span>`).join("")}</div></div>
+  </section>
+  <section class="dsec"><div class="eyebrow">FAQ</div><h2 class="dh2">Sawal jawab</h2>
+    <div class="faq">${p.faq.concat([["Sample kaise milega?",`Artwork bhejo — digital proof free, physical sample ${p.lead.includes("Sample")?p.lead.split("·")[0].replace("Sample","").trim():"jaldi"} mein.`],["Payment terms?","Sample approval ke baad advance + balance on delivery. Export clients ke liye LC/TT bhi."]]).map(([q,a])=>`<details><summary>${q}</summary><p>${a}</p></details>`).join("")}</div></section>
+  <section class="dsec"><div class="eyebrow">Also explore</div>
+    <div class="grid rel">${rel.map(r=>`<a href="#${r.s}" class="card hover" style="--c:${r.c}"><svg class="ico" viewBox="0 0 84 84" aria-hidden="true">${r.i}</svg><div><h3>${r.t}</h3><p>${r.d}</p><span class="more">View details →</span></div></a>`).join("")}</div>
+    <div class="pn"><a href="#${prev.s}" class="hover">← ${prev.t}</a><a href="#${next.s}" class="hover">${next.t} →</a></div>
+  </section>`;
+  detEl.querySelectorAll("[data-wa]").forEach(a=>{a.href=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Hi ASH-MAN, I need a quote for "+p.t+".")}`;a.target="_blank";a.rel="noopener";});
+  bindTilt(detEl);
+}
+function route(){
+  const h=decodeURIComponent(location.hash.slice(1));
+  const p=bySlug[h];
+  if(p){homeEl.hidden=true;detEl.hidden=false;renderDetail(p);document.title=p.t+" · ASH-MAN";scrollTo(0,0);return;}
+  detEl.hidden=true;homeEl.hidden=false;document.title="ASH-MAN Corporation";
+  const t=h&&h!=="top"&&document.getElementById(h);
+  if(t)setTimeout(()=>t.scrollIntoView({behavior:"smooth"}),30);else if(h==="top")scrollTo({top:0,behavior:"smooth"});
+}
+document.addEventListener("click",e=>{const q=e.target.closest("[data-quote]");if(!q)return;
+  setTimeout(()=>{const s=document.getElementById("p");s.value=q.dataset.quote;},60);});
 
 // marquees
 const words1 = ["Woven Labels","✺","Hang Tags","✺","Care Labels","✺","Heat Transfers","✺","Patches","✺"];
@@ -395,12 +611,11 @@ document.addEventListener("mouseover",e=>{if(e.target.closest(".hover,a,button,.
 document.addEventListener("mouseout",e=>{if(e.target.closest(".hover,a,button,.pill"))cur.classList.remove("big")});
 
 // card tilt
-document.querySelectorAll(".card").forEach(c=>{
+function bindTilt(root){root.querySelectorAll(".card").forEach(c=>{
   c.addEventListener("mousemove",e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
     c.style.transform=`perspective(800px) rotateY(${x*14}deg) rotateX(${-y*14}deg) translateY(-6px)`;});
-  c.addEventListener("mouseleave",()=>c.style.transform="");
-});
-
+  c.addEventListener("mouseleave",()=>c.style.transform="");});}
+bindTilt(document);
 // hero parallax on floating labels
 document.querySelector(".hero").addEventListener("mousemove",e=>{
   document.querySelectorAll(".float").forEach((f,i)=>{const k=(i+1)*12;
@@ -441,7 +656,7 @@ function render(){
 render();
 document.getElementById("useDesign").addEventListener("click",()=>{
   document.getElementById("b").value=bn.value;
-  const map={"Woven Label":"Woven Labels","Hang Tag":"Hang Tags","Patch":"Patches"};document.getElementById("p").value=map[st.type];
+  const map={"Woven Label":"Woven Labels","Hang Tag":"Hang Tags","Patch":"Patches & Badges"};document.getElementById("p").value=map[st.type];
   document.getElementById("m").value=`Studio design: ${st.type}, base ${st.base}, thread/ink ${st.thread}`;
 });
 
@@ -458,6 +673,7 @@ document.getElementById("qform").addEventListener("submit",e=>{e.preventDefault(
   a.textContent="Tap to open WhatsApp →";btn.replaceWith(a);a.click();
 });
 document.getElementById("yr").textContent=new Date().getFullYear();
+addEventListener("hashchange",route);route();
 </script>
 </body>
 </html>
