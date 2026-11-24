@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{
+:root{color-scheme:dark;
   --bg:#0b0b0d; --bg2:#141418; --ink:#f4f1ea; --mute:#8d8a85;
   --acid:#c8ff00; --pink:#ff2e88; --blue:#2b6bff; --orange:#ff6a1a;
   --line:rgba(244,241,234,.14);
@@ -451,7 +451,11 @@ wa.href=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Hi ASH-MAN, I need
 document.getElementById("qform").addEventListener("submit",e=>{e.preventDefault();
   const v=id=>document.getElementById(id).value.trim();
   const msg=`*New Quote Request — ASH-MAN*\nName: ${v("n")}\nBrand: ${v("b")}\nProduct: ${v("p")}\nQty: ${v("q")}\nDetails: ${v("m")}`;
-  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,"_blank");
+  const url=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
+  const btn=e.target.querySelector("button");
+  const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener";a.className=btn.className;
+  a.style.cssText="grid-column:1/-1;display:block;text-align:center;background:#000;color:var(--acid);padding:20px;border-radius:999px;font-weight:700;text-transform:uppercase";
+  a.textContent="Tap to open WhatsApp →";btn.replaceWith(a);a.click();
 });
 document.getElementById("yr").textContent=new Date().getFullYear();
 </script>
