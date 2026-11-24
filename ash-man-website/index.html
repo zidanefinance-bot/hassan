@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASH-MAN Corporation — Garment Trims & Labels</title>
+<meta name="description" content="ASH-MAN Corporation — woven labels, printed labels, hang tags, heat transfers, patches and complete garment trims.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0b0d; --bg2:#141418; --ink:#f4f1ea; --mute:#8d8a85;
+  --acid:#c8ff00; --pink:#ff2e88; --blue:#2b6bff; --orange:#ff6a1a;
+  --line:rgba(244,241,234,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,sans-serif;overflow-x:clip;cursor:none}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--acid);color:#000}
+@media (hover:none){body{cursor:auto}.cursor,.cursor-dot{display:none}}
+
+/* grain */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.07;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* cursor */
+.cursor{position:fixed;width:44px;height:44px;border:2px solid var(--acid);border-radius:50%;pointer-events:none;z-index:1000;transform:translate(-50%,-50%);transition:width .25s,height .25s,background .25s;mix-blend-mode:difference}
+.cursor.big{width:90px;height:90px;background:var(--acid)}
+.cursor-dot{position:fixed;width:6px;height:6px;background:var(--pink);border-radius:50%;pointer-events:none;z-index:1001;transform:translate(-50%,-50%)}
+
+/* nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:18px 4vw;mix-blend-mode:difference}
+.links{display:flex;gap:28px;font-family:"Space Mono",monospace;font-size:13px;text-transform:uppercase}
+.links a{position:relative}
+.links a::after{content:"";position:absolute;left:0;bottom:-4px;height:2px;width:0;background:var(--acid);transition:width .3s}
+.links a:hover::after{width:100%}
+@media (max-width:760px){.links{display:none}}
+
+/* logo */
+.logo{display:inline-flex;align-items:center;gap:10px}
+.logo-tag{position:relative;background:var(--acid);color:#000;font-family:Anton,sans-serif;font-size:22px;letter-spacing:1px;padding:6px 14px 6px 22px;clip-path:polygon(12px 0,100% 0,100% 100%,12px 100%,0 50%)}
+.logo-tag::before{content:"";position:absolute;inset:4px 4px 4px 14px;border:1.5px dashed rgba(0,0,0,.55)}
+.logo-tag::after{content:"";position:absolute;left:7px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--bg);transform:translateY(-50%)}
+.logo small{font-family:"Space Mono",monospace;font-size:10px;line-height:1.1;text-transform:uppercase;color:var(--ink)}
+
+/* hero */
+.hero{min-height:100vh;position:relative;display:flex;flex-direction:column;justify-content:center;padding:120px 4vw 60px;overflow:hidden}
+.hero h1{font-family:Anton,sans-serif;font-size:clamp(64px,15vw,240px);line-height:.86;text-transform:uppercase;letter-spacing:-1px;position:relative;z-index:2}
+.hero h1 .row{display:block;overflow:hidden}
+.hero h1 .row span{display:inline-block;transform:translateY(110%);animation:up 1s cubic-bezier(.2,.8,.2,1) forwards}
+.hero h1 .row:nth-child(2) span{animation-delay:.12s}
+.hero h1 .row:nth-child(3) span{animation-delay:.24s}
+@keyframes up{to{transform:none}}
+.outline{-webkit-text-stroke:2px var(--ink);color:transparent}
+.acid{color:var(--acid)} .pink{color:var(--pink)}
+.hero p{max-width:520px;margin-top:28px;font-size:clamp(16px,1.6vw,20px);color:#cfcbc3;position:relative;z-index:2}
+.cta{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap;position:relative;z-index:2}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:16px 28px;border-radius:999px;font-weight:700;text-transform:uppercase;font-size:14px;letter-spacing:.5px;transition:transform .2s,background .2s,color .2s}
+.btn-acid{background:var(--acid);color:#000}
+.btn-ghost{border:2px solid var(--ink)}
+.btn:hover{transform:translateY(-3px) rotate(-2deg)}
+.btn-ghost:hover{background:var(--ink);color:#000}
+
+/* floating labels in hero */
+.float{position:absolute;z-index:1;pointer-events:none}
+.tag3d{width:200px;height:110px;border-radius:6px;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:Anton,sans-serif;text-transform:uppercase;box-shadow:0 20px 50px rgba(0,0,0,.5);position:relative}
+.tag3d::before{content:"";position:absolute;inset:7px;border:1.5px dashed currentColor;opacity:.5;border-radius:3px}
+.woven{background:repeating-linear-gradient(90deg,#1a1a1a 0 2px,#222 2px 4px);color:var(--acid);font-size:30px}
+.woven small{font-family:"Space Mono",monospace;font-size:9px;letter-spacing:2px;color:#bbb}
+.hang{width:130px;height:200px;background:var(--pink);color:#000;border-radius:8px 8px 8px 8px;font-size:34px;line-height:.9;text-align:center}
+.hang::after{content:"";position:absolute;top:14px;left:50%;width:14px;height:14px;border-radius:50%;background:var(--bg);transform:translateX(-50%)}
+.care{width:90px;height:180px;background:#f4f1ea;color:#000;font-family:"Space Mono",monospace;font-size:9px;padding:14px 8px;text-align:center;justify-content:flex-start;gap:6px}
+.patch{width:150px;height:150px;border-radius:50%;background:var(--blue);color:#fff;font-size:26px;border:6px solid var(--orange);text-align:center;line-height:.95}
+.f1{right:6vw;top:16vh;animation:bob 6s ease-in-out infinite;transform:rotate(12deg)}
+.f2{right:24vw;bottom:10vh;animation:bob 7s ease-in-out infinite reverse}
+.f3{right:12vw;bottom:30vh;animation:bob 5s ease-in-out infinite}
+.f4{right:30vw;top:14vh;animation:bob 8s ease-in-out infinite}
+@keyframes bob{0%,100%{translate:0 0;rotate:-6deg}50%{translate:0 -24px;rotate:6deg}}
+@media (max-width:900px){.f2,.f4{display:none}.f1{top:auto;bottom:4vh;right:4vw;transform:scale(.7)}.f3{display:none}}
+
+/* spinning badge */
+.badge{position:absolute;right:4vw;bottom:4vh;width:130px;height:130px;z-index:2}
+.badge svg{width:100%;height:100%;animation:spin 14s linear infinite}
+.badge .star{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;color:var(--acid)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:900px){.badge{display:none}}
+
+/* marquee */
+.marquee{overflow:hidden;white-space:nowrap;border-block:2px solid #000;padding:18px 0;font-family:Anton,sans-serif;font-size:clamp(28px,4vw,52px);text-transform:uppercase}
+.marquee.a{background:var(--acid);color:#000;transform:rotate(-2deg) scale(1.03)}
+.marquee.b{background:var(--pink);color:#000;transform:rotate(1.5deg) scale(1.03);margin-top:-14px}
+.track{display:inline-flex;animation:scroll 22s linear infinite}
+.marquee.b .track{animation-direction:reverse}
+.track span{padding:0 24px}
+@keyframes scroll{to{transform:translateX(-50%)}}
+
+section{padding:120px 4vw;position:relative}
+.eyebrow{font-family:"Space Mono",monospace;font-size:13px;text-transform:uppercase;color:var(--acid);letter-spacing:2px;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:28px;height:2px;background:var(--acid)}
+h2{font-family:Anton,sans-serif;font-size:clamp(48px,8vw,120px);line-height:.9;text-transform:uppercase}
+
+/* products */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:18px;margin-top:60px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:28px;min-height:320px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;transition:transform .15s ease-out,border-color .3s;transform-style:preserve-3d}
+.card:hover{border-color:var(--c,var(--acid))}
+.card .num{font-family:"Space Mono",monospace;font-size:12px;color:var(--mute)}
+.card .ico{width:84px;height:84px;margin:24px 0;transition:transform .4s}
+.card:hover .ico{transform:scale(1.15) rotate(-8deg)}
+.card h3{font-family:Anton,sans-serif;font-size:34px;text-transform:uppercase;line-height:1}
+.card p{color:#aaa6a0;font-size:15px;margin-top:10px}
+.card::after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;background:var(--c,var(--acid));filter:blur(80px);opacity:0;right:-80px;bottom:-80px;transition:opacity .4s}
+.card:hover::after{opacity:.35}
+
+
+/* studio */
+.studio{display:grid;grid-template-columns:1.1fr 1fr;gap:50px;align-items:center;margin-top:60px}
+.stage{background:radial-gradient(circle at 50% 40%,#232329,#0f0f12);border:1px solid var(--line);border-radius:24px;min-height:420px;display:grid;place-items:center;position:relative;overflow:hidden;perspective:900px}
+.stage::before{content:"LIVE PREVIEW";position:absolute;top:18px;left:20px;font:12px "Space Mono";color:var(--mute);letter-spacing:2px}
+.preview{transition:all .35s cubic-bezier(.2,.8,.2,1);transform:rotateX(14deg) rotateY(-12deg);box-shadow:0 30px 60px rgba(0,0,0,.6)}
+.stage:hover .preview{transform:none}
+.pv-woven{width:min(340px,80vw);height:150px;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px),repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+.pv-woven::before{content:"";position:absolute;inset:8px;border:1.5px dashed currentColor;opacity:.45}
+.pv-woven::after{content:"";position:absolute;left:0;right:0;top:0;height:14px;background:rgba(0,0,0,.25)}
+.pv-name{font-family:Anton,sans-serif;font-size:46px;text-transform:uppercase;letter-spacing:2px;max-width:90%;text-align:center;line-height:1;word-break:break-word}
+.pv-sub{font:11px "Space Mono";letter-spacing:4px;margin-top:8px;opacity:.75;text-transform:uppercase}
+.pv-hang{width:200px;height:320px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:20px;text-align:center}
+.pv-hang::before{content:"";position:absolute;top:22px;width:18px;height:18px;border-radius:50%;background:#16161a;box-shadow:inset 0 0 0 3px rgba(255,255,255,.3)}
+.pv-hang .pv-name{font-size:40px}
+.pv-patch{width:240px;height:240px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:10px solid;padding:20px;text-align:center}
+.pv-patch .pv-name{font-size:38px}
+.controls label{color:var(--mute);margin-top:22px}
+.controls input{color:var(--ink);border-bottom-color:var(--ink);font-family:Anton,sans-serif;font-size:32px;text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;font:13px "Space Mono";text-transform:uppercase;background:none;color:var(--ink);cursor:none;transition:all .2s}
+.chip.on{background:var(--ink);color:#000;border-color:var(--ink)}
+.sw{width:38px;height:38px;border-radius:50%;border:3px solid transparent;cursor:none;transition:transform .2s}
+.sw.on{border-color:var(--ink);transform:scale(1.15)}
+@media (max-width:900px){.studio{grid-template-columns:1fr}.stage{min-height:340px}}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-block:1px solid var(--line)}
+.stat{padding:50px 4vw;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:Anton,sans-serif;font-size:clamp(48px,6vw,96px);color:var(--acid);line-height:1}
+.stat:nth-child(2) b{color:var(--pink)} .stat:nth-child(3) b{color:var(--orange)} .stat:nth-child(4) b{color:var(--blue)}
+.stat span{font-family:"Space Mono",monospace;font-size:13px;text-transform:uppercase;color:var(--mute)}
+@media (max-width:760px){.stats{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:0}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+
+/* process */
+.process{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:60px;counter-reset:s}
+.step{padding:30px 24px 30px 0;border-top:2px solid var(--ink);position:relative}
+.step::before{counter-increment:s;content:"0" counter(s);font-family:Anton,sans-serif;font-size:80px;color:transparent;-webkit-text-stroke:1.5px var(--acid);display:block;line-height:1;margin-bottom:14px}
+.step h4{font-size:22px;text-transform:uppercase;margin-bottom:8px}
+.step p{color:#aaa6a0;font-size:15px}
+@media (max-width:900px){.process{grid-template-columns:1fr 1fr;gap:20px}}
+@media (max-width:520px){.process{grid-template-columns:1fr}}
+
+/* industries */
+.industries{display:flex;flex-wrap:wrap;gap:12px;margin-top:50px}
+.pill{border:2px solid var(--ink);border-radius:999px;padding:14px 26px;font-family:Anton,sans-serif;font-size:clamp(22px,3vw,40px);text-transform:uppercase;transition:all .25s}
+.pill:hover{background:var(--acid);color:#000;border-color:var(--acid);transform:rotate(-3deg) scale(1.05)}
+.pill:nth-child(3n+2):hover{background:var(--pink);border-color:var(--pink)}
+.pill:nth-child(3n):hover{background:var(--orange);border-color:var(--orange)}
+
+/* why */
+.why{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+.why ul{list-style:none}
+.why li{display:flex;gap:18px;padding:22px 0;border-bottom:1px solid var(--line);font-size:18px}
+.why li b{font-family:"Space Mono",monospace;color:var(--acid);font-weight:400}
+.stack{position:relative;height:440px}
+.stack .tag3d{position:absolute}
+.stack .s1{left:8%;top:6%;rotate:-14deg;width:260px;height:140px;font-size:40px}
+.stack .s2{left:44%;top:22%;rotate:10deg}
+.stack .s3{left:18%;top:52%;rotate:6deg;width:240px;height:120px;background:var(--orange);color:#000;font-size:36px}
+.stack .s4{left:62%;top:58%;rotate:-8deg}
+.stack .tag3d{transition:rotate .4s,scale .4s}
+.stack:hover .tag3d{rotate:0deg;scale:1.04}
+@media (max-width:900px){.why{grid-template-columns:1fr}.stack{height:380px}.stack .s2{left:50%}.stack .s4{left:55%}}
+
+/* quote */
+.quote{background:var(--acid);color:#000;border-radius:28px;margin:0 4vw 120px;padding:80px 5vw;display:grid;grid-template-columns:1fr 1fr;gap:50px}
+.quote h2{color:#000}
+.quote .eyebrow{color:#000}.quote .eyebrow::before{background:#000}
+.quote p.lead{margin-top:20px;font-size:18px;max-width:420px}
+form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+form .full{grid-column:1/-1}
+label{font-family:"Space Mono",monospace;font-size:11px;text-transform:uppercase;display:block;margin-bottom:6px}
+input,select,textarea{width:100%;background:transparent;border:0;border-bottom:2px solid #000;padding:10px 0;font:inherit;font-size:17px;color:#000;outline:none;cursor:none}
+input::placeholder,textarea::placeholder{color:rgba(0,0,0,.45)}
+textarea{resize:vertical;min-height:80px}
+form button{grid-column:1/-1;background:#000;color:var(--acid);border:0;padding:20px;border-radius:999px;font:700 16px "Space Grotesk";text-transform:uppercase;cursor:none;transition:transform .2s}
+form button:hover{transform:scale(1.02) rotate(-1deg)}
+@media (max-width:900px){.quote{grid-template-columns:1fr}form{grid-template-columns:1fr}}
+
+/* footer */
+footer{padding:60px 4vw 30px;border-top:1px solid var(--line)}
+.big{font-family:Anton,sans-serif;font-size:clamp(60px,17vw,300px);line-height:.85;text-transform:uppercase;letter-spacing:-2px}
+.big span{color:transparent;-webkit-text-stroke:2px var(--acid)}
+.foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px;margin-top:40px;font-family:"Space Mono",monospace;font-size:13px;color:var(--mute);text-transform:uppercase}
+.foot a:hover{color:var(--acid)}
+
+/* whatsapp */
+.wa{position:fixed;right:22px;bottom:22px;z-index:60;width:62px;height:62px;border-radius:50%;background:#25d366;display:grid;place-items:center;box-shadow:0 10px 30px rgba(37,211,102,.4);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,.6)}70%{box-shadow:0 0 0 18px rgba(37,211,102,0)}100%{box-shadow:0 0 0 0 rgba(37,211,102,0)}}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .8s,transform .8s cubic-bezier(.2,.8,.2,1)}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}.hero h1 .row span{transform:none}}
+</style>
+</head>
+<body>
+<div class="cursor"></div><div class="cursor-dot"></div>
+
+<nav>
+  <a href="#" class="logo" aria-label="ASH-MAN Corporation home">
+    <span class="logo-tag">ASH—MAN</span>
+    <small>Corporation<br>Trims &amp; Labels</small>
+  </a>
+  <div class="links">
+    <a href="#products">Products</a>
+    <a href="#process">Process</a>
+    <a href="#industries">Industries</a>
+    <a href="#quote">Get Quote</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1>
+    <span class="row"><span>We Label</span></span>
+    <span class="row"><span class="outline">The</span> <span class="acid">Whole</span></span>
+    <span class="row"><span class="pink">Fashion</span> Game.</span>
+  </h1>
+  <p>Woven labels, hang tags, care labels, heat transfers, patches &amp; every trim your garment needs — made loud, made precise, made by <b>ASH-MAN Corporation</b>.</p>
+  <div class="cta">
+    <a href="#quote" class="btn btn-acid hover">Get a Quote →</a>
+    <a href="#products" class="btn btn-ghost hover">See Products</a>
+  </div>
+
+  <div class="float f1"><div class="tag3d woven">Ash-Man<small>WOVEN · DAMASK</small></div></div>
+  <div class="float f2"><div class="tag3d hang">Hang<br>Tag<br>Co.</div></div>
+  <div class="float f3"><div class="tag3d care">100% COTTON<br>— — —<br>WASH 30°<br>DO NOT BLEACH<br>MADE IN PK<br>— — —<br>M / 32</div></div>
+  <div class="float f4"><div class="tag3d patch">Wild<br>Patch</div></div>
+
+  <div class="badge">
+    <svg viewBox="0 0 100 100"><defs><path id="c" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0"/></defs>
+      <text font-family="Space Mono" font-size="9.5" fill="#f4f1ea" letter-spacing="2"><textPath href="#c">ASH-MAN • TRIMS • LABELS • TAGS • </textPath></text></svg>
+    <div class="star">✺</div>
+  </div>
+</header>
+
+<div class="marquee a"><div class="track" id="m1"></div></div>
+<div class="marquee b"><div class="track" id="m2"></div></div>
+
+<section id="products">
+  <div class="eyebrow reveal">What we make</div>
+  <h2 class="reveal">Every trim.<br><span class="outline">Zero</span> <span class="acid">boring.</span></h2>
+  <div class="grid" id="grid"></div>
+</section>
+
+
+<section id="studio" style="padding-top:20px">
+  <div class="eyebrow reveal">Label Studio</div>
+  <h2 class="reveal">Design yours.<br><span class="pink">Right</span> <span class="outline">now.</span></h2>
+  <div class="studio">
+    <div class="stage reveal hover"><div id="pv"></div></div>
+    <div class="controls reveal">
+      <label for="bn">Your brand name</label>
+      <input id="bn" maxlength="16" value="YOUR BRAND" autocomplete="off">
+      <label>Type</label>
+      <div class="chips" id="types"></div>
+      <label>Base color</label>
+      <div class="chips" id="bases"></div>
+      <label>Thread / ink</label>
+      <div class="chips" id="threads"></div>
+      <a href="#quote" class="btn btn-acid hover" id="useDesign" style="margin-top:30px">Quote this design →</a>
+    </div>
+  </div>
+</section>
+
+<div class="stats">
+  <div class="stat"><b data-count="500">0</b><span>+ Brands served</span></div>
+  <div class="stat"><b data-count="50">0</b><span>M+ Labels / year</span></div>
+  <div class="stat"><b data-count="72">0</b><span>Hr sampling</span></div>
+  <div class="stat"><b data-count="99">0</b><span>% On-time delivery</span></div>
+</div>
+
+<section id="process">
+  <div class="eyebrow reveal">How it works</div>
+  <h2 class="reveal">Idea → <span class="pink">Trim</span><br>in 4 moves.</h2>
+  <div class="process">
+    <div class="step reveal"><h4>Send Artwork</h4><p>Logo, tech pack ya sirf idea — WhatsApp karo, hum design kar denge.</p></div>
+    <div class="step reveal"><h4>Get Sample</h4><p>Digital proof + physical sample, fast. Colors &amp; size lock karo.</p></div>
+    <div class="step reveal"><h4>Bulk Production</h4><p>High-density looms, offset &amp; digital printing, strict QC.</p></div>
+    <div class="step reveal"><h4>Delivered</h4><p>Packed by style &amp; size, on time — local ya export.</p></div>
+  </div>
+</section>
+
+<section id="industries" style="padding-top:40px">
+  <div class="eyebrow reveal">Who we work with</div>
+  <h2 class="reveal">Built for<br><span class="outline">brands</span> that move.</h2>
+  <div class="industries">
+    <span class="pill reveal">Denim</span><span class="pill reveal">Streetwear</span><span class="pill reveal">Knitwear</span>
+    <span class="pill reveal">Kidswear</span><span class="pill reveal">Sportswear</span><span class="pill reveal">Home Textile</span>
+    <span class="pill reveal">Leather</span><span class="pill reveal">Export Houses</span><span class="pill reveal">Bridal &amp; Couture</span>
+  </div>
+</section>
+
+<section class="why">
+  <div>
+    <div class="eyebrow reveal">Why ASH-MAN</div>
+    <h2 class="reveal">Small detail.<br><span class="acid">Big</span> brand.</h2>
+    <ul style="margin-top:40px">
+      <li class="reveal"><b>01</b> One-stop shop — labels se le kar packaging tak, sab ek jagah.</li>
+      <li class="reveal"><b>02</b> Low MOQ for startups, massive capacity for exporters.</li>
+      <li class="reveal"><b>03</b> Exact Pantone matching &amp; buyer-compliant materials.</li>
+      <li class="reveal"><b>04</b> Free design support — tumhara brand, humari craziness.</li>
+    </ul>
+  </div>
+  <div class="stack reveal">
+    <div class="tag3d woven s1">Ash-Man<small>PREMIUM WOVEN</small></div>
+    <div class="tag3d hang s2">Fresh<br>Drop</div>
+    <div class="tag3d s3">Heat Transfer</div>
+    <div class="tag3d patch s4">Made<br>Loud</div>
+  </div>
+</section>
+
+<div class="quote" id="quote">
+  <div>
+    <div class="eyebrow">Let's build</div>
+    <h2>Get a<br>Quote.</h2>
+    <p class="lead">Details bhejo, 24 ghante ke andar price + sample timeline mil jayegi. Seedha WhatsApp pe.</p>
+  </div>
+  <form id="qform">
+    <div><label for="n">Name</label><input id="n" required placeholder="Your name"></div>
+    <div><label for="b">Brand / Company</label><input id="b" placeholder="Brand name"></div>
+    <div><label for="p">Product</label>
+      <select id="p"><option>Woven Labels</option><option>Printed Labels</option><option>Hang Tags</option><option>Care Labels</option><option>Heat Transfers</option><option>Patches</option><option>Stickers &amp; Barcodes</option><option>Packaging</option><option>Other Trims</option></select></div>
+    <div><label for="q">Quantity</label><input id="q" placeholder="e.g. 10,000 pcs"></div>
+    <div class="full"><label for="m">Details</label><textarea id="m" placeholder="Size, colors, material, deadline..."></textarea></div>
+    <button type="submit" class="hover">Send on WhatsApp →</button>
+  </form>
+</div>
+
+<footer>
+  <div class="big">Ash—<span>Man</span></div>
+  <div class="foot">
+    <span>© <span id="yr"></span> ASH-MAN Corporation</span>
+    <a href="tel:+920000000000">+92 000 0000000</a>
+    <a href="mailto:info@ashman.com">info@ashman.com</a>
+    <span>Pakistan · Worldwide shipping</span>
+  </div>
+</footer>
+
+<a class="wa hover" id="wa" href="#" aria-label="Chat on WhatsApp">
+  <svg width="30" height="30" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.7 1.2 1.6 2 1.1.9 2 1.2 2.3 1.4.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.2z"/></svg>
+</a>
+
+<script>
+// ===== EDIT THIS: WhatsApp number (country code, no + or spaces) =====
+const WHATSAPP = "920000000000";
+
+const products = [
+  {t:"Woven Labels", d:"Damask, satin & taffeta — sharp detail, rich texture.", c:"#c8ff00", i:'<rect x="8" y="26" width="68" height="32" rx="3" fill="#c8ff00"/><rect x="13" y="31" width="58" height="22" fill="none" stroke="#000" stroke-dasharray="3 3"/><path d="M22 42h40" stroke="#000" stroke-width="4"/>'},
+  {t:"Printed Labels", d:"Satin, cotton & nylon tapes — offset, screen & digital.", c:"#ff2e88", i:'<path d="M14 18h56v48H14z" fill="#ff2e88"/><path d="M22 30h40M22 40h30M22 50h36" stroke="#000" stroke-width="3"/>'},
+  {t:"Hang Tags", d:"Thick board, foil, emboss, die-cut — swing tags that sell.", c:"#ff6a1a", i:'<path d="M26 10h32l8 12v52H18V22z" fill="#ff6a1a"/><circle cx="42" cy="22" r="5" fill="#0b0b0d"/><path d="M42 17C42 6 60 4 64 10" stroke="#f4f1ea" stroke-width="2" fill="none"/>'},
+  {t:"Care Labels", d:"Wash care, size & composition — buyer compliant.", c:"#f4f1ea", i:'<rect x="28" y="6" width="28" height="72" fill="#f4f1ea"/><path d="M34 20h16M34 30h16M34 40h10M34 50h16M34 60h12" stroke="#000" stroke-width="2.5"/>'},
+  {t:"Heat Transfers", d:"Tagless neck prints, silicone, reflective & 3D HD.", c:"#2b6bff", i:'<rect x="10" y="20" width="64" height="44" rx="8" fill="#2b6bff"/><path d="M24 50l10-18 8 12 6-8 12 14z" fill="#f4f1ea"/>'},
+  {t:"Patches & Badges", d:"Embroidered, PVC rubber, chenille, leather & woven.", c:"#c8ff00", i:'<circle cx="42" cy="42" r="32" fill="#2b6bff" stroke="#c8ff00" stroke-width="6"/><path d="M42 24l5 12 13 1-10 8 3 13-11-7-11 7 3-13-10-8 13-1z" fill="#c8ff00"/>'},
+  {t:"Stickers & Barcodes", d:"Price tickets, RFID, barcode & polybag stickers.", c:"#ff2e88", i:'<rect x="10" y="18" width="64" height="48" rx="6" fill="#f4f1ea"/><path d="M18 28v28M23 28v28M30 28v28M34 28v28M40 28v28M47 28v28M51 28v28M58 28v28M62 28v28M66 28v28" stroke="#000" stroke-width="2.5"/>'},
+  {t:"Trims & Accessories", d:"Zipper pullers, drawcords, elastic tapes, buttons & more.", c:"#ff6a1a", i:'<path d="M42 8v40" stroke="#f4f1ea" stroke-width="6" stroke-dasharray="4 3"/><rect x="32" y="46" width="20" height="30" rx="10" fill="#ff6a1a"/><circle cx="42" cy="64" r="4" fill="#0b0b0d"/>'},
+  {t:"Packaging", d:"Branded boxes, polybags, tissue & tape — full unboxing.", c:"#2b6bff", i:'<path d="M12 28l30-14 30 14v32L42 74 12 60z" fill="#2b6bff"/><path d="M12 28l30 14 30-14M42 42v32" stroke="#0b0b0d" stroke-width="3" fill="none"/>'}
+];
+document.getElementById("grid").innerHTML = products.map((p,i)=>`
+  <div class="card reveal hover" style="--c:${p.c}">
+    <div class="num">${String(i+1).padStart(2,"0")} / ${String(products.length).padStart(2,"0")}</div>
+    <svg class="ico" viewBox="0 0 84 84">${p.i}</svg>
+    <div><h3>${p.t}</h3><p>${p.d}</p></div>
+  </div>`).join("");
+
+// marquees
+const words1 = ["Woven Labels","✺","Hang Tags","✺","Care Labels","✺","Heat Transfers","✺","Patches","✺"];
+const words2 = ["Made Loud","★","Made Fast","★","Made in PK","★","Shipped Worldwide","★"];
+const fill = (id,w)=>{const h=w.map(x=>`<span>${x}</span>`).join("");document.getElementById(id).innerHTML=h+h+h+h;};
+fill("m1",words1); fill("m2",words2);
+
+// cursor
+const cur=document.querySelector(".cursor"), dot=document.querySelector(".cursor-dot");
+let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my;
+addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;dot.style.left=mx+"px";dot.style.top=my+"px";});
+(function loop(){cx+=(mx-cx)*.18;cy+=(my-cy)*.18;cur.style.left=cx+"px";cur.style.top=cy+"px";requestAnimationFrame(loop)})();
+document.addEventListener("mouseover",e=>{if(e.target.closest(".hover,a,button,.pill"))cur.classList.add("big")});
+document.addEventListener("mouseout",e=>{if(e.target.closest(".hover,a,button,.pill"))cur.classList.remove("big")});
+
+// card tilt
+document.querySelectorAll(".card").forEach(c=>{
+  c.addEventListener("mousemove",e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+    c.style.transform=`perspective(800px) rotateY(${x*14}deg) rotateX(${-y*14}deg) translateY(-6px)`;});
+  c.addEventListener("mouseleave",()=>c.style.transform="");
+});
+
+// hero parallax on floating labels
+document.querySelector(".hero").addEventListener("mousemove",e=>{
+  document.querySelectorAll(".float").forEach((f,i)=>{const k=(i+1)*12;
+    f.style.marginLeft=((e.clientX/innerWidth-.5)*-k)+"px";f.style.marginTop=((e.clientY/innerHeight-.5)*-k)+"px";});
+});
+
+// reveal + counters
+const io=new IntersectionObserver(es=>es.forEach(en=>{if(!en.isIntersecting)return;en.target.classList.add("in");
+  const b=en.target.querySelector?.("[data-count]")||(en.target.dataset.count?en.target:null);
+  io.unobserve(en.target);}),{threshold:.15});
+document.querySelectorAll(".reveal").forEach((el,i)=>{el.style.transitionDelay=(i%4)*80+"ms";io.observe(el)});
+const co=new IntersectionObserver(es=>es.forEach(en=>{if(!en.isIntersecting)return;const el=en.target,t=+el.dataset.count;let s=null;
+  const step=ts=>{s??=ts;const p=Math.min((ts-s)/1400,1);el.textContent=Math.round(t*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(step)};
+  requestAnimationFrame(step);co.unobserve(el);}),{threshold:.5});
+document.querySelectorAll("[data-count]").forEach(el=>co.observe(el));
+
+
+// ===== Label Studio =====
+const st={type:"Woven Label",base:"#111114",thread:"#c8ff00"};
+const types=["Woven Label","Hang Tag","Patch"];
+const bases=["#111114","#f4f1ea","#ff2e88","#2b6bff","#ff6a1a","#c8ff00","#7a1f2b"];
+const threads=["#c8ff00","#f4f1ea","#111114","#d4af37","#ff2e88","#2b6bff"];
+const chipRow=(id,arr,key,isColor)=>{const el=document.getElementById(id);
+  el.innerHTML=arr.map(v=>isColor?`<button type="button" class="sw hover" style="background:${v}" data-v="${v}" aria-label="${v}"></button>`:`<button type="button" class="chip hover" data-v="${v}">${v}</button>`).join("");
+  el.onclick=e=>{const b=e.target.closest("button");if(!b)return;st[key]=b.dataset.v;render();};};
+chipRow("types",types,"type");chipRow("bases",bases,"base",1);chipRow("threads",threads,"thread",1);
+const bn=document.getElementById("bn");bn.oninput=render;
+function render(){
+  const name=(bn.value||"YOUR BRAND").replace(/[<>&"]/g,"");
+  const pv=document.getElementById("pv");
+  const cls={"Woven Label":"pv-woven","Hang Tag":"pv-hang","Patch":"pv-patch"}[st.type];
+  const sub={"Woven Label":"Est. 2026 · Premium","Hang Tag":"New Collection","Patch":"Original"}[st.type];
+  pv.innerHTML=`<div class="preview ${cls}" style="background-color:${st.base};color:${st.thread};border-color:${st.thread}"><div class="pv-name">${name}</div><div class="pv-sub">${sub}</div></div>`;
+  document.querySelectorAll("#types .chip").forEach(c=>c.classList.toggle("on",c.dataset.v===st.type));
+  document.querySelectorAll("#bases .sw").forEach(c=>c.classList.toggle("on",c.dataset.v===st.base));
+  document.querySelectorAll("#threads .sw").forEach(c=>c.classList.toggle("on",c.dataset.v===st.thread));
+}
+render();
+document.getElementById("useDesign").addEventListener("click",()=>{
+  document.getElementById("b").value=bn.value;
+  const map={"Woven Label":"Woven Labels","Hang Tag":"Hang Tags","Patch":"Patches"};document.getElementById("p").value=map[st.type];
+  document.getElementById("m").value=`Studio design: ${st.type}, base ${st.base}, thread/ink ${st.thread}`;
+});
+
+// whatsapp
+const wa=document.getElementById("wa");
+wa.href=`https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Hi ASH-MAN, I need a quote for labels/trims.")}`;wa.target="_blank";
+document.getElementById("qform").addEventListener("submit",e=>{e.preventDefault();
+  const v=id=>document.getElementById(id).value.trim();
+  const msg=`*New Quote Request — ASH-MAN*\nName: ${v("n")}\nBrand: ${v("b")}\nProduct: ${v("p")}\nQty: ${v("q")}\nDetails: ${v("m")}`;
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,"_blank");
+});
+document.getElementById("yr").textContent=new Date().getFullYear();
+</script>
+</body>
+</html>
